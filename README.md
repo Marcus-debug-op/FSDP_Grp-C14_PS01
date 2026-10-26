@@ -6,6 +6,6 @@
 | -------------------------------------          | --------------------|
 | Balasubramanian Aswin Kumar (Team Leader)      |                     |
 | Marcus Ng                                      |Marcus-debug-op      |
-| Timely Loh                                     |                     |
+| Timely Loh                                     | Timely              |
 | Tan Quan Jun                                   |                     | 
 | Matthew Tay                                    | Spadnana            |
