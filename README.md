@@ -4,7 +4,7 @@
 
 | Name                                           | Github Username     |
 | -------------------------------------          | --------------------|
-| Balasubramanian Aswin Kumar (Team Leader)      |                     |
+| Balasubramanian Aswin Kumar (Team Leader)      | Aswinkumar03        |
 | Marcus Ng                                      | Marcus-debug-op     |
 | Timely Loh                                     | Timely              |
 | Tang Quan Jun                                  | Quan June           | 
