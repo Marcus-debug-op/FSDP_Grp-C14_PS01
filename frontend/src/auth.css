@@ -1,0 +1,19 @@
+/* Styles for the Sign In / Sign Up page and the Dashboard */
+.auth-toggle { display: inline-flex; border: 1px solid var(--accent); margin: 1.2rem 0 0.5rem; }
+.auth-toggle button {
+  font: inherit; font-size: 0.85rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 0.7rem 1.6rem; border: 0; background: transparent; color: var(--accent-text); cursor: pointer;
+}
+.auth-toggle button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.auth-toggle button:not([aria-pressed="true"]):hover { background: var(--surface); }
+
+.auth-form { display: grid; gap: 1.2rem; margin-top: 1.5rem; max-width: 460px; }
+.auth-form label { display: flex; flex-direction: column; gap: 0.35rem; font-weight: 600; }
+.auth-form input {
+  font: inherit; font-weight: 400; padding: 0.75rem 0.9rem;
+  background: #fff; color: var(--text); border: 1px solid #8a847c;
+}
+.form-hint { font-size: 0.9rem; font-weight: 400; color: var(--muted); }
+.form-error { background: #fdecea; color: #7a1f14; border-left: 4px solid var(--accent); padding: 0.8rem 1rem; margin: 0; }
+.auth-form .btn:disabled { opacity: 0.6; cursor: wait; }
+.role-badge { display: inline-block; text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.8rem; color: var(--accent-text); border: 1px solid var(--accent); padding: 0.1rem 0.8rem; margin-bottom: 1rem; }

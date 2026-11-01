@@ -1,0 +1,147 @@
+/* ---------- Design tokens (light Japanese-inspired theme) ---------- */
+:root {
+  --bg: #ffffff;           /* white page */
+  --surface: #f4f3f1;      /* light grey for alternate sections, cards, footer */
+  --text: #26231f;         /* charcoal */
+  --muted: #5b5650;        /* readable grey (about 7:1 on white) */
+  --accent: #a83f31;       /* muted dark red (white text on it passes contrast) */
+  --accent-dark: #8c3226;
+  --accent-text: #a83f31;  /* same red for small text on white (about 6:1) */
+  --line: #e2dfdb;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, Arial, sans-serif;
+  --font-heading: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-kanji: "Noto Serif JP", "Yu Mincho", "Hiragino Mincho ProN", serif;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 1.05rem; line-height: 1.7; }
+h1, h2, h3 { font-family: var(--font-heading); font-weight: 400; line-height: 1.2; margin: 0 0 0.7rem; }
+h1 { font-size: clamp(2rem, 5vw, 3.4rem); }
+h2 { font-size: clamp(1.7rem, 3.5vw, 2.6rem); }
+h3 { font-size: 1.25rem; }
+a { color: var(--accent-text); }
+:focus-visible { outline: 3px solid var(--accent-text); outline-offset: 3px; }
+
+.container { width: min(1120px, 90%); margin: 0 auto; }
+.narrow { max-width: 700px; }
+.center { text-align: center; }
+.lead { font-size: 1.15rem; color: var(--muted); max-width: 620px; }
+.section { padding: 5rem 0; }
+.section-alt { background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+
+/* Small spaced-out red label above headings (as in the template) */
+.eyebrow { text-transform: uppercase; letter-spacing: 0.3em; font-size: 0.85rem; color: var(--accent-text); margin: 0 0 1rem; }
+.rule { display: block; width: 90px; height: 2px; background: var(--accent); margin: 1rem auto; }
+
+.skip-link { position: absolute; left: -999px; top: 0; background: var(--accent); color: #fff; padding: 0.5rem 1rem; z-index: 100; }
+.skip-link:focus { left: 0; }
+
+/* ---------- Buttons ---------- */
+.btn { display: inline-block; padding: 0.85rem 1.8rem; border: 1px solid transparent; font: inherit; font-size: 0.9rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; text-decoration: none; cursor: pointer; }
+.btn-small { padding: 0.55rem 1.2rem; font-size: 0.8rem; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-dark); }
+.btn-outline { border-color: var(--accent); color: var(--accent-text); background: transparent; }
+.btn-outline:hover { background: var(--accent); color: #fff; }
+/* btn-light is only used on the dark hero and the red band, so it is white */
+.btn-light { border-color: #e8e2d8; color: #fff; background: transparent; }
+.btn-light:hover { background: #fff; color: var(--text); }
+.button-row { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
+.center-row { justify-content: center; }
+
+/* ---------- Navbar ---------- */
+.navbar { background: rgba(255, 255, 255, 0.96); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 50; }
+.navbar-inner { display: flex; align-items: center; justify-content: space-between; min-height: 72px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 0.8rem; text-decoration: none; color: var(--text); }
+.brand img { border-radius: 50%; }
+.brand-name { font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; font-size: 0.95rem; }
+.nav { display: flex; align-items: center; gap: 2rem; }
+.nav-link { color: var(--muted); text-decoration: none; text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.85rem; padding: 0.3rem 0; border-bottom: 2px solid transparent; }
+.nav-link:hover, .nav-link.active { color: var(--text); border-bottom-color: var(--accent); }
+.menu-toggle { display: none; background: none; color: var(--text); border: 1px solid var(--muted); padding: 0.4rem 1rem; font: inherit; cursor: pointer; }
+
+/* ---------- Hero ---------- */
+.hero {
+  padding: 6rem 0 7rem;
+  text-align: center;
+  /* Dark overlay keeps text readable. Falls back to a gradient if hero.jpg is missing. */
+  background:
+    linear-gradient(rgba(11, 10, 9, 0.72), rgba(11, 10, 9, 0.88)),
+    url("/images/hero.jpg") center / cover no-repeat,
+    radial-gradient(circle at 70% 30%, #3a2218, #0b0a09 65%);
+}
+.hero { color: #f4f0ea; }
+.hero .eyebrow { color: #ec8a78; }
+.hero-content { max-width: 800px; }
+.hero-kanji { font-family: var(--font-kanji); font-size: clamp(4.5rem, 16vw, 9rem); line-height: 1.1; margin: 0 0 0.5rem; letter-spacing: 0.05em; }
+.hero h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); letter-spacing: 0.08em; }
+.hero-text { font-size: 1.2rem; color: #d9d3c9; max-width: 520px; margin: 1rem auto 0; }
+
+/* ---------- About ---------- */
+.two-col { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4rem; align-items: center; }
+.stats { list-style: none; padding: 1.5rem 0 0; margin: 2rem 0 0; display: flex; gap: 2.5rem; flex-wrap: wrap; border-top: 1px solid var(--line); }
+.stats strong { display: block; font-family: var(--font-heading); font-size: 2.2rem; font-weight: 400; color: var(--accent-text); line-height: 1.1; }
+.stats span { color: var(--muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.15em; }
+.panel { position: relative; min-height: 340px; border: 1px solid var(--line); background: linear-gradient(160deg, #f4f3f1, #e6e2dd); display: flex; align-items: center; justify-content: center; }
+.panel-kanji { font-family: var(--font-kanji); font-size: 6rem; color: #d8cbc5; }
+.panel-tag { color: #fff; position: absolute; left: 0; bottom: 0; background: var(--accent); padding: 0.8rem 1.4rem; font-size: 0.8rem; letter-spacing: 0.25em; text-transform: uppercase; }
+
+/* ---------- Getting started ---------- */
+.steps { list-style: none; padding: 0; margin: 3rem 0 0; display: grid; grid-template-columns: repeat(3, 1fr); }
+.step { padding: 0 2rem; border-left: 1px solid var(--line); }
+.step:first-child { border-left: 0; padding-left: 0; }
+.step-kanji { display: block; font-family: var(--font-kanji); font-size: 4rem; color: #e3d3ce; line-height: 1.2; margin-bottom: 0.5rem; }
+.step p { margin: 0; color: var(--muted); }
+
+/* ---------- Meaning of Aikido ---------- */
+.meaning { list-style: none; padding: 0; margin: 2.5rem 0 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.meaning li { display: flex; align-items: center; gap: 1.2rem; border: 1px solid var(--line); padding: 1.2rem 1.5rem; color: var(--muted); }
+.meaning-kanji { font-family: var(--font-kanji); font-size: 2.6rem; color: var(--accent-text); line-height: 1; }
+.meaning strong { color: var(--text); font-weight: 600; }
+
+/* ---------- Red call-to-action band ---------- */
+.cta { background: var(--accent); color: #fff; padding: 5rem 0; }
+.cta h2 { color: #fff; }
+.cta p { max-width: 520px; margin: 0 auto 1.5rem; color: #fbe9e5; }
+
+/* ---------- Timetable ---------- */
+.notice { background: var(--surface); border-left: 4px solid var(--accent); padding: 0.9rem 1.2rem; color: var(--muted); }
+.filters { display: flex; flex-wrap: wrap; gap: 1rem; margin: 2rem 0; }
+.filters label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); }
+.filters select { font: inherit; text-transform: none; letter-spacing: normal; padding: 0.65rem 0.9rem; min-width: 220px; background: #fff; color: var(--text); border: 1px solid #8a847c; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 1.2rem; }
+.card { background: var(--surface); border: 1px solid var(--line); padding: 1.5rem; display: flex; flex-direction: column; align-items: flex-start; }
+.card h3 { margin-top: 0.4rem; }
+.tag { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.2em; color: var(--accent-text); border: 1px solid var(--accent); padding: 0.1rem 0.7rem; }
+.details { margin: 0 0 1.4rem; width: 100%; }
+.details div { display: flex; gap: 0.6rem; padding: 0.35rem 0; border-bottom: 1px solid var(--line); }
+.details dt { min-width: 3.4rem; color: var(--muted); }
+.details dd { margin: 0; }
+.card .btn { margin-top: auto; }
+
+/* ---------- Footer ---------- */
+.footer { background: var(--surface); border-top: 1px solid var(--line); padding: 3rem 0 1.5rem; }
+.footer a { color: var(--text); }
+.footer-inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; }
+.footer-brand { display: flex; gap: 1.2rem; align-items: flex-start; max-width: 520px; }
+.footer-brand img { border-radius: 50%; }
+.footer p { margin: 0.3rem 0; color: var(--muted); }
+.footer ul { list-style: none; padding: 0; margin: 0; }
+.footer li { margin-bottom: 0.4rem; }
+.footer-note { margin-top: 2rem; font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+
+/* ---------- Mobile ---------- */
+@media (max-width: 800px) {
+  .menu-toggle { display: block; }
+  .brand-name { font-size: 0.8rem; letter-spacing: 0.12em; }
+  .nav { display: none; flex-direction: column; align-items: flex-start; width: 100%; padding: 1rem 0 1.2rem; gap: 1rem; }
+  .nav.open { display: flex; }
+  .section { padding: 3.5rem 0; }
+  .two-col, .steps, .meaning { grid-template-columns: 1fr; }
+  .two-col { gap: 2rem; }
+  .panel { min-height: 220px; }
+  .step { border-left: 0; border-top: 1px solid var(--line); padding: 1.5rem 0; }
+  .step:first-child { border-top: 0; padding-top: 0; }
+  .filters label, .filters select { width: 100%; }
+}
