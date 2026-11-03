@@ -16,7 +16,8 @@ const app = express();
 
 // Only the frontend is allowed to call this API from a browser.
 app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:5173" }));
-app.use(express.json());
+// 2 MB file uploads arrive as base64 inside JSON (approximately 2.7 MB).
+app.use(express.json({ limit: "4mb" }));
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
