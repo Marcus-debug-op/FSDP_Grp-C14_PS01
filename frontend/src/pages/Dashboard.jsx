@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import StudentDashboard from "./StudentDashboard.jsx";
+import AdminDashboard from "./admin/AdminDashboard.jsx";
 import "../auth.css";
 
 // Landing page after sign-in. Students get the student portal; the other
@@ -13,6 +14,7 @@ const roleText = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  if (user.role === "admin") return <AdminDashboard />;
 
   if (user.role === "student") return <StudentDashboard />;
 

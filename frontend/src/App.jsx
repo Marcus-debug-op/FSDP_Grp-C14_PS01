@@ -12,6 +12,9 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Payments from "./pages/Payments.jsx";
 import PaymentSuccess from "./pages/PaymentSuccess.jsx";
 import ComingSoon from "./pages/ComingSoon.jsx";
+import AdminSchedule from "./pages/admin/AdminSchedule.jsx";
+import ManageDojos from "./pages/admin/ManageDojos.jsx";
+import BeltProgress from "./pages/student/BeltProgress.jsx";
 
 // AuthProvider makes the signed-in user available to every page below it.
 export default function App() {
@@ -46,6 +49,9 @@ export default function App() {
           <Route path="/settings" element={<ProtectedRoute><ComingSoon page="settings" /></ProtectedRoute>} />
           {/* Grading is a teammate's part; swap in their page when it's ready */}
           <Route path="/grading" element={<ProtectedRoute><ComingSoon page="grading" /></ProtectedRoute>} />
+          <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
+          <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
+          <Route path="/belt-progress" element={<ProtectedRoute><BeltProgress /></ProtectedRoute>} />
           {/* Any unknown address falls back to the homepage */}
           <Route path="*" element={<Home />} />
         </Routes>
