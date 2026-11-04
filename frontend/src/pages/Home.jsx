@@ -1,4 +1,31 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import ScrollReveal from "../components/ScrollReveal.jsx";
+
+function useHeroScrollFade(heroRef) {
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let frame = null;
+    const update = () => {
+      frame = null;
+      const distance = Math.max(hero.offsetHeight * 0.8, 1);
+      const progress = Math.min(Math.max(window.scrollY / distance, 0), 1);
+      hero.style.setProperty("--hero-progress", progress.toFixed(3));
+    };
+    const onScroll = () => { if (frame === null) frame = window.requestAnimationFrame(update); };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      hero.style.removeProperty("--hero-progress");
+    };
+  }, [heroRef]);
+}
+
 
 // Steps shown in "Getting started". The faint kanji are the numbers 1, 2, 3.
 const steps = [
@@ -22,11 +49,13 @@ const meaning = [
 ];
 
 export default function Home() {
+  const heroRef = useRef(null);
+  useHeroScrollFade(heroRef);
   return (
     <>
       {/* HERO. Optional photo: put hero.jpg in public/images/ */}
-      <section className="hero">
-        <div className="container hero-content">
+      <section className="hero" ref={heroRef}>
+        <div className="container hero-content hero-scroll-content">
           <p className="eyebrow">Aikido School &mdash; Singapore</p>
           <p className="hero-kanji" aria-hidden="true">合気道</p>
           <h1>Begin Your Aikido Journey</h1>
@@ -45,6 +74,7 @@ export default function Home() {
       {/* ABOUT: short intro + three key facts */}
       <section className="section">
         <div className="container two-col">
+          <ScrollReveal>
           <div>
             <p className="eyebrow">About the school</p>
             <h2>Tradition and discipline, in the heart of Singapore.</h2>
@@ -61,25 +91,30 @@ export default function Home() {
               ))}
             </ul>
           </div>
+          </ScrollReveal>
+          <ScrollReveal delay={150} className="visual-reveal">
           <div className="panel" aria-hidden="true">
             <span className="panel-kanji">武道</span>
             <span className="panel-tag">The martial way</span>
           </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* GETTING STARTED */}
       <section className="section section-alt">
         <div className="container">
-          <p className="eyebrow center">Getting started</p>
-          <h2 className="center">Three simple steps</h2>
+          <ScrollReveal>
+            <p className="eyebrow center">Getting started</p>
+            <h2 className="center">Three simple steps</h2>
+          </ScrollReveal>
           <ol className="steps">
             {steps.map((s) => (
-              <li key={s.title} className="step">
+              <ScrollReveal key={s.title} as="li" className="step" delay={steps.indexOf(s) * 110}>
                 <span className="step-kanji" aria-hidden="true">{s.kanji}</span>
                 <h3>{s.title}</h3>
                 <p>{s.text}</p>
-              </li>
+              </ScrollReveal>
             ))}
           </ol>
         </div>
@@ -88,14 +123,16 @@ export default function Home() {
       {/* MEANING OF AIKIDO */}
       <section className="section">
         <div className="container">
-          <p className="eyebrow center">Philosophy</p>
-          <h2 className="center">Harmony in motion.</h2>
+          <ScrollReveal>
+            <p className="eyebrow center">Philosophy</p>
+            <h2 className="center">Harmony in motion.</h2>
+          </ScrollReveal>
           <ul className="meaning">
             {meaning.map((m) => (
-              <li key={m.name}>
+              <ScrollReveal key={m.name} as="li" delay={meaning.indexOf(m) * 120}>
                 <span className="meaning-kanji" aria-hidden="true">{m.kanji}</span>
                 <span><strong>{m.name}</strong><br />{m.text}</span>
-              </li>
+              </ScrollReveal>
             ))}
           </ul>
         </div>
@@ -103,11 +140,11 @@ export default function Home() {
 
       {/* CLASS DISCOVERY */}
       <section className="cta">
-        <div className="container center">
+        <ScrollReveal className="container center">
           <h2>Find your class.</h2>
           <p>See what is available for adults, children and more before you sign up.</p>
           <Link to="/classes" className="btn btn-light">See Full Timetable</Link>
-        </div>
+        </ScrollReveal>
       </section>
     </>
   );
