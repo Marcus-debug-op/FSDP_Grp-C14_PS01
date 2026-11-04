@@ -9,6 +9,8 @@ import PublicTimetable from "./pages/PublicTimetable.jsx";
 import About from "./pages/About.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import AdminSchedule from "./pages/admin/AdminSchedule.jsx";
+import ManageDojos from "./pages/admin/ManageDojos.jsx";
 
 // AuthProvider makes the signed-in user available to every page below it.
 export default function App() {
@@ -29,6 +31,8 @@ export default function App() {
           <Route path="/signup" element={<AuthPage />} />
           {/* Only signed-in users can open the dashboard */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
+          <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
           {/* Any unknown address falls back to the homepage */}
           <Route path="*" element={<Home />} />
         </Routes>
