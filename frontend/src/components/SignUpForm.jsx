@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const STEPS = ["Account", "Experience", "Membership", "Profile"];
@@ -26,6 +26,9 @@ function fileToDataUrl(file) {
 export default function SignUpForm() {
   const { signup } = useAuth();
   const [step, setStep] = useState(0);
+  // Prevent a rapid second click from submitting when Continue becomes Create Account.
+  const lastStepChangeAt = useRef(0);
+  const TRANSITION_GUARD_MS = 650;
   const [direction, setDirection] = useState("forward");
   const [details, setDetails] = useState({
     fullName: "", email: "", dateOfBirth: "", gender: "", password: "", confirm: "",
@@ -39,12 +42,15 @@ export default function SignUpForm() {
   const [submitting, setSubmitting] = useState(false);
   const update = (name, value) => setDetails((prev) => ({ ...prev, [name]: value }));
   const goTo = (target) => {
+    if (Date.now() - lastStepChangeAt.current < TRANSITION_GUARD_MS) return;
+    lastStepChangeAt.current = Date.now();
     setDirection(target > step ? "forward" : "back");
     setError("");
     setStep(target);
   };
 
   function next() {
+    if (Date.now() - lastStepChangeAt.current < TRANSITION_GUARD_MS) return;
     setError("");
     if (step === 0) {
       if (details.fullName.trim().length < 2 || details.fullName.trim().length > 100) return setError("Enter your full name (2–100 characters).");
@@ -55,13 +61,18 @@ export default function SignUpForm() {
       if (details.password !== details.confirm) return setError("Passwords do not match.");
     }
     if (step === 1 && details.experienceNotes.length > 1000) return setError("Training notes must be under 1,000 characters.");
+    // The Membership step always navigates to Profile; never creates an account.
     goTo(Math.min(3, step + 1));
   }
 
-  function selectBeginner() {
-    setExperienceFile(null);
-    setDetails((current) => ({ ...current, experienceLevel: "beginner", previousRank: "", experienceNotes: "" }));
-    goTo(2);
+  function toggleExperience(hasExperience) {
+    if (!hasExperience) setExperienceFile(null);
+    setDetails((current) => ({
+      ...current,
+      experienceLevel: hasExperience ? "experienced" : "beginner",
+      previousRank: hasExperience ? current.previousRank : "",
+      experienceNotes: hasExperience ? current.experienceNotes : "",
+    }));
   }
 
   function chooseFile(event) {
@@ -96,7 +107,12 @@ export default function SignUpForm() {
   async function submit(event) {
     event.preventDefault();
     if (step !== 3 || submitting) return;
+    // Ignore an accidental second click while the Profile step is animating in.
+    if (Date.now() - lastStepChangeAt.current < TRANSITION_GUARD_MS) return;
     setError("");
+    if (!profilePhoto) return setError("Please upload a profile photo to complete your profile.");
+    if (!details.phone.trim()) return setError("Please enter your contact number.");
+    if (!details.trainingGoal.trim()) return setError("Please enter your Aikido training goal.");
     setSubmitting(true);
     try {
       const evidence = details.experienceLevel === "experienced" && experienceFile ? await fileToDataUrl(experienceFile) : null;
@@ -165,20 +181,20 @@ export default function SignUpForm() {
         {step === 1 && <>
           <h2>Your training experience</h2>
           <p className="signup-subtitle">We welcome everyone, whether this is your first class or you're returning to the mat.</p>
-          <div className="signup-choice-grid">
-            <button type="button" className={`signup-choice ${details.experienceLevel === "beginner" ? "selected" : ""}`} aria-pressed={details.experienceLevel === "beginner"} onClick={() => update("experienceLevel", "beginner")}>
-              <span className="signup-choice-symbol" aria-hidden="true">✦</span><strong>I'm new to Aikido</strong><small>No experience needed</small>
-            </button>
-            <button type="button" className={`signup-choice ${details.experienceLevel === "experienced" ? "selected" : ""}`} aria-pressed={details.experienceLevel === "experienced"} onClick={() => update("experienceLevel", "experienced")}>
-              <span className="signup-choice-symbol" aria-hidden="true">◈</span><strong>I've trained before</strong><small>Share your experience (optional)</small>
-            </button>
-          </div>
+          <label className="signup-experience-toggle">
+            <input
+              type="checkbox"
+              checked={details.experienceLevel === "experienced"}
+              onChange={(event) => toggleExperience(event.target.checked)}
+            />
+            <span><strong>I have previous Aikido experience</strong><small>Leave unchecked if you're just starting out.</small></span>
+          </label>
           {details.experienceLevel === "experienced" ? <div className="signup-extra-fields">
             <label>Previous rank / belt <input placeholder="e.g. 5th kyu" maxLength={100} value={details.previousRank} onChange={e => update("previousRank", e.target.value)} /></label>
             <label>Training background <textarea maxLength={1000} rows={3} placeholder="Previous dojo, years of training..." value={details.experienceNotes} onChange={e => update("experienceNotes", e.target.value)} /></label>
             <label>Supporting certificate <span className="signup-optional">(optional · PDF, PNG or JPG · max 2 MB)</span><input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={chooseFile} /></label>
             {experienceFile && <p className="form-hint">Selected: {experienceFile.name}</p>}
-          </div> : <p className="signup-soft-note">Perfect! You'll start with beginner-friendly classes. You can skip this step.</p>}
+          </div> : <p className="signup-soft-note">No previous experience needed. You can continue to the membership step.</p>}
         </>}
 
         {step === 2 && <>
@@ -194,25 +210,25 @@ export default function SignUpForm() {
 
         {step === 3 && <>
           <h2>Make it yours</h2>
-          <p className="signup-subtitle">Just a few optional details to personalise your experience.</p>
+          <p className="signup-subtitle">Complete your profile before creating your account.</p>
           <div className="signup-field-grid">
             <div className="signup-span-full signup-photo-field">
-              <span className="signup-photo-title">Profile photo <span className="signup-optional">(optional)</span></span>
+              <span className="signup-photo-title">Profile photo</span>
               <div className="signup-photo-row">
                 <div className="signup-photo-avatar" aria-label={profilePhoto ? "Profile photo preview" : "No profile photo selected"}>
                   {photoPreview ? <img src={photoPreview} alt="Your profile photo preview" /> : <span aria-hidden="true">👤</span>}
                 </div>
                 <div className="signup-photo-actions">
                   <label className="signup-photo-upload">Choose photo
-                    <input type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" onChange={choosePhoto} />
+                    <input required={!profilePhoto} type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" onChange={choosePhoto} />
                   </label>
                   {profilePhoto && <button type="button" className="signup-remove-photo" onClick={clearPhoto}>Remove photo</button>}
                   <small>JPG, PNG or WebP · Max 2 MB · Square photo recommended</small>
                 </div>
               </div>
             </div>
-            <label>Contact number <span className="signup-optional">(optional)</span><input type="tel" autoComplete="tel" placeholder="e.g. +65 9123 4567" maxLength={30} value={details.phone} onChange={e => update("phone", e.target.value)} /></label>
-            <label className="signup-span-full">Your training goal <span className="signup-optional">(optional)</span><textarea maxLength={500} rows={3} placeholder="What would you like to achieve through Aikido?" value={details.trainingGoal} onChange={e => update("trainingGoal", e.target.value)} /></label>
+            <label>Contact number <input required type="tel" autoComplete="tel" placeholder="e.g. +65 9123 4567" maxLength={30} value={details.phone} onChange={e => update("phone", e.target.value)} /></label>
+            <label className="signup-span-full">Your training goal <textarea required maxLength={500} rows={3} placeholder="What would you like to achieve through Aikido?" value={details.trainingGoal} onChange={e => update("trainingGoal", e.target.value)} /></label>
           </div>
           <p className="signup-soft-note">When you finish, your account will be created and you'll be signed in.</p>
         </>}
@@ -220,9 +236,9 @@ export default function SignUpForm() {
 
       <div className="signup-actions">
         {step > 0 && <button type="button" className="btn btn-outline" disabled={submitting} onClick={() => goTo(step - 1)}>Back</button>}
-        {step === 1 && details.experienceLevel === "beginner" && <button type="button" className="signup-text-button" onClick={selectBeginner}>I'm a beginner — skip</button>}
+
         {step < 3
-          ? <button type="button" className="btn btn-primary signup-next" onClick={next}>Continue <span aria-hidden="true">→</span></button>
+          ? <button type="button" className="btn btn-primary signup-next" onClick={next}>I am a beginner <span aria-hidden="true">→</span></button>
           : <button type="submit" className="btn btn-primary signup-next" disabled={submitting}>{submitting ? "Creating account…" : "Create account →"}</button>}
       </div>
     </form>

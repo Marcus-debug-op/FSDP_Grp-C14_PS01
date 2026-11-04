@@ -103,3 +103,10 @@
 .signup-photo-upload:focus-within { outline:2px solid var(--accent); outline-offset:3px; }
 .signup-photo-upload input { position:absolute; width:1px; height:1px; opacity:0; padding:0; pointer-events:none; }
 .signup-remove-photo { border:0; padding:0; background:transparent; font:inherit; font-size:.8rem; color:var(--muted); text-decoration:underline; cursor:pointer; }
+
+/* Experience step: a single checkbox instead of a beginner shortcut button. */
+.signup-experience-toggle { display:flex!important; flex-direction:row!important; align-items:flex-start; gap:.85rem!important; border:1px solid #ded8d2; border-radius:8px; padding:1.1rem; background:#fff; cursor:pointer; }
+.signup-experience-toggle:has(input:checked) { border-color:var(--accent); background:#fbf6f4; }
+.signup-wizard .signup-experience-toggle input[type=checkbox] { flex:0 0 18px; width:18px; height:18px; margin:.15rem 0 0; accent-color:var(--accent); }
+.signup-experience-toggle span { display:grid; gap:.25rem; }
+.signup-experience-toggle small { font-size:.8rem; font-weight:400; color:var(--muted); }
