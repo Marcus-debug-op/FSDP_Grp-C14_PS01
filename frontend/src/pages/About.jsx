@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { shihan, instructorGroups } from "../data/instructors.js";
 import "../content.css";
+import ScrollReveal from "../components/ScrollReveal.jsx";
 
 const facts = [
   { value: "1988", label: "Founded" },
@@ -13,7 +14,7 @@ export default function About() {
   return (
     <>
       <section className="section">
-        <div className="container narrow">
+        <ScrollReveal className="container narrow">
           <p className="eyebrow">About</p>
           <h1>Aikido Shinju-Kai</h1>
           <p className="lead">
@@ -31,31 +32,33 @@ export default function About() {
               <li key={f.label}><strong>{f.value}</strong><span>{f.label}</span></li>
             ))}
           </ul>
-        </div>
+        </ScrollReveal>
       </section>
 
       <section className="section section-alt" id="instructors">
         <div className="container">
-          <p className="eyebrow">Our teachers</p>
-          <h2>Instructors</h2>
+          <ScrollReveal>
+            <p className="eyebrow">Our teachers</p>
+            <h2>Instructors</h2>
+          </ScrollReveal>
 
-          <div className="shihan">
+          <ScrollReveal className="shihan">
             <span className="shihan-kanji" aria-hidden="true">師</span>
             <div>
               <strong>{shihan.name} {shihan.title}</strong>
               <span>{shihan.rank} &middot; Chief Instructor</span>
             </div>
-          </div>
+          </ScrollReveal>
 
           {instructorGroups.map((g) => (
-            <div key={g.rank} className="instructor-group">
+            <ScrollReveal key={g.rank} className="instructor-group">
               <h3>{g.heading ? `${g.heading} \u2013 ${g.rank}` : g.rank}</h3>
               <ul className="names">
                 {g.people.map((p) => (
                   <li key={p}>{g.title ? `${p} ${g.title}` : p}</li>
                 ))}
               </ul>
-            </div>
+            </ScrollReveal>
           ))}
 
           <div className="button-row">

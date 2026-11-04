@@ -3,6 +3,7 @@ import ClassCard from "../components/ClassCard.jsx";
 import { getClasses } from "../services/classService.js";
 import { DAYS, HQ_ADDRESS, classTypes } from "../data/hqClasses.js";
 import "../content.css";
+import ScrollReveal from "../components/ScrollReveal.jsx";
 
 export default function PublicTimetable() {
   const [classes, setClasses] = useState([]);
@@ -39,13 +40,16 @@ export default function PublicTimetable() {
   return (
     <section className="section">
       <div className="container">
+        <ScrollReveal>
         <p className="eyebrow">Weekly timetable</p>
         <h1>Class Timetable</h1>
         <p className="lead">
           Browse classes without an account. Every class runs for 60 minutes at {HQ_ADDRESS}.
         </p>
 
-        <div className="filters">
+        </ScrollReveal>
+
+        <ScrollReveal className="filters">
           <label>
             Training centre
             <select value={centre} onChange={(e) => setCentre(e.target.value)}>
@@ -67,7 +71,7 @@ export default function PublicTimetable() {
               {types.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
-        </div>
+        </ScrollReveal>
 
         {loading ? (
           <p>Loading classes...</p>
@@ -77,12 +81,12 @@ export default function PublicTimetable() {
           <div aria-live="polite">
             <p className="result-count">Showing {visible.length} classes</p>
             {groups.map((g) => (
-              <section key={g.day} className="day-group" aria-labelledby={`day-${g.day}`}>
+              <ScrollReveal key={g.day} as="section" className="day-group" >
                 <h2 id={`day-${g.day}`} className="day-heading">{g.day}</h2>
                 <div className="grid">
                   {g.items.map((c) => <ClassCard key={c.id} item={c} />)}
                 </div>
-              </section>
+              </ScrollReveal>
             ))}
           </div>
         )}
