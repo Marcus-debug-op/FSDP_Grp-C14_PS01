@@ -1,29 +1,34 @@
 
-# Dependencies
+# Node.js dependencies
 node_modules/
 
-# Environment variables and secrets
+# Environment variables
 .env
 .env.*
 !.env.example
 
-# Build output
+# Vite cache
+.vite/
+node_modules/.vite/
+
+# Production builds
 dist/
 build/
-coverage/
 
 # Logs
 *.log
 npm-debug.log*
 
-# Temporary and archive files
-*.tmp
+# ZIP files
 *.zip
 
-# Operating system
-.DS_Store
-Thumbs.db
+# Temporary files
+*.tmp
+*.temp
 
-# Local editor files
+# Windows / macOS
+Thumbs.db
+.DS_Store
+
+# VS Code settings
 .vscode/
-    

@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Navbar from "./components/Navbar.jsx";
@@ -9,15 +9,19 @@ import PublicTimetable from "./pages/PublicTimetable.jsx";
 import About from "./pages/About.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import AdminSchedule from "./pages/admin/AdminSchedule.jsx";
+import ManageDojos from "./pages/admin/ManageDojos.jsx";
 
 // AuthProvider makes the signed-in user available to every page below it.
 export default function App() {
+  const { pathname } = useLocation();
+  const isPublicPage = ["/", "/classes", "/about"].includes(pathname);
   return (
     <AuthProvider>
       <a className="skip-link" href="#main">Skip to content</a>
       <ScrollToTop />
       <Navbar />
-      <main id="main">
+      <main id="main" className={isPublicPage ? "public-page-enter" : ""} key={isPublicPage ? pathname : "private"}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/classes" element={<PublicTimetable />} />
@@ -27,6 +31,8 @@ export default function App() {
           <Route path="/signup" element={<AuthPage />} />
           {/* Only signed-in users can open the dashboard */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
+          <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
           {/* Any unknown address falls back to the homepage */}
           <Route path="*" element={<Home />} />
         </Routes>

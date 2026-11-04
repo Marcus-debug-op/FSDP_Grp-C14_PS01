@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 
@@ -16,10 +17,12 @@ const app = express();
 
 // Only the frontend is allowed to call this API from a browser.
 app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:5173" }));
-app.use(express.json());
+// Two optional 2 MB files may arrive as base64 (approximately 5.4 MB total).
+app.use(express.json({ limit: "7mb" }));
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Unknown address
 app.use((req, res) => res.status(404).json({ message: "Not found" }));
