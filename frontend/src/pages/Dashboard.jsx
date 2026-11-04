@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import AdminDashboard from "./admin/AdminDashboard.jsx";
 import "../auth.css";
 
 // Placeholder landing page after sign-in. Each role will get its own
@@ -12,6 +13,7 @@ const roleText = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  if (user.role === "admin") return <AdminDashboard />;
 
   return (
     <section className="section">

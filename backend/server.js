@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(express.json({ limit: "7mb" }));
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Unknown address
 app.use((req, res) => res.status(404).json({ message: "Not found" }));
