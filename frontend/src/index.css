@@ -183,10 +183,58 @@ a { color: var(--accent-text); }
 .visual-reveal:hover .panel-kanji { transform: scale(1.08) rotate(-3deg); }
 .step, .meaning li, .card { transition: background-color 220ms ease, box-shadow 250ms ease, border-color 250ms ease; }
 .meaning li:hover, .card:hover { box-shadow: 0 12px 26px rgba(45,35,26,.07); border-color: #cdbcb6; }
+/* Steps, meaning tiles and cards that also scroll-reveal need both transitions,
+   otherwise the hover transition above replaces the slide-in and they just pop in. */
+.step.scroll-reveal, .meaning li.scroll-reveal, .card.scroll-reveal {
+  transition: opacity 650ms ease, transform 650ms cubic-bezier(.2,.75,.25,1),
+    background-color 220ms ease, box-shadow 250ms ease, border-color 250ms ease;
+  transition-delay: var(--reveal-delay, 0ms), var(--reveal-delay, 0ms), 0ms, 0ms, 0ms;
+}
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .public-page-enter { animation: none !important; }
   .scroll-reveal, .scroll-reveal.is-visible { opacity: 1 !important; transform: none !important; transition: none !important; }
   .hero-scroll-content { opacity: 1 !important; transform: none !important; will-change: auto; }
   .btn, .nav-link, .nav-link::after, .panel, .visual-reveal .panel-kanji, .step, .meaning li, .card { transition: none !important; }
+}
+
+/* ---------- Student navbar (Check In button + account menu) ---------- */
+.nav-checkin-mobile, .nav-mobile-only { display: none; }
+.navbar-student .nav { gap: 1.6rem; }
+.navbar-student .nav-link { letter-spacing: 0.15em; }
+.nav-checkin { white-space: nowrap; }
+.account { position: relative; }
+.account-toggle {
+  display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0.3rem 0;
+  font: inherit; font-size: 0.85rem; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--text); background: none; border: 0; cursor: pointer;
+}
+.account-toggle span { font-size: 0.7rem; transition: transform 200ms ease; }
+.account-toggle[aria-expanded="true"] span { transform: rotate(180deg); }
+.account-menu {
+  display: none; position: absolute; right: 0; top: calc(100% + 0.5rem); z-index: 60; min-width: 180px;
+  background: #fff; border: 1px solid var(--line); box-shadow: 0 12px 26px rgba(45, 35, 26, 0.1); padding: 0.4rem 0;
+}
+.account-menu.open { display: block; animation: page-arrive 180ms ease-out both; }
+.account-menu a, .account-menu button {
+  display: block; width: 100%; padding: 0.7rem 1.2rem; text-align: left; text-decoration: none;
+  font: inherit; font-size: 0.95rem; color: var(--text); background: none; border: 0; cursor: pointer;
+}
+.account-menu a:hover, .account-menu button:hover { background: var(--surface); }
+
+/* The student navbar has more links, so it switches to the Menu button earlier. */
+@media (max-width: 1100px) {
+  .navbar-student .menu-toggle { display: block; }
+  .navbar-student .nav { display: none; flex-direction: column; align-items: flex-start; width: 100%; padding: 1rem 0 1.2rem; gap: 1rem; }
+  .navbar-student .nav.open { display: flex; }
+  .navbar-student .nav-checkin-desktop, .navbar-student .account { display: none; }
+  .navbar-student .nav-mobile-only { display: inline-block; }
+  .navbar-student .nav-checkin-mobile { display: inline-block; margin-left: auto; margin-right: 0.75rem; }
+}
+@media (max-width: 420px) {
+  .navbar-student .brand-name { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-menu.open { animation: none; }
+  .account-toggle span { transition: none; }
 }

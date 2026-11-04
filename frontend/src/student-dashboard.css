@@ -180,7 +180,20 @@
 .sp-table .sp-status-red { color: var(--sp-alert-text); }
 .sp-table .sp-status-grey { color: var(--sp-label-grey); }
 
+/* ---------- Small links, notices, payment options ---------- */
+.sp-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.sp-text-link { font-size: 16px; font-weight: 700; color: var(--sp-navy); text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.sp-text-link:hover { text-decoration: underline; }
+.sp-notice { background: var(--sp-navy-chip); color: var(--sp-navy); border-radius: 12px; padding: 14px 18px; font-size: 16px; font-weight: 500; }
+.sp-notice-error { background: var(--sp-alert-chip); color: var(--sp-alert-text); }
+.sp-option { gap: 6px; }
+.sp-option-btn { margin-top: 14px; width: 100%; cursor: pointer; }
+.sp-option-btn:disabled { opacity: 0.7; cursor: wait; }
+.sp-main > section { display: flex; flex-direction: column; }
+.sp-button-row { display: flex; flex-wrap: wrap; gap: 12px; }
+
 /* Keyboard focus */
+.sp button:focus-visible { outline: 3px solid var(--sp-navy); outline-offset: 3px; }
 .sp a:focus-visible { outline: 3px solid var(--sp-navy); outline-offset: 3px; }
 
 /* ---------- Mobile (matches the 390px frame) ---------- */

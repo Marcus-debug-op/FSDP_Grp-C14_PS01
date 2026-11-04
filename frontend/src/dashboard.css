@@ -1,0 +1,73 @@
+/* Student dashboard. Built on the homepage styles in index.css
+   (hero, sections, steps, cards, stats, CTA band, scroll reveal).
+   This file only adds the pieces the homepage doesn't have. */
+
+/* ---------- Rank track (previous, current, next) ---------- */
+.dash-track { display: flex; align-items: center; margin: 2rem 0 0.6rem; padding: 0 4px; }
+.dash-dot { flex-shrink: 0; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--line); }
+.dash-dot.is-done { background: var(--accent); border-color: var(--accent); }
+.dash-dot.is-current { width: 20px; height: 20px; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 7px rgba(168, 63, 49, 0.14); margin: 0 6px; }
+.dash-line { flex: 1; height: 2px; background: var(--line); }
+.dash-line.is-done { background: var(--accent); }
+.dash-track-labels { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); }
+.dash-track-labels strong { color: var(--accent-text); font-weight: 600; }
+
+/* ---------- At a glance (four columns of .step) ---------- */
+.dash-glance { list-style: none; padding: 0; margin: 3rem 0 0; display: grid; grid-template-columns: repeat(4, 1fr); }
+.dash-glance .step { padding: 0 1.6rem; }
+.dash-glance .step:first-child { padding-left: 0; }
+.dash-glance h3 { margin-bottom: 0.4rem; }
+.dash-label { margin: 0 0 0.3rem !important; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.2em; color: var(--accent-text) !important; }
+.dash-tag { display: inline-block; margin-top: 0.8rem; }
+.dash-link {
+  position: relative; display: block; width: fit-content; margin-top: 0.8rem; padding: 0.2rem 0;
+  font-size: 0.85rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; text-decoration: none;
+}
+.dash-link::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--accent); transform: scaleX(0); transition: transform 240ms ease;
+}
+.dash-link:hover::after { transform: scaleX(1); }
+
+/* ---------- Recommended classes ---------- */
+.dash-cards { margin-top: 2.5rem; }
+.dash-empty { margin: 2rem auto 0; }
+
+/* ---------- Payment history ---------- */
+.dash-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 1rem; }
+.dash-head h2 { margin-bottom: 0; }
+.dash-box { margin-top: 2rem; background: #fff; border: 1px solid var(--line); padding: 0.5rem 2rem; overflow-x: auto; transition: box-shadow 250ms ease; }
+.dash-box:hover { box-shadow: 0 12px 26px rgba(45, 35, 26, 0.07); }
+.dash-table { width: 100%; border-collapse: collapse; }
+.dash-table th { text-align: left; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); padding: 1rem 1rem 0.8rem 0; }
+.dash-table td { padding: 1rem 1rem 1rem 0; border-top: 1px solid var(--line); vertical-align: top; }
+.dash-table th:last-child, .dash-table td:last-child { text-align: right; padding-right: 0; }
+.dash-amount { display: block; font-size: 0.9rem; color: var(--muted); }
+.dash-status { font-weight: 600; white-space: nowrap; }
+.dash-status-ok { color: var(--text); }
+.dash-status-alert { color: var(--accent-text); }
+.dash-status-muted { color: var(--muted); }
+.dash-empty-row { margin: 1rem 0; color: var(--muted); }
+
+/* ---------- Smaller screens ---------- */
+@media (max-width: 1000px) {
+  .dash-glance { grid-template-columns: repeat(2, 1fr); row-gap: 2.5rem; }
+  .dash-glance .step:nth-child(odd) { border-left: 0; padding-left: 0; }
+}
+@media (max-width: 800px) {
+  .dash-glance { grid-template-columns: 1fr; row-gap: 0; }
+  .dash-glance .step { padding: 1.5rem 0; }
+  .dash-glance .step:first-child { padding-top: 0; }
+  .dash-box { padding: 0.25rem 1.2rem; }
+  .dash-table td:first-child { width: 6.5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-link::after, .dash-box { transition: none !important; }
+}
+
+/* ---------- "Coming soon" placeholder pages ---------- */
+.coming-soon h1 { font-size: clamp(1.9rem, 4vw, 2.8rem); }
+.coming-soon-heading { margin: 2rem 0 0.6rem; font-size: 0.85rem; font-family: var(--font-body); font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.coming-soon-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.coming-soon-list li { padding: 0.6rem 0 0.6rem 1.4rem; border-bottom: 1px solid var(--line); position: relative; }
+.coming-soon-list li::before { content: ""; position: absolute; left: 0; top: 1.25rem; width: 0.55rem; height: 2px; background: var(--accent); }

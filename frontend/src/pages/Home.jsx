@@ -1,31 +1,8 @@
-import { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { useRef } from "react";
+import { Link, Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 import ScrollReveal from "../components/ScrollReveal.jsx";
-
-function useHeroScrollFade(heroRef) {
-  useEffect(() => {
-    const hero = heroRef.current;
-    if (!hero || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    let frame = null;
-    const update = () => {
-      frame = null;
-      const distance = Math.max(hero.offsetHeight * 0.8, 1);
-      const progress = Math.min(Math.max(window.scrollY / distance, 0), 1);
-      hero.style.setProperty("--hero-progress", progress.toFixed(3));
-    };
-    const onScroll = () => { if (frame === null) frame = window.requestAnimationFrame(update); };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (frame !== null) window.cancelAnimationFrame(frame);
-      hero.style.removeProperty("--hero-progress");
-    };
-  }, [heroRef]);
-}
-
+import useHeroScrollFade from "../hooks/useHeroScrollFade.js";
 
 // Steps shown in "Getting started". The faint kanji are the numbers 1, 2, 3.
 const steps = [
@@ -49,6 +26,16 @@ const meaning = [
 ];
 
 export default function Home() {
+  const { user, loading } = useAuth();
+  // While a saved login is being checked, show nothing so a signed-in
+  // student doesn't see the homepage flash before the redirect.
+  if (loading) return null;
+  // Signed-in students go straight to their dashboard.
+  if (user?.role === "student") return <Navigate to="/dashboard" replace />;
+  return <HomePage />;
+}
+
+function HomePage() {
   const heroRef = useRef(null);
   useHeroScrollFade(heroRef);
   return (
