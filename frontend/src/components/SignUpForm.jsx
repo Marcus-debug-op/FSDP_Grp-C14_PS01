@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 const STEPS = ["Account", "Experience", "Membership", "Profile"];
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg"];
+const PHOTO_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 function dateIsValid(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -27,11 +28,13 @@ export default function SignUpForm() {
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState("forward");
   const [details, setDetails] = useState({
-    fullName: "", email: "", dateOfBirth: "", password: "", confirm: "",
+    fullName: "", email: "", dateOfBirth: "", gender: "", password: "", confirm: "",
     experienceLevel: "beginner", experienceNotes: "", previousRank: "",
-    preferredName: "", phone: "", trainingGoal: "",
+    phone: "", trainingGoal: "",
   });
   const [experienceFile, setExperienceFile] = useState(null);
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const update = (name, value) => setDetails((prev) => ({ ...prev, [name]: value }));
@@ -47,6 +50,7 @@ export default function SignUpForm() {
       if (details.fullName.trim().length < 2 || details.fullName.trim().length > 100) return setError("Enter your full name (2–100 characters).");
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email.trim())) return setError("Enter a valid email address.");
       if (!dateIsValid(details.dateOfBirth)) return setError("Enter a valid date of birth (not a future date).");
+      if (!["male", "female", "other", "prefer_not_to_say"].includes(details.gender)) return setError("Please select a gender option.");
       if (details.password.length < 8 || details.password.length > 72) return setError("Password must be between 8 and 72 characters.");
       if (details.password !== details.confirm) return setError("Passwords do not match.");
     }
@@ -71,6 +75,24 @@ export default function SignUpForm() {
     setExperienceFile(file);
   }
 
+  function choosePhoto(event) {
+    const file = event.target.files?.[0] || null;
+    if (!file) return;
+    if (!PHOTO_TYPES.includes(file.type) || file.size > MAX_FILE_SIZE || file.size === 0) {
+      event.target.value = "";
+      return setError("Choose a JPG, PNG or WebP profile photo up to 2 MB.");
+    }
+    setError("");
+    setProfilePhoto(file);
+    // A blob URL is temporary and stays only in the browser; it is never sent to the API.
+    setPhotoPreview((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(file); });
+  }
+
+  function clearPhoto() {
+    setProfilePhoto(null);
+    setPhotoPreview((old) => { if (old) URL.revokeObjectURL(old); return ""; });
+  }
+
   async function submit(event) {
     event.preventDefault();
     if (step !== 3 || submitting) return;
@@ -78,17 +100,19 @@ export default function SignUpForm() {
     setSubmitting(true);
     try {
       const evidence = details.experienceLevel === "experienced" && experienceFile ? await fileToDataUrl(experienceFile) : null;
+      const photoData = profilePhoto ? await fileToDataUrl(profilePhoto) : null;
       await signup({
         fullName: details.fullName.trim(),
         email: details.email.trim(),
         dateOfBirth: details.dateOfBirth,
+        gender: details.gender,
         password: details.password,
         experienceLevel: details.experienceLevel,
         experienceNotes: details.experienceLevel === "experienced" ? details.experienceNotes.trim() : "",
         previousRank: details.experienceLevel === "experienced" ? details.previousRank.trim() : "",
         experienceFile: evidence ? { name: experienceFile.name, type: experienceFile.type, dataUrl: evidence } : null,
         membershipSelection: "annual_pending_payment",
-        preferredName: details.preferredName.trim(),
+        profilePhoto: photoData ? { name: profilePhoto.name, type: profilePhoto.type, dataUrl: photoData } : null,
         phone: details.phone.trim(),
         trainingGoal: details.trainingGoal.trim(),
       });
@@ -124,6 +148,15 @@ export default function SignUpForm() {
             <label className="signup-span-full">Full name <input autoComplete="name" placeholder="Enter your full name" value={details.fullName} onChange={e => update("fullName", e.target.value)} maxLength={100} required /></label>
             <label className="signup-span-full">Email address <input type="email" autoComplete="email" placeholder="you@example.com" value={details.email} onChange={e => update("email", e.target.value)} required /></label>
             <label className="signup-span-full">Date of birth <input type="date" autoComplete="bday" min="1900-01-01" max={maxDate} value={details.dateOfBirth} onChange={e => update("dateOfBirth", e.target.value)} required /></label>
+            <label className="signup-span-full">Gender
+              <select value={details.gender} onChange={e => update("gender", e.target.value)} required>
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
+              </select>
+            </label>
             <label>Password <input type="password" autoComplete="new-password" placeholder="At least 8 characters" value={details.password} onChange={e => update("password", e.target.value)} minLength={8} maxLength={72} required /></label>
             <label>Confirm password <input type="password" autoComplete="new-password" placeholder="Repeat your password" value={details.confirm} onChange={e => update("confirm", e.target.value)} required /></label>
           </div>
@@ -163,7 +196,21 @@ export default function SignUpForm() {
           <h2>Make it yours</h2>
           <p className="signup-subtitle">Just a few optional details to personalise your experience.</p>
           <div className="signup-field-grid">
-            <label>Preferred name <span className="signup-optional">(optional)</span><input placeholder="What should we call you?" maxLength={100} value={details.preferredName} onChange={e => update("preferredName", e.target.value)} /></label>
+            <div className="signup-span-full signup-photo-field">
+              <span className="signup-photo-title">Profile photo <span className="signup-optional">(optional)</span></span>
+              <div className="signup-photo-row">
+                <div className="signup-photo-avatar" aria-label={profilePhoto ? "Profile photo preview" : "No profile photo selected"}>
+                  {photoPreview ? <img src={photoPreview} alt="Your profile photo preview" /> : <span aria-hidden="true">👤</span>}
+                </div>
+                <div className="signup-photo-actions">
+                  <label className="signup-photo-upload">Choose photo
+                    <input type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" onChange={choosePhoto} />
+                  </label>
+                  {profilePhoto && <button type="button" className="signup-remove-photo" onClick={clearPhoto}>Remove photo</button>}
+                  <small>JPG, PNG or WebP · Max 2 MB · Square photo recommended</small>
+                </div>
+              </div>
+            </div>
             <label>Contact number <span className="signup-optional">(optional)</span><input type="tel" autoComplete="tel" placeholder="e.g. +65 9123 4567" maxLength={30} value={details.phone} onChange={e => update("phone", e.target.value)} /></label>
             <label className="signup-span-full">Your training goal <span className="signup-optional">(optional)</span><textarea maxLength={500} rows={3} placeholder="What would you like to achieve through Aikido?" value={details.trainingGoal} onChange={e => update("trainingGoal", e.target.value)} /></label>
           </div>

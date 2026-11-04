@@ -9,6 +9,23 @@ const FILE_TYPES = new Map([
   ["image/jpeg", { magic: Buffer.from([0xff, 0xd8, 0xff]) }],
 ]);
 
+const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function parsePhoto(input) {
+  if (!input) return { photoMime: null, photoBuffer: null };
+  if (typeof input !== "object" || Array.isArray(input) || !PHOTO_TYPES.has(input.type) || typeof input.dataUrl !== "string") throw new Error("Upload a JPG, PNG or WebP image.");
+  const prefix = `data:${input.type};base64,`;
+  if (!input.dataUrl.startsWith(prefix)) throw new Error("Invalid profile photo.");
+  const base64 = input.dataUrl.slice(prefix.length);
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(base64) || base64.length > 2800000) throw new Error("Invalid profile photo.");
+  const photoBuffer = Buffer.from(base64, "base64");
+  if (!photoBuffer.length || photoBuffer.length > 2 * 1024 * 1024 || photoBuffer.toString("base64") !== base64) throw new Error("Profile photo must be 2 MB or smaller.");
+  const signature = input.type === "image/png" ? Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]) : input.type === "image/jpeg" ? Buffer.from([0xff,0xd8,0xff]) : Buffer.from("RIFF");
+  if (!photoBuffer.subarray(0,signature.length).equals(signature)) throw new Error("Image does not match its file type.");
+  if (input.type === "image/webp" && photoBuffer.toString("ascii",8,12) !== "WEBP") throw new Error("Invalid WebP image.");
+  return { photoMime: input.type, photoBuffer };
+}
+
 function createToken(user) {
   return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "8h" });
 }
@@ -55,6 +72,7 @@ export async function signup(req, res, next) {
     }
     if (fullName.length < 2 || fullName.length > 100) return res.status(400).json({ message: "Please enter your full name (2–100 characters)." });
     if (!EMAIL_PATTERN.test(email) || email.length > 255) return res.status(400).json({ message: "Please enter a valid email address." });
+    if (!["male", "female", "other", "prefer_not_to_say"].includes(req.body.gender)) return res.status(400).json({ message: "Please select a gender option." });
     if (password.length < 8 || password.length > 72) return res.status(400).json({ message: "Password must be 8–72 characters." });
     if (req.body.membershipSelection !== "annual_pending_payment") return res.status(400).json({ message: "Please select the annual membership option." });
     if (!["beginner", "experienced"].includes(req.body.experienceLevel)) return res.status(400).json({ message: "Please select your experience level." });
@@ -63,6 +81,8 @@ export async function signup(req, res, next) {
       const beginner = req.body.experienceLevel === "beginner";
       onboarding = {
         dateOfBirth,
+        gender: req.body.gender,
+        ...parsePhoto(req.body.profilePhoto),
         experienceLevel: req.body.experienceLevel,
         previousRank: beginner ? "" : boundedText(req.body.previousRank, 100, "Previous rank"),
         experienceNotes: beginner ? "" : boundedText(req.body.experienceNotes, 1000, "Training background"),
@@ -99,5 +119,16 @@ export async function me(req, res, next) {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(401).json({ message: "Please sign in." });
     res.json({ user: publicUser(user) });
+  } catch (err) { next(err); }
+}
+
+// Profile images are private: only the signed-in user can retrieve their own photo.
+export async function myProfilePhoto(req, res, next) {
+  try {
+    const image = await User.findProfilePhoto(req.user.id);
+    if (!image?.photo_data || !image.photo_mime) return res.status(404).json({ message: "No profile photo uploaded." });
+    res.set("Content-Type", image.photo_mime);
+    res.set("Cache-Control", "private, no-store");
+    res.send(image.photo_data);
   } catch (err) { next(err); }
 }

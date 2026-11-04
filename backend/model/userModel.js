@@ -24,14 +24,14 @@ export async function createStudent({ fullName, email, passwordHash, onboarding 
     const user = result.rows[0];
     await client.query(
       `INSERT INTO student_onboarding (
-        user_id, date_of_birth, experience_level, previous_rank, experience_notes,
+        user_id, date_of_birth, gender, photo_mime, photo_data, experience_level, previous_rank, experience_notes,
         evidence_filename, evidence_mime, evidence_data,
-        membership_status, membership_plan, preferred_name, phone, training_goal
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending_payment', 'annual', $9, $10, $11)`,
-      [user.id, onboarding.dateOfBirth, onboarding.experienceLevel, onboarding.previousRank,
-       onboarding.experienceNotes, onboarding.fileName, onboarding.fileMime,
-       onboarding.fileBuffer, onboarding.preferredName, onboarding.phone,
-       onboarding.trainingGoal]
+        membership_status, membership_plan, phone, training_goal
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending_payment', 'annual', $12, $13)`,
+      [user.id, onboarding.dateOfBirth, onboarding.gender, onboarding.photoMime, onboarding.photoBuffer,
+       onboarding.experienceLevel, onboarding.previousRank, onboarding.experienceNotes,
+       onboarding.fileName, onboarding.fileMime, onboarding.fileBuffer,
+       onboarding.phone, onboarding.trainingGoal]
     );
     await client.query("COMMIT");
     return user;
@@ -41,4 +41,9 @@ export async function createStudent({ fullName, email, passwordHash, onboarding 
   } finally {
     client.release();
   }
+}
+
+export async function findProfilePhoto(userId) {
+  const result = await pool.query("SELECT photo_mime, photo_data FROM student_onboarding WHERE user_id = $1", [userId]);
+  return result.rows[0];
 }

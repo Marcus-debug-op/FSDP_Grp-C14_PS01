@@ -87,3 +87,19 @@
   .signup-enter-forward, .signup-enter-back { animation: none; }
   .signup-progress-fill, .signup-choice, .signup-wizard input, .signup-wizard textarea { transition: none; }
 }
+
+/* Signup profile photo and gender picker */
+.signup-wizard select { width:100%; border:1px solid #d7d1cc; border-radius:6px; background:#fff; color:var(--text); padding:.75rem .85rem; font:inherit; font-size:.94rem; }
+.signup-wizard select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(168,63,49,.12); }
+.signup-photo-field { display:grid; gap:.75rem; }
+.signup-photo-title { font-size:.86rem; font-weight:600; }
+.signup-photo-row { display:flex; align-items:center; gap:1.2rem; flex-wrap:wrap; }
+.signup-photo-avatar { width:104px; height:104px; flex:0 0 104px; border-radius:50%; background:#f2efec; border:1px solid #e0d8d3; overflow:hidden; display:grid; place-items:center; color:#938982; font-size:2.5rem; }
+.signup-photo-avatar img { width:100%; height:100%; object-fit:cover; }
+.signup-photo-actions { display:flex; flex-direction:column; align-items:flex-start; gap:.55rem; }
+.signup-photo-actions small { color:var(--muted); font-size:.77rem; }
+.signup-photo-upload { display:inline-flex!important; cursor:pointer; border:1px solid var(--accent); color:var(--accent)!important; border-radius:6px; padding:.55rem 1rem; background:#fff; font-size:.85rem!important; }
+.signup-photo-upload:hover { background:#fbf6f4; }
+.signup-photo-upload:focus-within { outline:2px solid var(--accent); outline-offset:3px; }
+.signup-photo-upload input { position:absolute; width:1px; height:1px; opacity:0; padding:0; pointer-events:none; }
+.signup-remove-photo { border:0; padding:0; background:transparent; font:inherit; font-size:.8rem; color:var(--muted); text-decoration:underline; cursor:pointer; }
