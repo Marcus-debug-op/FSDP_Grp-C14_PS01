@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
+import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const links = [
@@ -14,6 +14,10 @@ export default function Navbar() {
   // Controls the dropdown menu on mobile screens
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  const { pathname } = useLocation();
+
+  // The student portal has its own header (see StudentDashboard.jsx).
+  if (user?.role === "student" && pathname === "/dashboard") return null;
 
   function handleSignOut() {
     logout();

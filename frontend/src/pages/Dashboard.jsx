@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import StudentDashboard from "./StudentDashboard.jsx";
 import "../auth.css";
 
-// Placeholder landing page after sign-in. Each role will get its own
-// dashboard in later features; for now it just proves who is signed in.
+// Landing page after sign-in. Students get the student portal; the other
+// roles keep this placeholder until their dashboards are built.
 const roleText = {
   student: "You will be able to book classes and track your progress here.",
   instructor: "You will be able to manage your classes and students here.",
@@ -12,6 +13,8 @@ const roleText = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+
+  if (user.role === "student") return <StudentDashboard />;
 
   return (
     <section className="section">
