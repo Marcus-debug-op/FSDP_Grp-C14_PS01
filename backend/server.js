@@ -3,6 +3,9 @@ import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
+import studentRoutes from "./routes/studentRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import { stripeWebhook } from "./controller/paymentController.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import beltRoutes from "./routes/beltRoutes.js";
 
@@ -18,11 +21,15 @@ const app = express();
 
 // Only the frontend is allowed to call this API from a browser.
 app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:5173" }));
+// Stripe webhook needs the raw body to check its signature, so it must come before express.json().
+app.post("/api/payments/webhook", express.raw({ type: "application/json" }), stripeWebhook);
 // Two optional 2 MB files may arrive as base64 (approximately 5.4 MB total).
 app.use(express.json({ limit: "7mb" }));
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
+app.use("/api/student", studentRoutes);
+app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/belts", beltRoutes);
 
