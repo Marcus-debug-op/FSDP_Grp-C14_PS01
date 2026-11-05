@@ -16,6 +16,7 @@ import ComingSoon from "./pages/ComingSoon.jsx";
 import AdminSchedule from "./pages/admin/AdminSchedule.jsx";
 import ManageDojos from "./pages/admin/ManageDojos.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
+import ClassRoster from "./pages/instructor/ClassRoster.jsx";
 
 // AuthProvider makes the signed-in user available to every page below it.
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
           <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
           <Route path="/belt-progress" element={<ProtectedRoute><BeltProgress /></ProtectedRoute>} />
+          <Route path="/instructor/classes/:id" element={<ProtectedRoute role="instructor"><ClassRoster /></ProtectedRoute>} />
           {/* Any unknown address falls back to the homepage */}
           <Route path="*" element={<Home />} />
         </Routes>
