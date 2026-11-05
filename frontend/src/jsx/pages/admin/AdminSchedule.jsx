@@ -1,50 +1,45 @@
 import { useEffect, useMemo, useState } from "react";
-import { getDojos, getInstructors, getSchedule } from "../../../js/services/adminService.js";
+import { useSearchParams } from "react-router-dom";
+import { getCentres, getInstructors, getSchedule } from "../../../js/services/adminService.js";
 import { addDays, formatDayHeading, formatTime, formatWeekRange, todayString } from "../../../js/utils/formatters.js";
-import AdminTabs from "../../components/admin/AdminTabs.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
-const TYPES = [
-  { key: "group", label: "Group class" },
-  { key: "private", label: "1 on 1" },
-  { key: "external", label: "External session" },
-  { key: "grading", label: "Grading" },
-];
-const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.key, t.label]));
+function beltRange(item) {
+  if (item.minBeltName && item.maxBeltName) return `${item.minBeltName} to ${item.maxBeltName}`;
+  if (item.minBeltName) return `${item.minBeltName} and above`;
+  if (item.maxBeltName) return `Up to ${item.maxBeltName}`;
+  return "All belts";
+}
 
-function LessonItem({ item }) {
+function LessonItem({ item, showCentre }) {
   const cancelled = item.status === "cancelled";
-  const noInstructor = item.instructors.length === 0 && !cancelled;
   return (
-    <li className={`lesson lesson-${item.type}${cancelled ? " lesson-cancelled" : ""}`}>
+    <li className={`lesson${cancelled ? " lesson-cancelled" : ""}`}>
       <span className="lesson-time">{formatTime(item.startTime)} - {formatTime(item.endTime)}</span>
       <strong className="lesson-title">{item.title}</strong>
-      <span className="lesson-type">{TYPE_LABEL[item.type]}{cancelled ? " · Cancelled" : ""}</span>
-      <span>{item.location}{item.roomName ? `, ${item.roomName}` : ""}</span>
-      {noInstructor ? (
-        <span className="lesson-flag">No instructor</span>
-      ) : (
-        <span>{item.instructors.map((i) => i.fullName).join(", ")}</span>
-      )}
+      <span className="lesson-type">{beltRange(item)}{cancelled ? " · Cancelled" : ""}</span>
+      {showCentre && <span>{item.centreName}</span>}
+      <span>{item.instructorName}</span>
     </li>
   );
 }
 
 export default function AdminSchedule() {
   const [week, setWeek] = useState(todayString());
-  const [dojoId, setDojoId] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const centreId = searchParams.get("dojo") || "";
   const [instructorId, setInstructorId] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
-  const [dojos, setDojos] = useState([]);
+  const [centres, setCentres] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [schedule, setSchedule] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    Promise.all([getDojos(), getInstructors()])
-      .then(([dojoList, instructorList]) => {
-        setDojos(dojoList);
+    Promise.all([getCentres(), getInstructors()])
+      .then(([centreList, instructorList]) => {
+        setCentres(centreList);
         setInstructors(instructorList);
       })
       .catch((err) => setError(err.message));
@@ -53,13 +48,13 @@ export default function AdminSchedule() {
   useEffect(() => {
     let active = true;
     setError("");
-    getSchedule({ week, dojoId, instructorId, includeCancelled: showCancelled ? "true" : "" })
+    getSchedule({ week, centreId, instructorId, includeCancelled: showCancelled ? "true" : "" })
       .then((data) => active && setSchedule(data))
       .catch((err) => active && setError(err.message));
     return () => {
       active = false;
     };
-  }, [week, dojoId, instructorId, showCancelled]);
+  }, [week, centreId, instructorId, showCancelled]);
 
   const days = useMemo(() => {
     if (!schedule) return [];
@@ -71,17 +66,21 @@ export default function AdminSchedule() {
 
   const today = todayString();
   const running = schedule ? schedule.items.filter((i) => i.status !== "cancelled") : [];
-  const withoutInstructor = running.filter((i) => i.instructors.length === 0).length;
   const isThisWeek = schedule && today >= schedule.weekStart && today <= schedule.weekEnd;
-  const shiftWeek = (days) => setWeek(addDays(schedule?.weekStart || week, days));
+  const shiftWeek = (amount) => setWeek(addDays(schedule?.weekStart || week, amount));
+  const selectedCentre = centres.find((c) => String(c.id) === centreId);
+  const setCentreId = (value) => setSearchParams(value ? { dojo: value } : {}, { replace: true });
 
   return (
     <section className="section">
       <div className="container">
-        <AdminTabs />
-        <p className="eyebrow">Scheduling</p>
-        <h1>Schedule</h1>
-        <p className="lead">Every lesson across all dojos and instructors, one week at a time.</p>
+        <p className="eyebrow">Timetable</p>
+        <h1>{selectedCentre ? selectedCentre.name : "Class Timetable"}</h1>
+        <p className="lead">
+          {selectedCentre
+            ? selectedCentre.address || "No address saved for this dojo yet."
+            : "Every class across all dojos, one week at a time. Choose a dojo to see only its classes."}
+        </p>
 
         <div className="week-nav">
           <button type="button" className="btn btn-outline btn-small" onClick={() => shiftWeek(-7)}>Previous Week</button>
@@ -95,9 +94,9 @@ export default function AdminSchedule() {
         <div className="filters">
           <label>
             Dojo
-            <select value={dojoId} onChange={(e) => setDojoId(e.target.value)}>
+            <select value={centreId} onChange={(e) => setCentreId(e.target.value)}>
               <option value="">All dojos</option>
-              {dojos.map((dojo) => <option key={dojo.id} value={dojo.id}>{dojo.name}</option>)}
+              {centres.map((centre) => <option key={centre.id} value={centre.id}>{centre.name}</option>)}
             </select>
           </label>
           <label>
@@ -113,19 +112,12 @@ export default function AdminSchedule() {
           </label>
         </div>
 
-        <div className="schedule-key">
-          <ul className="legend" aria-label="Lesson types">
-            {TYPES.map((type) => (
-              <li key={type.key}><span className={`legend-mark lesson-${type.key}`} aria-hidden="true" />{type.label}</li>
-            ))}
-          </ul>
-          {schedule && (
-            <p role="status">
-              {running.length} lesson{running.length === 1 ? "" : "s"} this week
-              {withoutInstructor > 0 && <strong> · {withoutInstructor} without an instructor</strong>}
-            </p>
-          )}
-        </div>
+        {schedule && (
+          <p className="schedule-count" role="status">
+            {running.length} class{running.length === 1 ? "" : "es"} this week
+            {selectedCentre ? ` at ${selectedCentre.name}` : " across all dojos"}
+          </p>
+        )}
 
         {error && <p className="form-error" role="alert">{error}</p>}
         {!schedule && !error && <p>Loading...</p>}
@@ -142,10 +134,10 @@ export default function AdminSchedule() {
                     <span className="day-date">{heading.day}{isToday ? " · Today" : ""}</span>
                   </h3>
                   {items.length === 0 ? (
-                    <p className="day-empty">No lessons</p>
+                    <p className="day-empty">No classes</p>
                   ) : (
                     <ul className="day-lessons">
-                      {items.map((item) => <LessonItem key={item.id} item={item} />)}
+                      {items.map((item) => <LessonItem key={item.id} item={item} showCentre={!centreId} />)}
                     </ul>
                   )}
                 </section>
