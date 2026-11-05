@@ -3,7 +3,7 @@
 import * as Instructor from "../model/instructorModel.js";
 import { isValidDate } from "../utils/schedule.js";
 
-const ATTENDANCE_STATUSES = ["present", "late", "absent", "excused"];
+const ATTENDANCE_STATUSES = ["present", "absent"];
 
 function publicSession(row) {
   return {
