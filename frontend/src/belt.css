@@ -1,0 +1,20 @@
+/* Styles for the belt card and belt progression (FSDP-9, FSDP-62). Uses the tokens from index.css. */
+.belt-swatch { display: inline-block; width: 1.1rem; height: 1.1rem; border: 1px solid var(--text); border-radius: 50%; vertical-align: -0.15rem; margin-right: 0.5rem; }
+.belt-card h3 { display: flex; align-items: center; }
+.belt-card .details dt { min-width: 7.5rem; }
+.belt-error { color: var(--accent-text); }
+
+/* Progression ladder (FSDP-62) */
+.belt-ladder { list-style: none; padding: 0; margin: 1.5rem 0 0; border-left: 2px solid var(--line); }
+.belt-ladder li { position: relative; padding: 0 0 1.6rem 1.6rem; }
+.belt-ladder li::before { content: ""; position: absolute; left: -0.45rem; top: 0.5rem; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: var(--bg); border: 2px solid var(--line); }
+.belt-ladder li.achieved::before { background: var(--accent); border-color: var(--accent); }
+.belt-ladder li.current::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(168, 63, 49, 0.2); }
+.belt-rank-name { font-family: var(--font-heading); font-size: 1.2rem; display: flex; align-items: center; }
+.belt-rank-meta { color: var(--muted); font-size: 0.9rem; margin: 0.1rem 0 0; }
+.belt-ladder li.upcoming .belt-rank-name, .belt-ladder li.upcoming .belt-rank-meta { color: var(--muted); }
+.belt-reqs { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.9rem; color: var(--muted); }
+.belt-reqs li { padding: 0; margin: 0 0 0.2rem; list-style: disc; }
+.belt-reqs li::before { content: none; }
+.belt-status-tag { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; border: 1px solid var(--accent); color: var(--accent-text); padding: 0.05rem 0.5rem; margin-left: 0.6rem; }
+.belt-note { font-size: 0.9rem; color: var(--muted); margin-top: 1.5rem; }
