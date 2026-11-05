@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { getMyProgression } from "../../services/beltService.js";
-import { colourHex, formatDate } from "../../beltFormat.js";
-import "../../belt.css";
+import { getMyProgression } from "../../../js/services/beltService.js";
+import { colourHex, formatDate } from "../../../js/utils/beltFormat.js";
+import "../../../css/belt.css";
 
 const STATUS_LABEL = { achieved: "Achieved", current: "Current belt", upcoming: "Upcoming" };
 

@@ -2,7 +2,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import SignInForm from "../components/SignInForm.jsx";
 import SignUpForm from "../components/SignUpForm.jsx";
-import "../auth.css";
+import "../../css/auth.css";
 
 // One page for both Sign In and Sign Up.
 // The address decides which form shows (/signin or /signup), so links such as

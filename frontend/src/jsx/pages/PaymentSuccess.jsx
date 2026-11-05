@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getCheckoutStatus } from "../services/paymentService.js";
-import "../student-dashboard.css";
+import { getCheckoutStatus } from "../../js/services/paymentService.js";
+import "../../css/student-dashboard.css";
 
 // PAY-3: Stripe sends the student back here. The payment only counts once
 // Stripe's webhook has confirmed it, so this page checks until it has.

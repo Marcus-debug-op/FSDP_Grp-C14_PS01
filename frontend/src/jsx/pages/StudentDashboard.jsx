@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getDashboard } from "../services/studentService.js";
+import { getDashboard } from "../../js/services/studentService.js";
 import ScrollReveal from "../components/ScrollReveal.jsx";
-import useHeroScrollFade from "../hooks/useHeroScrollFade.js";
-import "../dashboard.css";
+import useHeroScrollFade from "../../js/hooks/useHeroScrollFade.js";
+import "../../css/dashboard.css";
 
 // Student portal home. Uses the same layout and motion as the homepage:
 // dark hero that fades on scroll, alternating white/grey sections that reveal
