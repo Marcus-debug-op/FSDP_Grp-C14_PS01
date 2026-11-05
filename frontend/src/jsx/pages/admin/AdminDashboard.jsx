@@ -3,6 +3,10 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { getOverview } from "../../../js/services/adminService.js";
 import { formatWeekRange } from "../../../js/utils/formatters.js";
+<<<<<<< HEAD
+=======
+import AdminTabs from "../../components/admin/AdminTabs.jsx";
+>>>>>>> 97e1a269f9100bc993911a74cce66b4e75b9e4d5
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 

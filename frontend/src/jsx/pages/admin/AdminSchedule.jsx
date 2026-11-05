@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+<<<<<<< HEAD
 import { useSearchParams } from "react-router-dom";
 import { getCentres, getInstructors, getSchedule } from "../../../js/services/adminService.js";
 import { addDays, formatDayHeading, formatTime, formatWeekRange, todayString } from "../../../js/utils/formatters.js";
+=======
+import { getDojos, getInstructors, getSchedule } from "../../../js/services/adminService.js";
+import { addDays, formatDayHeading, formatTime, formatWeekRange, todayString } from "../../../js/utils/formatters.js";
+import AdminTabs from "../../components/admin/AdminTabs.jsx";
+>>>>>>> 97e1a269f9100bc993911a74cce66b4e75b9e4d5
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
