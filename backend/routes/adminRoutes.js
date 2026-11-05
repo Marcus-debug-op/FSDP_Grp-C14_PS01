@@ -17,4 +17,7 @@ router.get("/instructors", admin.listInstructors);
 
 router.get("/schedule", admin.getSchedule);
 
+router.get("/attendance", admin.listAttendance);
+router.get("/attendance/sessions/:id", admin.getSessionAttendance);
+
 export default router;

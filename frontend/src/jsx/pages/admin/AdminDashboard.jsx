@@ -44,6 +44,12 @@ export default function AdminDashboard() {
             <Link to="/admin/schedule" className="btn btn-outline btn-small">Open Timetable</Link>
           </article>
           <article className="card">
+            <span className="tag">Attendance</span>
+            <h3>Attendance</h3>
+            <p className="admin-card-text">See who came to each class, who was late or absent, and how each check-in was recorded.</p>
+            <Link to="/admin/attendance" className="btn btn-outline btn-small">View Attendance</Link>
+          </article>
+          <article className="card">
             <span className="tag">Setup</span>
             <h3>Dojos</h3>
             <p className="admin-card-text">See every dojo, how many weekly classes it runs, and open its timetable.</p>

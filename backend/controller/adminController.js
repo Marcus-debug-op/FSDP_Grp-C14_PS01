@@ -115,3 +115,26 @@ export const getSchedule = handle(async (req, res) => {
 });
 
 
+
+export const listAttendance = handle(async (req, res) => {
+  const from = validDate(req.query.from || dateFromToday(-6), "From date");
+  const to = validDate(req.query.to || dateFromToday(0), "To date");
+  if (to < from) throw badRequest("The end date must be on or after the start date.");
+  if (addDays(from, 92) < to) throw badRequest("Please choose a range of 3 months or less.");
+  const student = text(req.query.student, "Student search", { required: false, max: 100 }) || undefined;
+  const sessions = await Admin.listAttendanceSessions({
+    from,
+    to,
+    centreId: optionalId(req.query.centreId, "Dojo ID"),
+    instructorId: optionalId(req.query.instructorId, "Instructor ID"),
+    student,
+  });
+  res.json({ from, to, sessions });
+});
+
+export const getSessionAttendance = handle(async (req, res) => {
+  const id = parseId(req.params.id, "Session ID");
+  const session = await Admin.findAttendanceSession(id);
+  if (!session) throw notFound("Session not found.");
+  res.json({ session, students: await Admin.listSessionStudents(id) });
+});
