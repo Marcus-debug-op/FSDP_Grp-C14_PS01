@@ -6,7 +6,6 @@ import ScrollReveal from "../components/ScrollReveal.jsx";
 import "../../css/discover.css";
 
 
-
 function useHeroScrollFade(heroRef) {
   useEffect(() => {
     const hero = heroRef.current;
