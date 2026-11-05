@@ -36,3 +36,6 @@ export const setCentreStatus = (id, isActive) =>
 export const getInstructors = () => request("/instructors").then((d) => d.instructors);
 
 export const getSchedule = (query) => request("/schedule", { query });
+
+export const getAttendance = (query) => request("/attendance", { query });
+export const getSessionAttendance = (id) => request(`/attendance/sessions/${id}`);
