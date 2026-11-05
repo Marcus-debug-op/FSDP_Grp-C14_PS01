@@ -2,8 +2,8 @@ import { NavLink } from "react-router-dom";
 
 const links = [
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/admin/schedule", label: "Schedule" },
-  { to: "/admin/dojos", label: "Dojos & Rooms" },
+  { to: "/admin/schedule", label: "Timetable" },
+  { to: "/admin/dojos", label: "Dojos" },
 ];
 
 export default function AdminTabs() {
