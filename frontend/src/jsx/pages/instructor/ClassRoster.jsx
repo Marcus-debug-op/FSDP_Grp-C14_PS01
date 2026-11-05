@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { getRoster, saveAttendance } from "../../services/instructorService.js";
-import { formatTime } from "../../utils/formatters.js";
+import { getRoster, saveAttendance } from "../../../js/services/instructorService.js";
+import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
-import "../../auth.css";
-import "../../instructor.css";
+import "../../../css/auth.css";
+import "../../../css/instructor.css";
 
 const STATUSES = [
   { value: "present", label: "Present" },

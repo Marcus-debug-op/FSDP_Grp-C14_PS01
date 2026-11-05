@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { HQ_ADDRESS } from "../data/hqClasses.js";
+import { HQ_ADDRESS } from "../../js/data/hqClasses.js";
 
 export default function Footer() {
   return (
