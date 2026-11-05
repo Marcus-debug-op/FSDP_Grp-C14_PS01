@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 const links = [
   { to: "/", label: "Home", end: true },
   { to: "/classes", label: "Classes" },
+  { to: "/dojos", label: "Dojos" },
   { to: "/about", label: "About" },
 ];
 
