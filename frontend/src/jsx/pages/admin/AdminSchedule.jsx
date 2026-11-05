@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { getDojos, getInstructors, getSchedule } from "../../services/adminService.js";
-import { addDays, formatDayHeading, formatTime, formatWeekRange, todayString } from "../../utils/formatters.js";
+import { getDojos, getInstructors, getSchedule } from "../../../js/services/adminService.js";
+import { addDays, formatDayHeading, formatTime, formatWeekRange, todayString } from "../../../js/utils/formatters.js";
 import AdminTabs from "../../components/admin/AdminTabs.jsx";
-import "../../auth.css";
-import "../../admin.css";
+import "../../../css/auth.css";
+import "../../../css/admin.css";
 
 const TYPES = [
   { key: "group", label: "Group class" },

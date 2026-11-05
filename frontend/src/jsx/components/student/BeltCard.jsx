@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { getMyBelt } from "../../services/beltService.js";
-import { colourHex, formatDate, timeAtBelt } from "../../beltFormat.js";
-import "../../belt.css";
+import { getMyBelt } from "../../../js/services/beltService.js";
+import { colourHex, formatDate, timeAtBelt } from "../../../js/utils/beltFormat.js";
+import "../../../css/belt.css";
 
 // shows the student's current belt. View-only, no edit buttons.
 // Drop it into any student page with <BeltCard />. It loads its own data.

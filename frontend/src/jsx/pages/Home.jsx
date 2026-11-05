@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import ScrollReveal from "../components/ScrollReveal.jsx";
-import "../discover.css";
+import "../../css/discover.css";
 
 
 function useHeroScrollFade(heroRef) {

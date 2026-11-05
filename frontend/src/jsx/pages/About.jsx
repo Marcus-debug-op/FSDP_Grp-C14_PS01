@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ScrollReveal from "../components/ScrollReveal.jsx";
 import CountUp from "../components/CountUp.jsx";
-import { aboutTabs, aboutStats } from "../data/aboutContent.js";
+import { aboutTabs, aboutStats } from "../../js/data/aboutContent.js";
 import {
   Benefits, History, Vision, Shihan, Instructors, Overseas, Family, LifeMembers, Careers,
 } from "../components/about/AboutSections.jsx";
-import "../discover.css";
+import "../../css/discover.css";
 
 // Which component shows for each tab
 const panels = {

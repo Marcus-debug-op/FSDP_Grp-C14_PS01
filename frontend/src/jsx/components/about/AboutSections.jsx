@@ -1,10 +1,10 @@
 import { useState } from "react";
 import ScrollReveal from "../ScrollReveal.jsx";
-import { shihan, instructorGroups } from "../../data/instructors.js";
+import { shihan, instructorGroups } from "../../../js/data/instructors.js";
 import {
   history, historyEras, eraOf, vision, missions, shihanProfile, shihanTimeline,
   overseasCountries, overseasInstructors, familyCountries, affiliationEmail, lifeMembers, deshi,
-} from "../../data/aboutContent.js";
+} from "../../../js/data/aboutContent.js";
 
 // Each function below is ONE section of the About page.
 

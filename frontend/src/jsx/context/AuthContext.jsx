@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import * as authService from "../services/authService.js";
+import * as authService from "../../js/services/authService.js";
 
 // Holds "who is signed in" so any page or component can read it with useAuth().
 const AuthContext = createContext(null);

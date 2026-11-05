@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import StudentDashboard from "./StudentDashboard.jsx";
 import AdminDashboard from "./admin/AdminDashboard.jsx";
 import InstructorDashboard from "./instructor/InstructorDashboard.jsx";
-import "../auth.css";
+import "../../css/auth.css";
 
 // Landing page after sign-in. Students get the student portal; the other
 // roles keep this placeholder until their dashboards are built.

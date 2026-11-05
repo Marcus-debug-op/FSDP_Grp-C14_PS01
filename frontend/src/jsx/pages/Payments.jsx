@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { getOptions, startCheckout } from "../services/paymentService.js";
-import "../student-dashboard.css";
+import { getOptions, startCheckout } from "../../js/services/paymentService.js";
+import "../../css/student-dashboard.css";
 
 // PAY-1 + PAY-2: choose a membership plan or credit package, then pay on
 // Stripe Checkout (test mode). Prices always come from the server.
