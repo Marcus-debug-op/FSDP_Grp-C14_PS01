@@ -50,6 +50,16 @@ const meaning = [
 ];
 
 export default function Home() {
+  const { user, loading } = useAuth();
+  // While a saved login is being checked, show nothing so a signed-in
+  // student doesn't see the homepage flash before the redirect.
+  if (loading) return null;
+  // Signed-in students go straight to their dashboard.
+  if (user?.role === "student") return <Navigate to="/dashboard" replace />;
+  return <HomePage />;
+}
+
+function HomePage() {
   const heroRef = useRef(null);
   const [photoOk, setPhotoOk] = useState(true);
   useHeroScrollFade(heroRef);
