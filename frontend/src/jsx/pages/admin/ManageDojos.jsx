@@ -15,7 +15,6 @@ function CentreForm({ centre, onSaved, onCancel }) {
     headingRef.current?.focus();
   }, []);
 
->>>>>>> 97e1a269f9100bc993911a74cce66b4e75b9e4d5
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
