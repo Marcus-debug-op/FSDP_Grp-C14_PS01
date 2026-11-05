@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { getOverview } from "../../services/adminService.js";
-import { formatWeekRange } from "../../utils/formatters.js";
+import { getOverview } from "../../../js/services/adminService.js";
+import { formatWeekRange } from "../../../js/utils/formatters.js";
 import AdminTabs from "../../components/admin/AdminTabs.jsx";
-import "../../auth.css";
-import "../../admin.css";
+import "../../../css/auth.css";
+import "../../../css/admin.css";
 
 export default function AdminDashboard() {
   const { user } = useAuth();

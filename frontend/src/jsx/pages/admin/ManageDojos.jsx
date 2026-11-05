@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { createDojo, getDojos, setDojoStatus, updateDojo } from "../../services/adminService.js";
+import { createDojo, getDojos, setDojoStatus, updateDojo } from "../../../js/services/adminService.js";
 import AdminTabs from "../../components/admin/AdminTabs.jsx";
-import "../../auth.css";
-import "../../admin.css";
+import "../../../css/auth.css";
+import "../../../css/admin.css";
 
 let roomKey = 0;
 const nextKey = () => `room-${++roomKey}`;

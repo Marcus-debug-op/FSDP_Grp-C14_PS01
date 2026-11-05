@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { getTodaysClasses } from "../../services/instructorService.js";
-import { formatTime } from "../../utils/formatters.js";
+import { getTodaysClasses } from "../../../js/services/instructorService.js";
+import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
 import ScrollReveal from "../../components/ScrollReveal.jsx";
-import useHeroScrollFade from "../../hooks/useHeroScrollFade.js";
-import "../../auth.css";
-import "../../instructor.css";
+import useHeroScrollFade from "../../../js/hooks/useHeroScrollFade.js";
+import "../../../css/auth.css";
+import "../../../css/instructor.css";
 
 // Hero sentence, based on today's classes.
 function heroText(classes) {

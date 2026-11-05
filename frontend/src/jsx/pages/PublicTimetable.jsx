@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import ClassCard from "../components/ClassCard.jsx";
-import { getClasses } from "../services/classService.js";
-import { DAYS, HQ_ADDRESS, classTypes } from "../data/hqClasses.js";
-import "../content.css";
+import { getClasses } from "../../js/services/classService.js";
+import { DAYS, HQ_ADDRESS, classTypes } from "../../js/data/hqClasses.js";
+import "../../css/content.css";
 import ScrollReveal from "../components/ScrollReveal.jsx";
 
 export default function PublicTimetable() {

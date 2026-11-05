@@ -1,8 +1,8 @@
 import { useState } from "react";
 import DojoCard from "../components/DojoCard.jsx";
 import ScrollReveal from "../components/ScrollReveal.jsx";
-import { dojos, REGIONS } from "../data/dojos.js";
-import "../discover.css";
+import { dojos, REGIONS } from "../../js/data/dojos.js";
+import "../../css/discover.css";
 
 export default function Dojos() {
   const [region, setRegion] = useState("All");
