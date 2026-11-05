@@ -27,11 +27,12 @@ async function request(path, { method = "GET", body, query } = {}) {
 
 export const getOverview = () => request("/overview");
 
-export const getDojos = () => request("/dojos").then((d) => d.dojos);
-export const createDojo = (dojo) => request("/dojos", { method: "POST", body: dojo }).then((d) => d.dojo);
-export const updateDojo = (id, dojo) => request(`/dojos/${id}`, { method: "PUT", body: dojo }).then((d) => d.dojo);
-export const setDojoStatus = (id, isActive) =>
-  request(`/dojos/${id}/status`, { method: "PATCH", body: { isActive } }).then((d) => d.dojo);
+export const getCentres = () => request("/centres").then((d) => d.centres);
+export const createCentre = (centre) => request("/centres", { method: "POST", body: centre }).then((d) => d.centre);
+export const updateCentre = (id, centre) => request(`/centres/${id}`, { method: "PUT", body: centre }).then((d) => d.centre);
+export const setCentreStatus = (id, isActive) =>
+  request(`/centres/${id}/status`, { method: "PATCH", body: { isActive } }).then((d) => d.centre);
 
 export const getInstructors = () => request("/instructors").then((d) => d.instructors);
+
 export const getSchedule = (query) => request("/schedule", { query });

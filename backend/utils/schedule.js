@@ -27,6 +27,10 @@ export function isValidDate(value) {
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
 
+export function isValidTime(value) {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 export function mondayOf(value) {
   const day = parseDate(value).getDay();
   return addDays(value, day === 0 ? -6 : 1 - day);

@@ -10,6 +10,15 @@ const links = [
   { to: "/about", label: "About" },
 ];
 
+const adminLinks = [
+  { to: "/", label: "Home", end: true },
+  { to: "/classes", label: "Classes" },
+  { to: "/about", label: "About" },
+  { to: "/dashboard", label: "Dashboard", end: true },
+  { to: "/admin/schedule", label: "Timetable" },
+  { to: "/admin/dojos", label: "Dojos" },
+];
+
 // Signed-in students. Each link maps to the Jira stories it covers.
 // The dashboard (SD-1 to SD-4, TP-2) is reached through the logo.
 const studentLinks = [
@@ -46,7 +55,8 @@ export default function Navbar() {
   }, [accountOpen]);
 
   const isStudent = user?.role === "student";
-  const navLinks = isStudent ? studentLinks : links;
+  const isAdmin = user?.role === "admin";
+  const navLinks = isStudent ? studentLinks : isAdmin ? adminLinks : links;
   const firstName = user?.fullName?.split(" ")[0] || "Account";
 
   function handleSignOut() {
@@ -56,7 +66,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className={isStudent ? "navbar navbar-student" : "navbar"}>
+    <header className={isStudent ? "navbar navbar-student" : isAdmin ? "navbar navbar-admin" : "navbar"}>
       <div className="container navbar-inner">
         <Link to={isStudent ? "/dashboard" : "/"} className="brand" onClick={close}>
           <img src="/images/logo.png" alt="" width="44" height="44" />
@@ -113,7 +123,7 @@ export default function Navbar() {
             </>
           ) : user ? (
             <>
-              <NavLink to="/dashboard" onClick={close} className="nav-link">Dashboard</NavLink>
+              {!isAdmin && <NavLink to="/dashboard" onClick={close} className="nav-link">Dashboard</NavLink>}
               <button type="button" className="btn btn-outline btn-small" onClick={handleSignOut}>
                 Sign Out
               </button>

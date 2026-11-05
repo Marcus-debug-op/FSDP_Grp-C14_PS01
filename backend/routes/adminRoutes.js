@@ -8,12 +8,13 @@ router.use(requireAuth, requireRole("admin"));
 
 router.get("/overview", admin.overview);
 
-router.get("/dojos", admin.listDojos);
-router.post("/dojos", admin.createDojo);
-router.put("/dojos/:id", admin.updateDojo);
-router.patch("/dojos/:id/status", admin.setDojoStatus);
+router.get("/centres", admin.listCentres);
+router.post("/centres", admin.createCentre);
+router.put("/centres/:id", admin.updateCentre);
+router.patch("/centres/:id/status", admin.setCentreStatus);
 
 router.get("/instructors", admin.listInstructors);
+
 router.get("/schedule", admin.getSchedule);
 
 export default router;
