@@ -7,13 +7,14 @@ import ScrollToTop from "./components/ScrollToTop.jsx";
 import Home from "./pages/Home.jsx";
 import PublicTimetable from "./pages/PublicTimetable.jsx";
 import About from "./pages/About.jsx";
+import Dojos from "./pages/Dojos.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 
 // AuthProvider makes the signed-in user available to every page below it.
 export default function App() {
   const { pathname } = useLocation();
-  const isPublicPage = ["/", "/classes", "/about"].includes(pathname);
+  const isPublicPage = ["/", "/classes", "/dojos", "/about"].includes(pathname);
   return (
     <AuthProvider>
       <a className="skip-link" href="#main">Skip to content</a>
@@ -23,6 +24,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/classes" element={<PublicTimetable />} />
+          <Route path="/dojos" element={<Dojos />} />
           <Route path="/about" element={<About />} />
           {/* Sign In and Sign Up share one page with a toggle */}
           <Route path="/signin" element={<AuthPage />} />

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "../components/ScrollReveal.jsx";
+import "../discover.css";
 
 function useHeroScrollFade(heroRef) {
   useEffect(() => {
@@ -50,24 +51,40 @@ const meaning = [
 
 export default function Home() {
   const heroRef = useRef(null);
+  const [photoOk, setPhotoOk] = useState(true);
   useHeroScrollFade(heroRef);
   return (
     <>
-      {/* HERO. Optional photo: put hero.jpg in public/images/ */}
-      <section className="hero" ref={heroRef}>
-        <div className="container hero-content hero-scroll-content">
-          <p className="eyebrow">Aikido School &mdash; Singapore</p>
-          <p className="hero-kanji" aria-hidden="true">合気道</p>
-          <h1>Begin Your Aikido Journey</h1>
-          <span className="rule" aria-hidden="true"></span>
-          <p className="hero-text">
-            The way of harmony, taught in Singapore since 1988
-            for adults and children.
-          </p>
-          <div className="button-row center-row">
-            <Link to="/signup" className="btn btn-primary">Get Started</Link>
-            <Link to="/classes" className="btn btn-light">View Classes</Link>
+      {/* HERO: text on the left, the photo framed on the right.
+          The photo is portrait, so it is shown whole instead of being cropped as a background. */}
+      <section className="hero hero-split" ref={heroRef}>
+        <div className={`container hs-grid hero-scroll-content ${photoOk ? "" : "no-photo"}`}>
+          <div className="hs-copy">
+            <p className="eyebrow">Aikido School &mdash; Singapore</p>
+            <p className="hero-kanji" aria-hidden="true">合気道</p>
+            <h1>Begin Your Aikido Journey</h1>
+            <span className="rule" aria-hidden="true"></span>
+            <p className="hero-text">
+              The way of harmony, taught in Singapore since 1988
+              for adults and children.
+            </p>
+            <div className="button-row">
+              <Link to="/signup" className="btn btn-primary">Get Started</Link>
+              <Link to="/classes" className="btn btn-light">View Classes</Link>
+            </div>
           </div>
+          {/* If public/images/hero.jpg is missing, the photo hides itself */}
+          {photoOk && (
+            <figure className="hs-photo">
+              <img
+                src="/images/hero.jpg"
+                alt="Aikido students practising a technique at the dojo"
+                width="480"
+                height="640"
+                onError={() => setPhotoOk(false)}
+              />
+            </figure>
+          )}
         </div>
       </section>
 
