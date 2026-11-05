@@ -26,6 +26,7 @@ const studentLinks = [
   { to: "/lessons", label: "Book Lessons" },    // BK-1 to BK-5
   { to: "/payments", label: "Payments" },       // PAY-1, PAY-6
   { to: "/grading", label: "Grading" },         // GR-1 to GR-3 (teammate's part)
+  { to: "/belt-progress", label: "My Belt" },   // FSDP-9, FSDP-62
 ];
 
 export default function Navbar() {
