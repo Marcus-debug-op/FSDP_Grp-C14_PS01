@@ -26,6 +26,7 @@ async function request(path, { method = "GET", body, query } = {}) {
 }
 
 export const getOverview = () => request("/overview");
+export const getDashboard = (view) => request("/dashboard", { query: { view } });
 
 export const getCentres = () => request("/centres").then((d) => d.centres);
 export const createCentre = (centre) => request("/centres", { method: "POST", body: centre }).then((d) => d.centre);

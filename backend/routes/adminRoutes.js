@@ -7,6 +7,7 @@ const router = Router();
 router.use(requireAuth, requireRole("admin"));
 
 router.get("/overview", admin.overview);
+router.get("/dashboard", admin.dashboard);
 
 router.get("/centres", admin.listCentres);
 router.post("/centres", admin.createCentre);
