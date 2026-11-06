@@ -60,17 +60,21 @@ export default function ClassRoster() {
   }
 
   const markedCount = Object.keys(marks).length;
+  const presentCount = Object.values(marks).filter((status) => status === "present").length;
 
   return (
     <div className="instructor-portal">
       <InstructorNavbar />
-      <section className="section">
-        <div className="container narrow">
+
+      <section className="section instructor-kanji-section">
+        <span className="instructor-kanji" aria-hidden="true">合</span>
+        <div className="container">
           <Link to="/dashboard" className="instructor-back">Back to today's classes</Link>
 
           {session && (
             <>
-              <h1 className="instructor-title">{session.title}</h1>
+              <p className="eyebrow">Taking attendance</p>
+              <h1 className="roster-title">{session.title}</h1>
               <p className="lead">
                 {session.centre}, {formatTime(session.startTime)} - {formatTime(session.endTime)}
               </p>
@@ -82,7 +86,13 @@ export default function ClassRoster() {
           {session && roster.length === 0 && <p className="notice">No students are booked for this class yet.</p>}
 
           {roster.length > 0 && (
-            <>
+            <div className="roster-panel">
+              <ul className="stats roster-stats">
+                <li><strong>{presentCount}</strong><span>Present</span></li>
+                <li><strong>{markedCount - presentCount}</strong><span>Absent</span></li>
+                <li><strong>{roster.length - markedCount}</strong><span>Not marked</span></li>
+              </ul>
+
               <ul className="roster">
                 {roster.map((student) => (
                   <li className="roster-row" key={student.studentId}>
@@ -95,7 +105,7 @@ export default function ClassRoster() {
                         <button
                           type="button"
                           key={option.value}
-                          className={`roster-option${marks[student.studentId] === option.value ? " is-selected" : ""}`}
+                          className={`roster-option roster-option-${option.value}${marks[student.studentId] === option.value ? " is-selected" : ""}`}
                           aria-pressed={marks[student.studentId] === option.value}
                           onClick={() => mark(student.studentId, option.value)}
                         >
@@ -114,7 +124,7 @@ export default function ClassRoster() {
                 </button>
               </div>
               {saved && <p className="notice" role="status">Attendance saved.</p>}
-            </>
+            </div>
           )}
         </div>
       </section>

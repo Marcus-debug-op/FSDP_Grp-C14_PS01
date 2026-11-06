@@ -34,18 +34,21 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
 
 .instructor-classes { margin-top: 1.5rem; }
 .instructor-card-title { margin-top: 0.8rem; }
-.instructor-back { display: inline-block; margin-bottom: 1.5rem; }
-.instructor-title { font-size: clamp(1.9rem, 4vw, 2.8rem); }
+.instructor-back { display: inline-block; margin-bottom: 2rem; }
 
 /* ---------- Roster ---------- */
+.roster-title { font-size: clamp(1.9rem, 4vw, 2.8rem); }
+.roster-panel { max-width: 46rem; }
+.roster-stats { margin-top: 1rem; padding-top: 1rem; }
 .roster { list-style: none; padding: 0; margin: 2rem 0 0; border-top: 1px solid var(--line); }
 .roster-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem 1.5rem; padding: 1rem 0; border-bottom: 1px solid var(--line); }
 .roster-belt { display: block; font-size: 0.9rem; color: var(--muted); }
 
 .roster-options { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.roster-option { padding: 0.4rem 0.7rem; border: 1px solid var(--line); background: var(--bg); color: var(--muted); font: inherit; font-size: 0.9rem; cursor: pointer; }
+.roster-option { min-width: 6rem; padding: 0.5rem 0.9rem; border: 1px solid var(--muted); background: var(--bg); color: var(--text); font: inherit; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
 .roster-option:hover { border-color: var(--accent); color: var(--accent-text); }
-.roster-option.is-selected { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.roster-option-present.is-selected, .roster-option-present.is-selected:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.roster-option-absent.is-selected, .roster-option-absent.is-selected:hover { background: var(--text); border-color: var(--text); color: #fff; }
 
 .roster-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 1.5rem; }
 .roster-footer p { margin: 0; color: var(--muted); }
