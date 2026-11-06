@@ -234,3 +234,90 @@ export async function listSessionStudents(sessionId) {
     booked: row.booked,
   }));
 }
+
+const attendanceTotalsSql = `
+  SELECT
+    COUNT(DISTINCT cs.id) FILTER (WHERE cs.status <> 'cancelled')::int AS sessions,
+    COUNT(a.id) FILTER (WHERE a.status IN ('present', 'late'))::int AS attended,
+    COUNT(a.id) FILTER (WHERE a.status = 'late')::int AS late,
+    COUNT(a.id) FILTER (WHERE a.status = 'absent')::int AS absent,
+    COUNT(DISTINCT a.student_id) FILTER (WHERE a.status IN ('present', 'late'))::int AS students
+  FROM class_sessions cs
+  LEFT JOIN attendance a ON a.session_id = cs.id
+  WHERE cs.session_date BETWEEN $1::date AND $2::date`;
+
+function withRate(row) {
+  const marked = row.attended + row.absent;
+  return { ...row, rate: marked ? Math.round((row.attended / marked) * 100) : null };
+}
+
+export async function getAttendanceTotals({ from, to }) {
+  const result = await pool.query(attendanceTotalsSql, [from, to]);
+  return withRate(result.rows[0]);
+}
+
+export async function getDailyAttendance({ from, to }) {
+  const result = await pool.query(
+    `WITH days AS (SELECT d::date AS day FROM generate_series($1::date, $2::date, interval '1 day') AS d),
+     stats AS (
+       SELECT cs.session_date AS day,
+              COUNT(DISTINCT cs.id) FILTER (WHERE cs.status <> 'cancelled')::int AS sessions,
+              COUNT(a.id) FILTER (WHERE a.status IN ('present', 'late'))::int AS attended,
+              COUNT(a.id) FILTER (WHERE a.status = 'absent')::int AS absent
+       FROM class_sessions cs
+       LEFT JOIN attendance a ON a.session_id = cs.id
+       WHERE cs.session_date BETWEEN $1::date AND $2::date
+       GROUP BY cs.session_date
+     )
+     SELECT to_char(days.day, 'YYYY-MM-DD') AS period,
+            COALESCE(stats.sessions, 0) AS sessions, COALESCE(stats.attended, 0) AS attended, COALESCE(stats.absent, 0) AS absent
+     FROM days LEFT JOIN stats ON stats.day = days.day
+     ORDER BY days.day`,
+    [from, to]
+  );
+  return result.rows.map(withRate);
+}
+
+export async function getMonthlyAttendance({ from, to }) {
+  const result = await pool.query(
+    `WITH months AS (
+       SELECT m::date AS month
+       FROM generate_series(date_trunc('month', $1::date), date_trunc('month', $2::date), interval '1 month') AS m
+     ),
+     stats AS (
+       SELECT date_trunc('month', cs.session_date)::date AS month,
+              COUNT(DISTINCT cs.id) FILTER (WHERE cs.status <> 'cancelled')::int AS sessions,
+              COUNT(a.id) FILTER (WHERE a.status IN ('present', 'late'))::int AS attended,
+              COUNT(a.id) FILTER (WHERE a.status = 'absent')::int AS absent
+       FROM class_sessions cs
+       LEFT JOIN attendance a ON a.session_id = cs.id
+       WHERE cs.session_date BETWEEN $1::date AND $2::date
+       GROUP BY 1
+     )
+     SELECT to_char(months.month, 'YYYY-MM') AS period,
+            COALESCE(stats.sessions, 0) AS sessions, COALESCE(stats.attended, 0) AS attended, COALESCE(stats.absent, 0) AS absent
+     FROM months LEFT JOIN stats ON stats.month = months.month
+     ORDER BY months.month`,
+    [from, to]
+  );
+  return result.rows.map(withRate);
+}
+
+export async function getCentreAttendance({ from, to }) {
+  const result = await pool.query(
+    `SELECT ce.id, ce.name,
+            COUNT(DISTINCT cs.id) FILTER (WHERE cs.status <> 'cancelled')::int AS sessions,
+            COUNT(a.id) FILTER (WHERE a.status IN ('present', 'late'))::int AS attended,
+            COUNT(a.id) FILTER (WHERE a.status = 'absent')::int AS absent
+     FROM class_sessions cs
+     JOIN classes c ON c.id = cs.class_id
+     JOIN centres ce ON ce.id = c.centre_id
+     LEFT JOIN attendance a ON a.session_id = cs.id
+     WHERE cs.session_date BETWEEN $1::date AND $2::date
+     GROUP BY ce.id, ce.name
+     HAVING COUNT(a.id) > 0
+     ORDER BY attended DESC, ce.name`,
+    [from, to]
+  );
+  return result.rows.map((row) => withRate({ ...row, centreId: row.id, centreName: row.name }));
+}
