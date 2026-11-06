@@ -19,7 +19,6 @@ export default function BeltCard() {
   if (!belt) {
     return (
       <article className="card belt-card">
-        <span className="tag">Current belt</span>
         <h3>No belt recorded yet</h3>
         <p className="card-note">Your belt will appear here once your profile has been set up.</p>
       </article>
@@ -28,7 +27,6 @@ export default function BeltCard() {
 
   return (
     <article className="card belt-card">
-      <span className="tag">Current belt</span>
       <h3>
         <span className="belt-swatch" style={{ background: colourHex(belt.colour) }} aria-hidden="true" />
         {belt.name}
