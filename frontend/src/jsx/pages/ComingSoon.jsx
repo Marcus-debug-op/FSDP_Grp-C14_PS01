@@ -51,17 +51,8 @@ export const PLACEHOLDERS = {
       "Your attendance updates on your dashboard",
     ],
   },
-  settings: {
-    kanji: "設定",
-    eyebrow: "Settings",
-    title: "Account settings are on their way.",
-    lead: "Soon you'll be able to keep your contact details up to date here.",
-    planned: [
-      "Update your phone number and address",
-      "Update your emergency contact",
-      "View your belt and membership details",
-    ],
-  },
+  // "settings" used to live here. It is a real page now:
+  // pages/student/PersonalSettings.jsx, routed at /settings.   FSDP-42
 };
 
 export default function ComingSoon({ page }) {
