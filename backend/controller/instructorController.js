@@ -58,6 +58,38 @@ export async function listClasses(req, res, next) {
   }
 }
 
+// GET /api/instructor/calendar?month=YYYY-MM
+export async function getCalendar(req, res, next) {
+  try {
+    const month = req.query.month;
+    if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      return res.status(400).json({ message: "Month must look like 2026-11." });
+    }
+
+    const [year, monthNumber] = month.split("-").map(Number);
+    const lastDay = new Date(year, monthNumber, 0).getDate();
+    const from = `${month}-01`;
+    const to = `${month}-${String(lastDay).padStart(2, "0")}`;
+
+    const [classes, gradings] = await Promise.all([
+      Instructor.listClassesBetween(req.user.id, from, to),
+      Instructor.listGradingsBetween(req.user.id, from, to),
+    ]);
+
+    res.json({
+      classes: classes.map((row) => ({ ...publicSession(row), booked: row.booked, marked: row.marked })),
+      gradings: gradings.map((row) => ({
+        id: row.id,
+        centre: row.centre,
+        date: row.grading_date,
+        startTime: row.start_time,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/instructor/sessions/:id/roster
 export async function getRoster(req, res, next) {
   try {
