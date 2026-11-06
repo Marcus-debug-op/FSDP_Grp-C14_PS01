@@ -14,7 +14,14 @@ function publicSession(row) {
     startTime: row.start_time,
     endTime: row.end_time,
     status: row.status,
+    attendanceClosed: row.attendance_closed,
   };
+}
+
+// A session plus whether attendance can be changed right now.
+function publicRosterSession(row) {
+  const canMark = row.status !== "cancelled" && !row.is_future && !row.attendance_closed;
+  return { ...publicSession(row), canMark };
 }
 
 function publicRosterStudent(row) {
@@ -97,7 +104,7 @@ export async function getRoster(req, res, next) {
     if (!session) return;
 
     const roster = await Instructor.getRoster(session.id);
-    res.json({ session: publicSession(session), roster: roster.map(publicRosterStudent) });
+    res.json({ session: publicRosterSession(session), roster: roster.map(publicRosterStudent) });
   } catch (err) {
     next(err);
   }
@@ -115,6 +122,9 @@ export async function saveAttendance(req, res, next) {
     }
     if (session.is_future) {
       return res.status(400).json({ message: "Attendance can only be marked on or after the class date." });
+    }
+    if (session.attendance_closed) {
+      return res.status(400).json({ message: "Attendance closed 24 hours after this class ended." });
     }
 
     const records = req.body?.records;
@@ -137,7 +147,7 @@ export async function saveAttendance(req, res, next) {
     await Instructor.saveAttendance(session.id, req.user.id, records);
 
     const updated = await Instructor.getRoster(session.id);
-    res.json({ session: publicSession(session), roster: updated.map(publicRosterStudent) });
+    res.json({ session: publicRosterSession(session), roster: updated.map(publicRosterStudent) });
   } catch (err) {
     next(err);
   }

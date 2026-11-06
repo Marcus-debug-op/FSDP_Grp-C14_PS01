@@ -5,6 +5,10 @@ import pool from "../db.js";
 // "Today" in Singapore, not in the database server's UTC.
 const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 
+// Attendance closes 24 hours after the class ends.
+const ATTENDANCE_CLOSED =
+  "NOW() > ((cs.session_date + cs.end_time) AT TIME ZONE 'Asia/Singapore' + INTERVAL '24 hours')";
+
 // The instructor's classes on a date, or today if no date is given.
 export async function listClassesOn(instructorId, date) {
   const result = await pool.query(
@@ -13,6 +17,7 @@ export async function listClassesOn(instructorId, date) {
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
             cs.status,
+            ${ATTENDANCE_CLOSED} AS attendance_closed,
             (SELECT COUNT(*)::int FROM bookings b
              WHERE b.session_id = cs.id AND b.status = 'booked') AS booked,
             (SELECT COUNT(*)::int FROM attendance a WHERE a.session_id = cs.id) AS marked
@@ -36,6 +41,7 @@ export async function listClassesBetween(instructorId, from, to) {
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
             cs.status,
+            ${ATTENDANCE_CLOSED} AS attendance_closed,
             (SELECT COUNT(*)::int FROM bookings b
              WHERE b.session_id = cs.id AND b.status = 'booked') AS booked,
             (SELECT COUNT(*)::int FROM attendance a WHERE a.session_id = cs.id) AS marked
@@ -76,6 +82,7 @@ export async function findSession(sessionId, instructorId) {
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
             cs.status,
+            ${ATTENDANCE_CLOSED} AS attendance_closed,
             cs.session_date > ${TODAY} AS is_future
      FROM class_sessions cs
      JOIN classes cl ON cl.id = cs.class_id

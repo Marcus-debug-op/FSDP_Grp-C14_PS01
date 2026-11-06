@@ -147,7 +147,7 @@ export default function InstructorCalendar() {
                     </dl>
                     {item.date <= today ? (
                       <Link to={`/instructor/classes/${item.id}`} className="btn btn-outline btn-small">
-                        Take Attendance
+                        {item.attendanceClosed ? "View Attendance" : "Take Attendance"}
                       </Link>
                     ) : (
                       <p className="calendar-upcoming">Attendance opens on the day of the class.</p>

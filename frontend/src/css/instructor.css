@@ -47,6 +47,8 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
 .roster-options { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .roster-option { min-width: 6rem; padding: 0.5rem 0.9rem; border: 1px solid var(--muted); background: var(--bg); color: var(--text); font: inherit; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
 .roster-option:hover { border-color: var(--accent); color: var(--accent-text); }
+.roster-option:disabled { border-color: var(--line); color: var(--muted); cursor: not-allowed; }
+.roster-closed { max-width: 46rem; margin-top: 1rem; }
 .roster-option-present.is-selected, .roster-option-present.is-selected:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 .roster-option-absent.is-selected, .roster-option-absent.is-selected:hover { background: var(--text); border-color: var(--text); color: #fff; }
 
