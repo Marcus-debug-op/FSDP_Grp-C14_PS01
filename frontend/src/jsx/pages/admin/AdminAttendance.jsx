@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getAttendance, getCentres, getInstructors, getSessionAttendance } from "../../../js/services/adminService.js";
 import { formatDayHeading, formatTime, todayString } from "../../../js/utils/formatters.js";
 import "../../../css/auth.css";
@@ -84,8 +85,10 @@ function SessionStudents({ sessionId }) {
 
 export default function AdminAttendance() {
   const today = todayString();
-  const [from, setFrom] = useState(todayString(-6));
-  const [to, setTo] = useState(today);
+  const [searchParams] = useSearchParams();
+  const isDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value || "");
+  const [from, setFrom] = useState(isDate(searchParams.get("from")) ? searchParams.get("from") : todayString(-6));
+  const [to, setTo] = useState(isDate(searchParams.get("to")) ? searchParams.get("to") : today);
   const [centreId, setCentreId] = useState("");
   const [instructorId, setInstructorId] = useState("");
   const [studentInput, setStudentInput] = useState("");

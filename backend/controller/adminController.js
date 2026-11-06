@@ -138,3 +138,75 @@ export const getSessionAttendance = handle(async (req, res) => {
   if (!session) throw notFound("Session not found.");
   res.json({ session, students: await Admin.listSessionStudents(id) });
 });
+
+function monthStart(value) {
+  return `${value.slice(0, 7)}-01`;
+}
+
+function monthEnd(value) {
+  const [y, m] = value.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  return `${value.slice(0, 7)}-${String(last).padStart(2, "0")}`;
+}
+
+function shiftMonths(value, months) {
+  const [y, m] = value.split("-").map(Number);
+  const date = new Date(y, m - 1 + months, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+export const dashboard = handle(async (req, res) => {
+  const view = req.query.view === "monthly" ? "monthly" : "daily";
+  const today = dateFromToday(0);
+
+  if (view === "daily") {
+    const yesterday = addDays(today, -1);
+    const weekFrom = addDays(today, -6);
+    const [todayTotals, yesterdayTotals, weekTotals, series, centres, todayClasses, todaySessions] = await Promise.all([
+      Admin.getAttendanceTotals({ from: today, to: today }),
+      Admin.getAttendanceTotals({ from: yesterday, to: yesterday }),
+      Admin.getAttendanceTotals({ from: weekFrom, to: today }),
+      Admin.getDailyAttendance({ from: addDays(today, -13), to: today }),
+      Admin.getCentreAttendance({ from: weekFrom, to: today }),
+      Admin.listSchedule({ from: today, to: today }),
+      Admin.listAttendanceSessions({ from: today, to: today }),
+    ]);
+    const counts = new Map(todaySessions.map((s) => [`session-${s.id}`, s]));
+    const classes = todayClasses.map((item) => {
+      const session = counts.get(item.id);
+      return {
+        ...item,
+        sessionId: session?.id ?? null,
+        booked: session?.booked ?? 0,
+        attended: session ? session.present + session.late : 0,
+        absent: session?.absent ?? 0,
+      };
+    });
+    return res.json({
+      view, today,
+      period: { from: today, to: today, label: "Today" },
+      totals: { ...todayTotals, classesScheduled: todayClasses.length },
+      previous: { label: "yesterday", ...yesterdayTotals },
+      rolling: { label: "last 7 days", from: weekFrom, to: today, ...weekTotals },
+      series, centres, classes,
+    });
+  }
+
+  const from = monthStart(today);
+  const to = monthEnd(today);
+  const lastFrom = shiftMonths(today, -1);
+  const lastTo = monthEnd(lastFrom);
+  const [monthTotals, lastTotals, series, centres] = await Promise.all([
+    Admin.getAttendanceTotals({ from, to: today }),
+    Admin.getAttendanceTotals({ from: lastFrom, to: lastTo }),
+    Admin.getMonthlyAttendance({ from: shiftMonths(today, -5), to: today }),
+    Admin.getCentreAttendance({ from, to: today }),
+  ]);
+  res.json({
+    view, today,
+    period: { from, to, label: "This month" },
+    totals: monthTotals,
+    previous: { label: "last month", ...lastTotals },
+    series, centres,
+  });
+});

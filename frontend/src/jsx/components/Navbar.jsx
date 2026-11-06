@@ -11,9 +11,6 @@ const links = [
 ];
 
 const adminLinks = [
-  { to: "/", label: "Home", end: true },
-  { to: "/classes", label: "Classes" },
-  { to: "/about", label: "About" },
   { to: "/dashboard", label: "Dashboard", end: true },
   { to: "/admin/schedule", label: "Timetable" },
   { to: "/admin/attendance", label: "Attendance" },
