@@ -26,6 +26,7 @@ async function request(path, { method = "GET", body, query } = {}) {
 }
 
 export const getOverview = () => request("/overview");
+export const getDashboard = (view) => request("/dashboard", { query: { view } });
 
 export const getCentres = () => request("/centres").then((d) => d.centres);
 export const createCentre = (centre) => request("/centres", { method: "POST", body: centre }).then((d) => d.centre);
@@ -36,3 +37,6 @@ export const setCentreStatus = (id, isActive) =>
 export const getInstructors = () => request("/instructors").then((d) => d.instructors);
 
 export const getSchedule = (query) => request("/schedule", { query });
+
+export const getAttendance = (query) => request("/attendance", { query });
+export const getSessionAttendance = (id) => request(`/attendance/sessions/${id}`);

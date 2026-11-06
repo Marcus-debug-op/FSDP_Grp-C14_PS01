@@ -23,9 +23,9 @@ async function request(path) {
   return data;
 }
 
-// Returns { belt }. "belt" is null if the student has no profile/belt yet.
+//Returns { belt }. "belt" is null if the student has no profile/belt yet.
 export const getMyBelt = () => request("/api/belts/me");
 
-// Returns { progression, hasProfile }. progression is the full belt ladder,
-// each item tagged status: "achieved" | "current" | "upcoming".
-export const getMyProgression = () => request("/api/belts/me/progression");
+// Returns { history }: an array of belts achieved, newest first.
+// Each item: { id, name, colour, rankOrder, achievedOn, fromGrading }.
+export const getMyHistory = () => request("/api/belts/me/history");

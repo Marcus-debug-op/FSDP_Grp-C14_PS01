@@ -7,6 +7,7 @@ const router = Router();
 router.use(requireAuth, requireRole("admin"));
 
 router.get("/overview", admin.overview);
+router.get("/dashboard", admin.dashboard);
 
 router.get("/centres", admin.listCentres);
 router.post("/centres", admin.createCentre);
@@ -16,5 +17,8 @@ router.patch("/centres/:id/status", admin.setCentreStatus);
 router.get("/instructors", admin.listInstructors);
 
 router.get("/schedule", admin.getSchedule);
+
+router.get("/attendance", admin.listAttendance);
+router.get("/attendance/sessions/:id", admin.getSessionAttendance);
 
 export default router;

@@ -11,11 +11,9 @@ const links = [
 ];
 
 const adminLinks = [
-  { to: "/", label: "Home", end: true },
-  { to: "/classes", label: "Classes" },
-  { to: "/about", label: "About" },
   { to: "/dashboard", label: "Dashboard", end: true },
   { to: "/admin/schedule", label: "Timetable" },
+  { to: "/admin/attendance", label: "Attendance" },
   { to: "/admin/dojos", label: "Dojos" },
 ];
 
@@ -26,6 +24,7 @@ const studentLinks = [
   { to: "/lessons", label: "Book Lessons" },    // BK-1 to BK-5
   { to: "/payments", label: "Payments" },       // PAY-1, PAY-6
   { to: "/grading", label: "Grading" },         // GR-1 to GR-3 (teammate's part)
+  { to: "/belt-progress", label: "My Belt" },   // FSDP-9, FSDP-62
 ];
 
 export default function Navbar() {

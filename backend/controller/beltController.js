@@ -17,7 +17,7 @@ function publicBelt(row) {
   };
 }
 
-// GET /api/belts/tester01
+// GET /api/belts/me  (current belt status, view-only)
 // 200 with belt:null if the student has no profile row yet (e.g. a brand-new sign-up).
 export async function getMyBelt(req, res, next) {
   try {
@@ -28,36 +28,22 @@ export async function getMyBelt(req, res, next) {
   }
 }
 
-// GET /api/belts/tester01/progression
-// Returns the whole ladder. Each rank is tagged achieved / current / upcoming against
-// the student's current rank_order, and the current rank carries the date it was awarded.
-// NOTE: the database keeps only the student's CURRENT belt, so earlier belts have no
-// recorded award date. True per-belt history would need a belt-history table.
-export async function getMyProgression(req, res, next) {
+// GET /api/belts/me/history  (real belt history, view-only)
+// A dated timeline of each belt the student has achieved, newest first.
+// fromGrading=true means the date is a real grading-exam date; false means it came
+// from the belt recorded on the student's profile.
+export async function getMyHistory(req, res, next) {
   try {
-    const [ladder, currentRank] = await Promise.all([
-      Belt.findBeltLadder(),
-      Belt.findCurrentRank(req.user.id),
-    ]);
-    const currentOrder = currentRank ? currentRank.rank_order : 0;
-
-    const progression = ladder.map((r) => ({
+    const rows = await Belt.findBeltHistory(req.user.id);
+    const history = rows.map((r) => ({
       id: r.id,
       name: r.name,
       colour: r.colour,
       rankOrder: r.rank_order,
-      minMonthsAtRank: r.min_months_at_rank,
-      minClassesAtRank: r.min_classes_at_rank,
-      requirements: r.requirements, // array of strings (may be empty)
-      status:
-        r.rank_order < currentOrder ? "achieved"
-        : r.rank_order === currentOrder ? "current"
-        : "upcoming",
-      // Only the current belt has a real date in the database.
-      awardedOn: r.rank_order === currentOrder && currentRank ? currentRank.belt_awarded_on : null,
+      achievedOn: r.achieved_on,
+      fromGrading: r.from_grading,
     }));
-
-    res.json({ progression, hasProfile: Boolean(currentRank) });
+    res.json({ history });
   } catch (err) {
     next(err);
   }

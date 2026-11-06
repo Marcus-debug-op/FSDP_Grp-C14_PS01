@@ -5,6 +5,10 @@ import pool from "../db.js";
 // "Today" in Singapore, not in the database server's UTC.
 const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 
+// Attendance closes 24 hours after the class ends.
+const ATTENDANCE_CLOSED =
+  "NOW() > ((cs.session_date + cs.end_time) AT TIME ZONE 'Asia/Singapore' + INTERVAL '24 hours')";
+
 // The instructor's classes on a date, or today if no date is given.
 export async function listClassesOn(instructorId, date) {
   const result = await pool.query(
@@ -13,6 +17,7 @@ export async function listClassesOn(instructorId, date) {
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
             cs.status,
+            ${ATTENDANCE_CLOSED} AS attendance_closed,
             (SELECT COUNT(*)::int FROM bookings b
              WHERE b.session_id = cs.id AND b.status = 'booked') AS booked,
             (SELECT COUNT(*)::int FROM attendance a WHERE a.session_id = cs.id) AS marked
@@ -28,6 +33,47 @@ export async function listClassesOn(instructorId, date) {
   return result.rows;
 }
 
+// The instructor's classes between two dates, for the calendar.
+export async function listClassesBetween(instructorId, from, to) {
+  const result = await pool.query(
+    `SELECT cs.id, cl.title, ce.name AS centre,
+            to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
+            to_char(cs.start_time, 'HH24:MI') AS start_time,
+            to_char(cs.end_time, 'HH24:MI') AS end_time,
+            cs.status,
+            ${ATTENDANCE_CLOSED} AS attendance_closed,
+            (SELECT COUNT(*)::int FROM bookings b
+             WHERE b.session_id = cs.id AND b.status = 'booked') AS booked,
+            (SELECT COUNT(*)::int FROM attendance a WHERE a.session_id = cs.id) AS marked
+     FROM class_sessions cs
+     JOIN classes cl ON cl.id = cs.class_id
+     JOIN centres ce ON ce.id = cl.centre_id
+     WHERE cs.instructor_id = $1
+       AND cs.session_date BETWEEN $2::date AND $3::date
+       AND cs.status <> 'cancelled'
+     ORDER BY cs.session_date, cs.start_time, cs.id`,
+    [instructorId, from, to]
+  );
+  return result.rows;
+}
+
+// Gradings this instructor is examining between two dates.
+export async function listGradingsBetween(instructorId, from, to) {
+  const result = await pool.query(
+    `SELECT gs.id, ce.name AS centre,
+            to_char(gs.grading_date, 'YYYY-MM-DD') AS grading_date,
+            to_char(gs.start_time, 'HH24:MI') AS start_time
+     FROM grading_sessions gs
+     JOIN centres ce ON ce.id = gs.centre_id
+     WHERE gs.examiner_id = $1
+       AND gs.grading_date BETWEEN $2::date AND $3::date
+       AND gs.status <> 'cancelled'
+     ORDER BY gs.grading_date, gs.start_time`,
+    [instructorId, from, to]
+  );
+  return result.rows;
+}
+
 // One session, only if this instructor teaches it.
 export async function findSession(sessionId, instructorId) {
   const result = await pool.query(
@@ -36,6 +82,7 @@ export async function findSession(sessionId, instructorId) {
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
             cs.status,
+            ${ATTENDANCE_CLOSED} AS attendance_closed,
             cs.session_date > ${TODAY} AS is_future
      FROM class_sessions cs
      JOIN classes cl ON cl.id = cs.class_id
