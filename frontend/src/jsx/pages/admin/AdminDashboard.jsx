@@ -242,6 +242,12 @@ export default function AdminDashboard() {
             <Link to="/admin/attendance" className="btn btn-outline btn-small">View Attendance</Link>
           </article>
           <article className="card">
+            <span className="tag">Students</span>
+            <h3>Student Records</h3>
+            <p className="admin-card-text">Search any student to see their belt progress, membership, credits and recent classes.</p>
+            <Link to="/admin/students" className="btn btn-outline btn-small">Find a Student</Link>
+          </article>
+          <article className="card">
             <span className="tag">Setup</span>
             <h3>Dojos</h3>
             <p className="admin-card-text">See every dojo, how many weekly classes it runs, and open its timetable.</p>

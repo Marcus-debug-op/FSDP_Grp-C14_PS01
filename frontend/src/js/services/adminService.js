@@ -40,3 +40,7 @@ export const getSchedule = (query) => request("/schedule", { query });
 
 export const getAttendance = (query) => request("/attendance", { query });
 export const getSessionAttendance = (id) => request(`/attendance/sessions/${id}`);
+
+export const getBelts = () => request("/belts").then((d) => d.belts);
+export const searchStudents = (query) => request("/students", { query });
+export const getStudent = (id) => request(`/students/${id}`);

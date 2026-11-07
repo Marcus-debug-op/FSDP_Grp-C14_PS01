@@ -15,8 +15,12 @@ router.put("/centres/:id", admin.updateCentre);
 router.patch("/centres/:id/status", admin.setCentreStatus);
 
 router.get("/instructors", admin.listInstructors);
+router.get("/belts", admin.listBelts);
 
 router.get("/schedule", admin.getSchedule);
+
+router.get("/students", admin.searchStudents);
+router.get("/students/:id", admin.getStudent);
 
 router.get("/attendance", admin.listAttendance);
 router.get("/attendance/sessions/:id", admin.getSessionAttendance);
