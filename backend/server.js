@@ -9,6 +9,7 @@ import { stripeWebhook } from "./controller/paymentController.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import beltRoutes from "./routes/beltRoutes.js";
 import instructorRoutes from "./routes/instructorRoutes.js";
+import publicClassRoutes from "./routes/publicClassRoutes.js";
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/belts", beltRoutes);
 app.use("/api/instructor", instructorRoutes);
+app.use("/api/classes", publicClassRoutes);
 
 // Unknown address
 app.use((req, res) => res.status(404).json({ message: "Not found" }));

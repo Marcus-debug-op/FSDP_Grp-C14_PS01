@@ -17,6 +17,7 @@ import AdminSchedule from "./pages/admin/AdminSchedule.jsx";
 import ManageDojos from "./pages/admin/ManageDojos.jsx";
 import AdminAttendance from "./pages/admin/AdminAttendance.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
+import StudentProfile from "./pages/student/StudentProfile.jsx";
 import ClassRoster from "./pages/instructor/ClassRoster.jsx";
 import InstructorCalendar from "./pages/instructor/InstructorCalendar.jsx";
 
@@ -26,7 +27,7 @@ export default function App() {
   // These pages fade in on arrival, like the homepage.
   const isPublicPage = [
     "/", "/classes", "/about",
-    "/dashboard", "/lessons", "/timetable", "/payments", "/grading", "/check-in", "/settings",
+    "/dashboard", "/profile", "/lessons", "/timetable", "/payments", "/grading", "/check-in", "/settings",
   ].includes(pathname);
   return (
     <AuthProvider>
@@ -57,6 +58,7 @@ export default function App() {
           <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
           <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
           <Route path="/admin/attendance" element={<ProtectedRoute role="admin"><AdminAttendance /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute role="student"><StudentProfile /></ProtectedRoute>} />
           <Route path="/belt-progress" element={<ProtectedRoute><BeltProgress /></ProtectedRoute>} />
           <Route path="/instructor/classes/:id" element={<ProtectedRoute role="instructor"><ClassRoster /></ProtectedRoute>} />
           <Route path="/instructor/calendar" element={<ProtectedRoute role="instructor"><InstructorCalendar /></ProtectedRoute>} />
