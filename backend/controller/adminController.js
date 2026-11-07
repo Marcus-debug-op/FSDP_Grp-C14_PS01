@@ -210,3 +210,31 @@ export const dashboard = handle(async (req, res) => {
     series, centres,
   });
 });
+
+export const listBelts = handle(async (req, res) => {
+  res.json({ belts: await Admin.listBelts() });
+});
+
+export const searchStudents = handle(async (req, res) => {
+  const query = text(req.query.q, "Search", { required: false, max: 100 }) || undefined;
+  const result = await Admin.searchStudents({
+    query,
+    centreId: optionalId(req.query.centreId, "Dojo ID"),
+    beltId: optionalId(req.query.beltId, "Belt ID"),
+    limit: 50,
+  });
+  res.json({ ...result, limit: 50 });
+});
+
+export const getStudent = handle(async (req, res) => {
+  const id = parseId(req.params.id, "Student ID");
+  const student = await Admin.findStudentProfile(id);
+  if (!student) throw notFound("Student not found.");
+  const [attendanceSummary, recentAttendance, memberships, gradings] = await Promise.all([
+    Admin.getStudentAttendanceSummary(id),
+    Admin.listStudentAttendance(id, 10),
+    Admin.listStudentMemberships(id),
+    Admin.listStudentGradings(id),
+  ]);
+  res.json({ student, attendanceSummary, recentAttendance, memberships, gradings });
+});
