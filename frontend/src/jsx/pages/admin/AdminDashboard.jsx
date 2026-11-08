@@ -248,6 +248,12 @@ export default function AdminDashboard() {
             <Link to="/admin/students" className="btn btn-outline btn-small">Find a Student</Link>
           </article>
           <article className="card">
+            <span className="tag">Scheduling</span>
+            <h3>Private Lessons</h3>
+            <p className="admin-card-text">Schedule lesson requests with an instructor who is free, or book a new one for a student.</p>
+            <Link to="/admin/private-lessons" className="btn btn-outline btn-small">Open Private Lessons</Link>
+          </article>
+          <article className="card">
             <span className="tag">Setup</span>
             <h3>Dojos</h3>
             <p className="admin-card-text">See every dojo, how many weekly classes it runs, and open its timetable.</p>

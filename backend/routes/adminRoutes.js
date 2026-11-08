@@ -22,6 +22,13 @@ router.get("/schedule", admin.getSchedule);
 router.get("/students", admin.searchStudents);
 router.get("/students/:id", admin.getStudent);
 
+router.get("/private-lessons", admin.listPrivateLessons);
+router.get("/private-lessons/availability", admin.getInstructorAvailability);
+router.post("/private-lessons", admin.createPrivateLesson);
+router.patch("/private-lessons/:id/schedule", admin.schedulePrivateLesson);
+router.patch("/private-lessons/:id/cancel", admin.cancelPrivateLesson);
+router.patch("/private-lessons/:id/outcome", admin.recordPrivateLessonOutcome);
+
 router.get("/attendance", admin.listAttendance);
 router.get("/attendance/sessions/:id", admin.getSessionAttendance);
 
