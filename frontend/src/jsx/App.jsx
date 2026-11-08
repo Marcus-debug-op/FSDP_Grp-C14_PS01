@@ -12,6 +12,7 @@ import AuthPage from "./pages/AuthPage.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Payments from "./pages/Payments.jsx";
 import PaymentSuccess from "./pages/PaymentSuccess.jsx";
+import RegistrationCheckout from "./pages/RegistrationCheckout.jsx";
 import ComingSoon from "./pages/ComingSoon.jsx";
 import AdminSchedule from "./pages/admin/AdminSchedule.jsx";
 import ManageDojos from "./pages/admin/ManageDojos.jsx";
@@ -46,6 +47,7 @@ export default function App() {
           {/* Only signed-in users can open the dashboard */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           {/* Student payments (Stripe Checkout, test mode) */}
+          <Route path="/registration/checkout" element={<ProtectedRoute role="student"><RegistrationCheckout /></ProtectedRoute>} />
           <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
           <Route path="/payments/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
           {/* Student pages not built yet: placeholders until the real pages are ready */}

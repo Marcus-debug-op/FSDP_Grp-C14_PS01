@@ -10,7 +10,18 @@ const FRONTEND_URL = () => (process.env.FRONTEND_URL || "http://localhost:5173")
 // GET /api/payments/options
 export async function getOptions(req, res, next) {
   try {
-    res.json(await Payment.getOptions());
+    const options = await Payment.getOptions();
+    const active = await Payment.hasActiveMembership(req.user.id);
+    const hasHistory = await Payment.hasMembershipHistory(req.user.id);
+
+    // A new student sees registration only; members see renewal plans.
+    // Credit top-ups are offered only to active members.
+    res.json({
+      plans: options.plans.filter(p => hasHistory
+        ? p.name !== "Registration (New Member)"
+        : p.name === "Registration (New Member)"),
+      packages: active ? options.packages : [],
+    });
   } catch (err) {
     next(err);
   }
@@ -28,6 +39,31 @@ export async function createCheckout(req, res, next) {
     // Look the price up ourselves so nobody can change it in the browser.
     const item = kind === "membership" ? await Payment.findPlan(itemId) : await Payment.findPackage(itemId);
     if (!item) return res.status(404).json({ message: "That option is no longer available." });
+
+    // New registrations must use the dedicated registration plan rather than credit top-ups.
+    // The registration price is selected in signup, not by untrusted client metadata.
+    const hasMembership = await Payment.hasActiveMembership(req.user.id);
+    const hasHistory = await Payment.hasMembershipHistory(req.user.id);
+
+    if (kind === "credits" && !hasMembership) {
+      return res.status(403).json({ message: "Activate your membership before purchasing credits." });
+    }
+
+    if (kind === "membership" && !hasHistory && item.name !== "Registration (New Member)") {
+      return res.status(403).json({ message: "New students must choose the initial registration package." });
+    }
+
+    if (kind === "membership" && hasHistory && item.name === "Registration (New Member)") {
+      return res.status(403).json({ message: "This registration package is for new students only." });
+    }
+
+    // Registration checkout must belong to the student who submitted that application.
+    if (kind === "membership" && item.name === "Registration (New Member)") {
+      const pendingApplication = await Payment.hasPendingApplicationForPlan(req.user.id, item.id);
+      if (!pendingApplication) {
+        return res.status(403).json({ message: "Submit your membership application before paying." });
+      }
+    }
 
     const purpose = kind === "membership" ? "membership" : "credit_topup";
     const description = kind === "membership"
@@ -59,7 +95,9 @@ export async function createCheckout(req, res, next) {
       payment_intent_data: { metadata },             // lets us record declined cards
       expires_at: Math.floor(Date.now() / 1000) + 31 * 60, // unpaid checkouts expire after ~30 min
       success_url: `${FRONTEND_URL()}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${FRONTEND_URL()}/payments?cancelled=1`,
+      cancel_url: item.name === "Registration (New Member)"
+        ? `${FRONTEND_URL()}/registration/checkout?cancelled=1`
+        : `${FRONTEND_URL()}/payments?cancelled=1`,
     });
 
     await Payment.attachCheckoutSession(paymentId, session.id);
