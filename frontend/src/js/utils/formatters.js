@@ -39,3 +39,9 @@ export function formatWeekRange(start, end) {
   const endText = endDate.toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
   return `${startText} to ${endText}`;
 }
+
+export function formatShortDate(value) {
+  if (!value) return "";
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
+}

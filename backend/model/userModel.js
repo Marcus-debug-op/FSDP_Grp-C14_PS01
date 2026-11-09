@@ -26,12 +26,21 @@ export async function createStudent({ fullName, email, passwordHash, onboarding,
       `INSERT INTO student_onboarding (
         user_id, date_of_birth, gender, photo_mime, photo_data, experience_level, previous_rank, experience_notes,
         evidence_filename, evidence_mime, evidence_data,
-        membership_status, membership_plan, phone, training_goal
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending_payment', 'annual', $12, $13)`,
+        membership_status, membership_plan, phone, training_goal,
+        address, postal_code,
+        emergency_contact_name, emergency_contact_phone, emergency_contact_relationship
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending_payment', 'annual', $12, $13,
+                $14, $15,
+                $16, $17, $18)`,
       [user.id, onboarding.dateOfBirth, onboarding.gender, onboarding.photoMime, onboarding.photoBuffer,
        onboarding.experienceLevel, onboarding.previousRank, onboarding.experienceNotes,
        onboarding.fileName, onboarding.fileMime, onboarding.fileBuffer,
-       onboarding.phone, onboarding.trainingGoal]
+       onboarding.phone, onboarding.trainingGoal,
+       // These columns come from migration 005 and all default to '',
+       // so an older caller that omits them still inserts successfully.
+       onboarding.address, onboarding.postalCode,
+       onboarding.emergencyContactName, onboarding.emergencyContactPhone,
+       onboarding.emergencyContactRelationship]
     );
     // Store the initial application for the admin review queue.
     // Payment verification and Shihan approval happen separately.

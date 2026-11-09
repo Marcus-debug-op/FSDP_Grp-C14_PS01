@@ -71,3 +71,7 @@
 .coming-soon-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
 .coming-soon-list li { padding: 0.6rem 0 0.6rem 1.4rem; border-bottom: 1px solid var(--line); position: relative; }
 .coming-soon-list li::before { content: ""; position: absolute; left: 0; top: 1.25rem; width: 0.55rem; height: 2px; background: var(--accent); }
+
+/* Short notices (e.g. "record your belt") hug their text instead of
+   stretching the grey box across the whole container. */
+.notice-fit { width: fit-content; max-width: 100%; margin-left: auto; margin-right: auto; }
