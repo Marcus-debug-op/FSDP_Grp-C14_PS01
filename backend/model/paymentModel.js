@@ -4,11 +4,32 @@ import pool from "../db.js";
 
 const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 
+
+export async function hasMembershipHistory(studentId) {
+  const result = await pool.query(
+    "SELECT EXISTS (SELECT 1 FROM memberships WHERE student_id = $1) AS has_history",
+    [studentId]
+  );
+  return result.rows[0].has_history;
+}
+
+export async function hasActiveMembership(studentId) {
+  const result = await pool.query(
+    `SELECT EXISTS (
+      SELECT 1 FROM memberships WHERE student_id = $1
+        AND status = 'active' AND end_date >= ${TODAY}
+    ) AS active`,
+    [studentId]
+  );
+  return result.rows[0].active;
+}
+
+
 // Everything a student can buy. Prices always come from here, never from the browser.
 export async function getOptions() {
   const [plans, packages] = await Promise.all([
     pool.query(
-      `SELECT id, name, duration_months, price_cents, included_credits
+      `SELECT id, name, duration_months, price_cents
        FROM membership_plans WHERE is_active ORDER BY price_cents`
     ),
     pool.query(
@@ -19,9 +40,20 @@ export async function getOptions() {
   return { plans: plans.rows, packages: packages.rows };
 }
 
+export async function hasPendingApplicationForPlan(studentId, planId) {
+  const result = await pool.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM membership_applications
+       WHERE student_id = $1 AND plan_id = $2 AND approval_status = 'pending'
+     ) AS is_pending`,
+    [studentId, planId]
+  );
+  return result.rows[0].is_pending;
+}
+
 export async function findPlan(id) {
   const result = await pool.query(
-    "SELECT id, name, duration_months, price_cents, included_credits FROM membership_plans WHERE id = $1 AND is_active",
+    "SELECT id, name, duration_months, price_cents FROM membership_plans WHERE id = $1 AND is_active",
     [id]
   );
   return result.rows[0];
@@ -106,10 +138,26 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
 
     if (item.kind === "membership") {
       const plan = (await client.query(
-        "SELECT id, duration_months, included_credits FROM membership_plans WHERE id = $1",
+        "SELECT id, name, duration_months, included_credits FROM membership_plans WHERE id = $1",
         [item.itemId]
       )).rows[0];
+      if (!plan) throw new Error("Paid membership plan no longer exists.");
 
+      // New student registration is an APPLICATION payment, not membership activation.
+      // Admin/Shihan approval and payment verification will activate it in Step 5.
+      const isRegistration = plan.name === "Registration (New Member)";
+      if (isRegistration) {
+        const application = await client.query(
+          `SELECT id FROM membership_applications
+           WHERE student_id = $1 AND plan_id = $2 AND approval_status = 'pending'
+           FOR UPDATE`,
+          [studentId, plan.id]
+        );
+        if (application.rowCount !== 1) {
+          throw new Error("Registration payment has no pending application to review.");
+        }
+      } else {
+      // Existing membership purchase / renewal: preserve the original behaviour.
       // A renewal starts the day after the current membership ends; otherwise today.
       await client.query(
         `WITH start AS (
@@ -122,6 +170,15 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
          FROM start`,
         [studentId, plan.id, plan.duration_months, paymentId]
       );
+
+
+      // Keep signup onboarding status aligned with successful Stripe payment.
+      await client.query(
+        "UPDATE student_onboarding SET membership_status = 'active' WHERE user_id = $1",
+        [studentId]
+      );
+
+
       if (plan.included_credits > 0) {
         await client.query(
           `INSERT INTO credit_transactions (student_id, change, reason, payment_id, note)
@@ -129,6 +186,9 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
           [studentId, plan.included_credits, paymentId]
         );
       }
+      } // End non-registration membership purchases
+      // The membership fee doesn't include lesson credits. Students buy those
+      // separately as a credit top-up (1 credit = 1 lesson).
     } else {
       const pack = (await client.query(
         "SELECT credits FROM credit_packages WHERE id = $1",

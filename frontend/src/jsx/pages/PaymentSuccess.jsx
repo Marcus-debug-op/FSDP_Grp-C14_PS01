@@ -54,7 +54,7 @@ export default function PaymentSuccess() {
   } else if (payment?.status === "succeeded") {
     title = "Payment confirmed.";
     body = payment.purpose === "membership"
-      ? `Your membership is active and its lesson credits have been added. You paid ${fmtMoney(payment.amountCents)}.`
+      ? `Your membership is active. You paid ${fmtMoney(payment.amountCents)}. To book lessons, buy lesson credits (1 credit = 1 lesson).`
       : `Your lesson credits have been added. You paid ${fmtMoney(payment.amountCents)}.`;
   } else if (payment?.status === "failed") {
     title = "Payment didn't go through.";
@@ -77,6 +77,9 @@ export default function PaymentSuccess() {
               <Link to="/dashboard" className="sp-btn sp-btn-primary">Back to dashboard</Link>
               {payment?.status === "failed" && (
                 <Link to="/payments" className="sp-btn sp-btn-secondary">Try again</Link>
+              )}
+              {payment?.status === "succeeded" && payment.purpose === "membership" && (
+                <Link to="/payments" className="sp-btn sp-btn-secondary">Buy lesson credits</Link>
               )}
             </div>
           </header>

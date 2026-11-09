@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { getAttendance, getCentres, getInstructors, getSessionAttendance } from "../../../js/services/adminService.js";
 import { formatDayHeading, formatTime, todayString } from "../../../js/utils/formatters.js";
 import "../../../css/auth.css";
@@ -65,7 +65,7 @@ function SessionStudents({ sessionId }) {
         {data.students.map((s) => (
           <tr key={s.id}>
             <td data-label="Student">
-              <span className="att-name">{s.fullName}</span>
+              <Link to={`/admin/students/${s.id}`} className="adm-link att-name">{s.fullName}</Link>
               <span className="att-sub">{s.email}</span>
             </td>
             <td data-label="Belt">{s.beltName || "Not set"}</td>
@@ -91,8 +91,8 @@ export default function AdminAttendance() {
   const [to, setTo] = useState(isDate(searchParams.get("to")) ? searchParams.get("to") : today);
   const [centreId, setCentreId] = useState("");
   const [instructorId, setInstructorId] = useState("");
-  const [studentInput, setStudentInput] = useState("");
-  const [student, setStudent] = useState("");
+  const [studentInput, setStudentInput] = useState(searchParams.get("student") || "");
+  const [student, setStudent] = useState(searchParams.get("student") || "");
   const [centres, setCentres] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [sessions, setSessions] = useState(null);

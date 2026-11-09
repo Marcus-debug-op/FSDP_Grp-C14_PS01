@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import ClassCard from "../components/ClassCard.jsx";
 import { getClasses } from "../../js/services/classService.js";
-import { DAYS, HQ_ADDRESS, classTypes } from "../../js/data/hqClasses.js";
+import { DAYS } from "../../js/data/hqClasses.js";
 import "../../css/content.css";
 import ScrollReveal from "../components/ScrollReveal.jsx";
 
 export default function PublicTimetable() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [centre, setCentre] = useState("All");
   const [day, setDay] = useState("All");
   const [type, setType] = useState("All");
@@ -22,7 +23,7 @@ export default function PublicTimetable() {
 
   // Build the dropdown choices from whatever is in the data
   const centres = [...new Set(classes.map((c) => c.dojo))].sort();
-  const types = Object.keys(classTypes).filter((t) => classes.some((c) => c.type === t));
+  const types = [...new Set(classes.map((c) => c.type))].sort();
 
   // Keep only classes that match all three filters
   const visible = classes.filter(
@@ -44,7 +45,7 @@ export default function PublicTimetable() {
         <p className="eyebrow">Weekly timetable</p>
         <h1>Class Timetable</h1>
         <p className="lead">
-          Browse classes without an account. Every class runs for 60 minutes at {HQ_ADDRESS}.
+          Browse weekly classes at our training centres without an account. Instructors and times are loaded from our current schedule.
         </p>
 
         </ScrollReveal>

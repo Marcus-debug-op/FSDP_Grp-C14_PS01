@@ -90,3 +90,22 @@ export async function getDashboard(req, res, next) {
     next(err);
   }
 }
+
+// GET /api/student/profile
+export async function getProfile(req, res, next) {
+  try {
+    const row = await Student.getStudentProfile(req.user.id);
+    if (!row) return res.status(404).json({ message: 'Student not found.' });
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ profile: {
+      id: row.id, fullName: row.full_name, email: row.email,
+      dateOfBirth: row.date_of_birth, gender: row.gender,
+      experienceLevel: row.experience_level, previousRank: row.previous_rank,
+      experienceNotes: row.experience_notes, evidenceFilename: row.evidence_filename,
+      membershipPlan: row.membership_plan, membershipStatus: row.membership_status,
+      phone: row.phone, trainingGoal: row.training_goal,
+      hasPhoto: row.has_photo, joinedOn: row.joined_on,
+      onboardingComplete: row.date_of_birth !== null,
+    } });
+  } catch (err) { next(err); }
+}
