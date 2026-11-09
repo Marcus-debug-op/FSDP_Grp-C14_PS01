@@ -1,0 +1,194 @@
+/* Grading eligibility and progress.
+   Two balanced columns on wide screens: the summary (belt, verdict, dates) on
+   the left, the detail (progress, syllabus) on the right. Stacks below 900px.
+   Uses the tokens from index.css, scoped under .grad-*. */
+
+.grad-section { background: linear-gradient(180deg, var(--surface) 0, var(--bg) 420px); }
+
+.grad-page.is-narrow { max-width: 700px; }
+
+/* ---------- Page header ---------- */
+.grad-header { margin-bottom: 2.2rem; }
+.grad-header h1 { margin-bottom: 0.4rem; font-size: clamp(2rem, 4vw, 2.6rem); letter-spacing: -0.02em; }
+.grad-lead { margin: 0; max-width: 560px; color: var(--muted); font-size: 1.02rem; }
+
+/* ---------- Layout ---------- */
+.grad-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.grad-col { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+
+/* ---------- Cards ---------- */
+.grad-card {
+  position: relative; overflow: hidden;
+  border: 1px solid var(--line); border-radius: 16px; background: #fff;
+  padding: 1.6rem 1.75rem; margin: 0;
+  box-shadow: 0 1px 2px rgba(168, 63, 49, 0.06), 0 10px 28px -12px rgba(168, 63, 49, 0.28);
+}
+.grad-card-title {
+  font-family: var(--font-heading); font-size: 1.25rem; font-weight: 400;
+  letter-spacing: -0.01em; margin: 0 0 0.3rem; color: var(--text);
+}
+.grad-card-label {
+  margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.grad-card-note { margin: 0.35rem 0 0; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.grad-card-note a { color: var(--accent-text); font-weight: 600; }
+
+/* Current belt: a band in the belt's own colour along the top edge. */
+.grad-current { padding-top: 2rem; }
+.grad-belt-stripe {
+  position: absolute; inset: 0 0 auto 0; height: 8px;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+.grad-belt-name {
+  display: flex; align-items: center; gap: 0.65rem;
+  margin: 0; font-family: var(--font-heading); font-size: 1.85rem;
+  font-weight: 400; letter-spacing: -0.02em;
+}
+.grad-swatch {
+  display: inline-block; width: 1.15rem; height: 1.15rem; margin: 0;
+  border: 1px solid rgba(38, 35, 31, 0.5); border-radius: 50%; flex: 0 0 auto;
+  box-shadow: 0 0 0 3px rgba(38, 35, 31, 0.06);
+}
+
+/* ---------- Verdict ---------- */
+/* Not-eligible is informative, not an error: neutral tones, never red. */
+.grad-verdict {
+  border: 1px solid var(--line); border-radius: 16px; background: var(--surface);
+  padding: 1.5rem 1.75rem; margin: 0;
+}
+.grad-verdict.is-eligible {
+  background: linear-gradient(135deg, #eef6ef, #e3f0e5); border-color: #cfe3d3;
+}
+.grad-verdict-badge {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  margin: 0 0 0.7rem; padding: 0.2rem 0.7rem; border-radius: 999px;
+  font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  background: #fff; color: var(--muted); border: 1px solid var(--line);
+}
+.grad-verdict-badge::before {
+  content: ""; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--muted);
+}
+.grad-verdict.is-eligible .grad-verdict-badge { color: #2d5b36; border-color: #cfe3d3; }
+.grad-verdict.is-eligible .grad-verdict-badge::before { background: #2e8b57; }
+.grad-verdict-title {
+  margin: 0; font-family: var(--font-heading); font-size: 1.35rem;
+  font-weight: 400; letter-spacing: -0.01em;
+}
+.grad-verdict.is-eligible .grad-verdict-title { color: #2d5b36; }
+.grad-verdict-note { margin: 0.55rem 0 0; font-size: 0.9rem; line-height: 1.6; color: #2d5b36; }
+.grad-unmet { list-style: none; margin: 0.9rem 0 0; padding: 0; font-size: 0.9rem; color: var(--text); }
+.grad-unmet li {
+  position: relative; margin: 0.4rem 0; padding: 0.55rem 0.8rem 0.55rem 2rem;
+  background: #fff; border: 1px solid var(--line); border-radius: 10px;
+}
+.grad-unmet li::before {
+  content: ""; position: absolute; left: 0.85rem; top: 1.05rem;
+  width: 0.45rem; height: 0.45rem; border-radius: 50%; border: 2px solid var(--muted);
+}
+
+/* ---------- Progress bars ---------- */
+.grad-progress-head {
+  display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+  margin: 0.4rem 0 1.4rem; font-size: 0.9rem; color: var(--muted);
+}
+.grad-progress-head strong { color: var(--text); }
+
+.grad-bar-row { margin: 0 0 1.3rem; }
+.grad-bar-labels {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 0.8rem; margin-bottom: 0.5rem;
+}
+.grad-bar-label { font-size: 0.9rem; font-weight: 600; }
+.grad-bar-value { font-size: 0.86rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.grad-bar-value.is-met { color: var(--accent-text); font-weight: 600; }
+.grad-tick { font-weight: 700; }
+
+.grad-bar {
+  height: 12px; border-radius: 999px; background: #ece8e3; overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(38, 35, 31, 0.08);
+}
+.grad-bar-fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, #c4594a, var(--accent));
+  transition: width 0.6s cubic-bezier(.2, .75, .25, 1);
+}
+.grad-bar-fill.is-met { background: linear-gradient(90deg, #c4594a, var(--accent)); }
+.grad-bar-short { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--muted); }
+
+/* Hours as a stat tile rather than a footnote. */
+.grad-hours {
+  margin: 1.5rem 0 0; padding: 1rem 1.15rem; border-radius: 12px;
+  background: var(--surface); font-size: 0.9rem; color: var(--muted); line-height: 1.55;
+}
+.grad-hours strong {
+  display: block; font-family: var(--font-heading); font-weight: 400;
+  font-size: 2rem; line-height: 1.1; color: var(--text); margin-bottom: 0.15rem;
+}
+.grad-hours-note { display: block; margin-top: 0.35rem; font-size: 0.8rem; }
+
+/* ---------- Next grading ---------- */
+.grad-details { margin: 0.9rem 0 0; }
+.grad-details div { padding: 0.65rem 0; align-items: baseline; }
+.grad-details div:last-child { border-bottom: 0; padding-bottom: 0; }
+.grad-details dt { min-width: 6.5rem; font-size: 0.86rem; }
+.grad-details dd { font-weight: 600; font-size: 0.95rem; }
+.grad-deadline { font-weight: 400; color: var(--muted); }
+.grad-deadline.is-closed { color: var(--accent-text); font-weight: 600; }
+
+.grad-applied {
+  margin: 1.1rem 0 0; padding: 0.85rem 1rem; border-radius: 10px;
+  background: var(--surface); font-size: 0.88rem;
+}
+.grad-empty {
+  margin: 0.9rem 0 0; padding: 1rem 1.1rem; border-radius: 10px;
+  background: var(--surface); color: var(--muted); font-size: 0.88rem; line-height: 1.6;
+}
+
+/* ---------- Syllabus ---------- */
+.grad-syllabus {
+  list-style: none; counter-reset: syl; margin: 1rem 0 0; padding: 0;
+  display: grid; gap: 0.5rem; font-size: 0.92rem;
+}
+.grad-syllabus li {
+  counter-increment: syl; display: flex; align-items: center; gap: 0.8rem;
+  padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; transition: border-color 0.2s ease, background 0.2s ease;
+}
+.grad-syllabus li:hover { border-color: #d3cdc6; background: #fbfaf9; }
+.grad-syllabus li::before {
+  content: counter(syl, decimal-leading-zero); flex: 0 0 auto;
+  display: inline-grid; place-items: center; width: 1.9rem; height: 1.9rem;
+  border-radius: 8px; background: var(--surface);
+  font-size: 0.74rem; font-weight: 700; color: var(--accent-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.grad-upcoming {
+  margin: 0; padding: 0 0.25rem; font-size: 0.82rem; color: var(--muted); font-style: italic;
+}
+.grad-page .button-row { margin-top: 2.2rem; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .grad-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 560px) {
+  .grad-card, .grad-verdict { padding: 1.3rem 1.15rem; border-radius: 14px; }
+  .grad-current { padding-top: 1.7rem; }
+  .grad-belt-name { font-size: 1.55rem; }
+  .grad-bar-labels { flex-direction: column; gap: 0.15rem; }
+  .grad-bar-value { text-align: left; }
+  .grad-details div { flex-direction: column; gap: 0.1rem; }
+  .grad-details dt { min-width: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grad-bar-fill, .grad-syllabus li { transition: none; }
+}

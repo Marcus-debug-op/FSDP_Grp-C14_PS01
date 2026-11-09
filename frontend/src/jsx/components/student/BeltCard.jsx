@@ -27,6 +27,8 @@ export default function BeltCard() {
 
   return (
     <article className="card belt-card">
+      <span className="belt-stripe" style={{ background: colourHex(belt.colour) }} aria-hidden="true" />
+      <p className="belt-card-label">Current belt</p>
       <h3>
         <span className="belt-swatch" style={{ background: colourHex(belt.colour) }} aria-hidden="true" />
         {belt.name}
