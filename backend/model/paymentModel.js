@@ -29,7 +29,7 @@ export async function hasActiveMembership(studentId) {
 export async function getOptions() {
   const [plans, packages] = await Promise.all([
     pool.query(
-      `SELECT id, name, duration_months, price_cents, included_credits
+      `SELECT id, name, duration_months, price_cents
        FROM membership_plans WHERE is_active ORDER BY price_cents`
     ),
     pool.query(
@@ -53,7 +53,7 @@ export async function hasPendingApplicationForPlan(studentId, planId) {
 
 export async function findPlan(id) {
   const result = await pool.query(
-    "SELECT id, name, duration_months, price_cents, included_credits FROM membership_plans WHERE id = $1 AND is_active",
+    "SELECT id, name, duration_months, price_cents FROM membership_plans WHERE id = $1 AND is_active",
     [id]
   );
   return result.rows[0];
@@ -187,6 +187,8 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
         );
       }
       } // End non-registration membership purchases
+      // The membership fee doesn't include lesson credits. Students buy those
+      // separately as a credit top-up (1 credit = 1 lesson).
     } else {
       const pack = (await client.query(
         "SELECT credits FROM credit_packages WHERE id = $1",

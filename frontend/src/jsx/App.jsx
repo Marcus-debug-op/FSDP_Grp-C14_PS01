@@ -17,8 +17,12 @@ import ComingSoon from "./pages/ComingSoon.jsx";
 import AdminSchedule from "./pages/admin/AdminSchedule.jsx";
 import ManageDojos from "./pages/admin/ManageDojos.jsx";
 import AdminAttendance from "./pages/admin/AdminAttendance.jsx";
+import AdminStudents from "./pages/admin/AdminStudents.jsx";
+import AdminStudentProfile from "./pages/admin/AdminStudentProfile.jsx";
+import AdminPrivateLessons from "./pages/admin/AdminPrivateLessons.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
 import StudentProfile from "./pages/student/StudentProfile.jsx";
+import PersonalSettings from "./pages/student/PersonalSettings.jsx";
 import ClassRoster from "./pages/instructor/ClassRoster.jsx";
 import InstructorCalendar from "./pages/instructor/InstructorCalendar.jsx";
 
@@ -54,13 +58,17 @@ export default function App() {
           <Route path="/lessons" element={<ProtectedRoute><ComingSoon page="lessons" /></ProtectedRoute>} />
           <Route path="/timetable" element={<ProtectedRoute><ComingSoon page="timetable" /></ProtectedRoute>} />
           <Route path="/check-in" element={<ProtectedRoute><ComingSoon page="checkIn" /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><ComingSoon page="settings" /></ProtectedRoute>} />
+          {/* Personal settings is built: contact details editable, belt and membership view-only. FSDP-42 */}
+          <Route path="/settings" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
           {/* Grading is a teammate's part; swap in their page when it's ready */}
           <Route path="/grading" element={<ProtectedRoute><ComingSoon page="grading" /></ProtectedRoute>} />
           <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
           <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
           <Route path="/admin/attendance" element={<ProtectedRoute role="admin"><AdminAttendance /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute role="student"><StudentProfile /></ProtectedRoute>} />
+          <Route path="/admin/students" element={<ProtectedRoute role="admin"><AdminStudents /></ProtectedRoute>} />
+          <Route path="/admin/students/:id" element={<ProtectedRoute role="admin"><AdminStudentProfile /></ProtectedRoute>} />
+          <Route path="/admin/private-lessons" element={<ProtectedRoute role="admin"><AdminPrivateLessons /></ProtectedRoute>} />
           <Route path="/belt-progress" element={<ProtectedRoute><BeltProgress /></ProtectedRoute>} />
           <Route path="/instructor/classes/:id" element={<ProtectedRoute role="instructor"><ClassRoster /></ProtectedRoute>} />
           <Route path="/instructor/calendar" element={<ProtectedRoute role="instructor"><InstructorCalendar /></ProtectedRoute>} />
