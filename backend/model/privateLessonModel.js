@@ -164,8 +164,11 @@ export async function scheduleLesson({ lessonId = null, studentId, centreId, ins
     await client.query("SELECT pg_advisory_xact_lock(7101, $1)", [instructorId]);
     await client.query("SELECT pg_advisory_xact_lock(7102, $1)", [studentId]);
 
-    const busy = await client.query(INSTRUCTOR_CONFLICTS + " LIMIT 50", [date, startTime, endTime, lessonId]);
-    const clash = busy.rows.find((row) => row.instructor_id === instructorId);
+    const busy = await client.query(
+      `SELECT * FROM (${INSTRUCTOR_CONFLICTS}) conflicts WHERE instructor_id = $5 LIMIT 1`,
+      [date, startTime, endTime, lessonId, instructorId]
+    );
+    const clash = busy.rows[0];
     if (clash) {
       throw new LessonError(
         409,
