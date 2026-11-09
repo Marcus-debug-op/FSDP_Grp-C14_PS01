@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import { getDashboard, getProfile } from "../controller/studentController.js";
-import { getSettings, updateSettings, setHomeDojo } from "../controller/settingsController.js";
+import { getSettings, updateSettings } from "../controller/settingsController.js";
 
 
 const router = Router();
