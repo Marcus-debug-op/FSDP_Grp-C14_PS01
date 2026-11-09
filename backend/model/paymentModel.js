@@ -8,7 +8,7 @@ const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 export async function getOptions() {
   const [plans, packages] = await Promise.all([
     pool.query(
-      `SELECT id, name, duration_months, price_cents, included_credits
+      `SELECT id, name, duration_months, price_cents
        FROM membership_plans WHERE is_active ORDER BY price_cents`
     ),
     pool.query(
@@ -21,7 +21,7 @@ export async function getOptions() {
 
 export async function findPlan(id) {
   const result = await pool.query(
-    "SELECT id, name, duration_months, price_cents, included_credits FROM membership_plans WHERE id = $1 AND is_active",
+    "SELECT id, name, duration_months, price_cents FROM membership_plans WHERE id = $1 AND is_active",
     [id]
   );
   return result.rows[0];
@@ -106,7 +106,7 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
 
     if (item.kind === "membership") {
       const plan = (await client.query(
-        "SELECT id, duration_months, included_credits FROM membership_plans WHERE id = $1",
+        "SELECT id, duration_months FROM membership_plans WHERE id = $1",
         [item.itemId]
       )).rows[0];
 
@@ -122,13 +122,8 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
          FROM start`,
         [studentId, plan.id, plan.duration_months, paymentId]
       );
-      if (plan.included_credits > 0) {
-        await client.query(
-          `INSERT INTO credit_transactions (student_id, change, reason, payment_id, note)
-           VALUES ($1, $2, 'membership_grant', $3, 'Credits included with membership')`,
-          [studentId, plan.included_credits, paymentId]
-        );
-      }
+      // The membership fee doesn't include lesson credits. Students buy those
+      // separately as a credit top-up (1 credit = 1 lesson).
     } else {
       const pack = (await client.query(
         "SELECT credits FROM credit_packages WHERE id = $1",
