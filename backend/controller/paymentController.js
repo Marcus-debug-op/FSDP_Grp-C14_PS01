@@ -2,6 +2,8 @@
 // Flow: student picks an item -> we save a "pending" payment -> Stripe Checkout
 // -> Stripe calls our webhook -> payment marked succeeded/failed -> membership
 // or credits added. The success page only reads what the webhook saved.
+// The membership fee is only the fee to be a member. It never includes lesson
+// credits: students buy credits separately, and 1 credit = 1 lesson.
 import { getStripe } from "../stripe.js";
 import * as Payment from "../model/paymentModel.js";
 
@@ -31,8 +33,8 @@ export async function createCheckout(req, res, next) {
 
     const purpose = kind === "membership" ? "membership" : "credit_topup";
     const description = kind === "membership"
-      ? `${item.duration_months}-month membership · ${item.included_credits} lesson credits included`
-      : `${item.credits} lesson credits`;
+      ? `${item.duration_months}-month membership fee · lesson credits sold separately`
+      : `${item.credits} lesson credits · 1 credit = 1 lesson`;
 
     const paymentId = await Payment.createPendingPayment({
       studentId: req.user.id,

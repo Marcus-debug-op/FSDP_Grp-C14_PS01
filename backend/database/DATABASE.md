@@ -60,12 +60,16 @@ Instructor-side attendance (roster) also writes to `attendance`. Use `method = '
 **Credits**
 - There's no balance column. A student's balance is `SELECT SUM(change) FROM credit_transactions WHERE student_id = $1`.
 - Only ever INSERT ledger rows, never UPDATE or DELETE them.
+- The membership fee only makes someone a member. It includes no credits
+  (`membership_plans.included_credits` is always 0). Students buy credits
+  separately, and 1 credit = 1 lesson. Booking needs an active membership
+  AND a balance of at least 1.
 - Who writes which `reason`:
 
   | reason | Written by | change |
   |---|---|---|
   | `topup` | membership teammate | + |
-  | `membership_grant` | membership teammate | + |
+  | `membership_grant` | not used: the membership fee includes no lessons | + |
   | `adjustment` | membership teammate | + or − |
   | `booking` | qj, when a class is booked | − `credit_cost` |
   | `booking_refund` | qj, when a booking is cancelled | + |

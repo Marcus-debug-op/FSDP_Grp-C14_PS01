@@ -5,6 +5,8 @@ import "../../css/student-dashboard.css";
 
 // PAY-1 + PAY-2: choose a membership plan or credit package, then pay on
 // Stripe Checkout (test mode). Prices always come from the server.
+// The membership fee doesn't include lessons: students need an active
+// membership AND lesson credits to book (1 credit = 1 lesson).
 
 const fmtMoney = (cents) =>
   (cents / 100).toLocaleString("en-SG", { style: "currency", currency: "SGD" });
@@ -52,7 +54,8 @@ export default function Payments() {
             <p className="sp-body sp-muted">Payments</p>
             <h1 className="sp-hero">Keep training.</h1>
             <p className="sp-body sp-lead">
-              Renew your membership or top up lesson credits. Payment is handled securely by Stripe.
+              To book lessons you need an active membership and lesson credits. The membership fee
+              doesn't include lessons, and each lesson costs 1 credit. Payment is handled securely by Stripe.
             </p>
           </header>
 
@@ -66,7 +69,7 @@ export default function Payments() {
           {options && (
             <>
               <section aria-labelledby="plans-title">
-                <h2 className="sp-section-title" id="plans-title">Membership plans</h2>
+                <h2 className="sp-section-title" id="plans-title">Membership fee</h2>
                 <div className="sp-grid sp-grid-cards">
                   {options.plans.map((p) => (
                     <OptionCard
@@ -74,8 +77,8 @@ export default function Payments() {
                       title={p.name}
                       price={fmtMoney(p.price_cents)}
                       lines={[
-                        `${p.duration_months} ${p.duration_months === 1 ? "month" : "months"}`,
-                        `${p.included_credits} lesson credits included`,
+                        `${p.duration_months} ${p.duration_months === 1 ? "month" : "months"} of membership`,
+                        "Lesson credits sold separately",
                       ]}
                       buttonLabel="Choose plan"
                       busy={busyKey === `membership-${p.id}`}
@@ -86,14 +89,17 @@ export default function Payments() {
               </section>
 
               <section aria-labelledby="credits-title">
-                <h2 className="sp-section-title" id="credits-title">Top up credits</h2>
+                <h2 className="sp-section-title" id="credits-title">Lesson credits</h2>
                 <div className="sp-grid sp-grid-cards">
                   {options.packages.map((p) => (
                     <OptionCard
                       key={p.id}
                       title={p.name}
                       price={fmtMoney(p.price_cents)}
-                      lines={[`${fmtMoney(Math.round(p.price_cents / p.credits))} per lesson`]}
+                      lines={[
+                        `${p.credits} lessons (1 credit = 1 lesson)`,
+                        `${fmtMoney(Math.round(p.price_cents / p.credits))} per lesson`,
+                      ]}
                       buttonLabel="Buy credits"
                       busy={busyKey === `credits-${p.id}`}
                       onBuy={() => buy("credits", p.id)}
