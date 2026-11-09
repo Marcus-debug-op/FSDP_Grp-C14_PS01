@@ -14,7 +14,14 @@ function publicSession(row) {
     startTime: row.start_time,
     endTime: row.end_time,
     status: row.status,
+    attendanceClosed: row.attendance_closed,
   };
+}
+
+// A session plus whether attendance can be changed right now.
+function publicRosterSession(row) {
+  const canMark = row.status !== "cancelled" && !row.is_future && !row.attendance_closed;
+  return { ...publicSession(row), canMark };
 }
 
 function publicRosterStudent(row) {
@@ -58,6 +65,38 @@ export async function listClasses(req, res, next) {
   }
 }
 
+// GET /api/instructor/calendar?month=YYYY-MM
+export async function getCalendar(req, res, next) {
+  try {
+    const month = req.query.month;
+    if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      return res.status(400).json({ message: "Month must look like 2026-11." });
+    }
+
+    const [year, monthNumber] = month.split("-").map(Number);
+    const lastDay = new Date(year, monthNumber, 0).getDate();
+    const from = `${month}-01`;
+    const to = `${month}-${String(lastDay).padStart(2, "0")}`;
+
+    const [classes, gradings] = await Promise.all([
+      Instructor.listClassesBetween(req.user.id, from, to),
+      Instructor.listGradingsBetween(req.user.id, from, to),
+    ]);
+
+    res.json({
+      classes: classes.map((row) => ({ ...publicSession(row), booked: row.booked, marked: row.marked })),
+      gradings: gradings.map((row) => ({
+        id: row.id,
+        centre: row.centre,
+        date: row.grading_date,
+        startTime: row.start_time,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/instructor/sessions/:id/roster
 export async function getRoster(req, res, next) {
   try {
@@ -65,7 +104,7 @@ export async function getRoster(req, res, next) {
     if (!session) return;
 
     const roster = await Instructor.getRoster(session.id);
-    res.json({ session: publicSession(session), roster: roster.map(publicRosterStudent) });
+    res.json({ session: publicRosterSession(session), roster: roster.map(publicRosterStudent) });
   } catch (err) {
     next(err);
   }
@@ -83,6 +122,9 @@ export async function saveAttendance(req, res, next) {
     }
     if (session.is_future) {
       return res.status(400).json({ message: "Attendance can only be marked on or after the class date." });
+    }
+    if (session.attendance_closed) {
+      return res.status(400).json({ message: "Attendance closed 24 hours after this class ended." });
     }
 
     const records = req.body?.records;
@@ -105,7 +147,7 @@ export async function saveAttendance(req, res, next) {
     await Instructor.saveAttendance(session.id, req.user.id, records);
 
     const updated = await Instructor.getRoster(session.id);
-    res.json({ session: publicSession(session), roster: updated.map(publicRosterStudent) });
+    res.json({ session: publicRosterSession(session), roster: updated.map(publicRosterStudent) });
   } catch (err) {
     next(err);
   }

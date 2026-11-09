@@ -12,9 +12,11 @@ const STATUSES = [
 ];
 
 // Turns the roster from the API into { studentId: status } for the buttons.
-// Any other status in the table has no button, so it counts as not marked here.
+// A late student did attend, so they show as present. Any other status in the
+// table has no button, so it counts as not marked here.
 function marksFrom(roster) {
-  const known = roster.filter((s) => STATUSES.some((option) => option.value === s.status));
+  const shown = roster.map((s) => ({ ...s, status: s.status === "late" ? "present" : s.status }));
+  const known = shown.filter((s) => STATUSES.some((option) => option.value === s.status));
   return Object.fromEntries(known.map((s) => [s.studentId, s.status]));
 }
 
@@ -60,20 +62,27 @@ export default function ClassRoster() {
   }
 
   const markedCount = Object.keys(marks).length;
+  const presentCount = Object.values(marks).filter((status) => status === "present").length;
 
   return (
     <div className="instructor-portal">
       <InstructorNavbar />
-      <section className="section">
-        <div className="container narrow">
+
+      <section className="section instructor-kanji-section">
+        <span className="instructor-kanji" aria-hidden="true">合</span>
+        <div className="container">
           <Link to="/dashboard" className="instructor-back">Back to today's classes</Link>
 
           {session && (
             <>
-              <h1 className="instructor-title">{session.title}</h1>
+              <p className="eyebrow">{session.canMark ? "Taking attendance" : "Attendance record"}</p>
+              <h1 className="roster-title">{session.title}</h1>
               <p className="lead">
                 {session.centre}, {formatTime(session.startTime)} - {formatTime(session.endTime)}
               </p>
+              {session.attendanceClosed && (
+                <p className="notice roster-closed">Attendance closed 24 hours after this class ended, so this roster is view only.</p>
+              )}
             </>
           )}
 
@@ -82,7 +91,13 @@ export default function ClassRoster() {
           {session && roster.length === 0 && <p className="notice">No students are booked for this class yet.</p>}
 
           {roster.length > 0 && (
-            <>
+            <div className="roster-panel">
+              <ul className="stats roster-stats">
+                <li><strong>{presentCount}</strong><span>Present</span></li>
+                <li><strong>{markedCount - presentCount}</strong><span>Absent</span></li>
+                <li><strong>{roster.length - markedCount}</strong><span>Not marked</span></li>
+              </ul>
+
               <ul className="roster">
                 {roster.map((student) => (
                   <li className="roster-row" key={student.studentId}>
@@ -95,8 +110,9 @@ export default function ClassRoster() {
                         <button
                           type="button"
                           key={option.value}
-                          className={`roster-option${marks[student.studentId] === option.value ? " is-selected" : ""}`}
+                          className={`roster-option roster-option-${option.value}${marks[student.studentId] === option.value ? " is-selected" : ""}`}
                           aria-pressed={marks[student.studentId] === option.value}
+                          disabled={!session.canMark}
                           onClick={() => mark(student.studentId, option.value)}
                         >
                           {option.label}
@@ -109,12 +125,14 @@ export default function ClassRoster() {
 
               <div className="roster-footer">
                 <p>{markedCount} of {roster.length} marked</p>
-                <button type="button" className="btn btn-primary" disabled={markedCount === 0 || saving} onClick={handleSave}>
-                  {saving ? "Saving..." : "Save Attendance"}
-                </button>
+                {session.canMark && (
+                  <button type="button" className="btn btn-primary" disabled={markedCount === 0 || saving} onClick={handleSave}>
+                    {saving ? "Saving..." : "Save Attendance"}
+                  </button>
+                )}
               </div>
               {saved && <p className="notice" role="status">Attendance saved.</p>}
-            </>
+            </div>
           )}
         </div>
       </section>
