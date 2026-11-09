@@ -12,7 +12,7 @@ export async function findById(id) {
 }
 
 // Both inserts succeed or neither does: no orphaned accounts if onboarding fails.
-export async function createStudent({ fullName, email, passwordHash, onboarding }) {
+export async function createStudent({ fullName, email, passwordHash, onboarding, planId, preferredCentreId }) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -41,6 +41,14 @@ export async function createStudent({ fullName, email, passwordHash, onboarding 
        onboarding.address, onboarding.postalCode,
        onboarding.emergencyContactName, onboarding.emergencyContactPhone,
        onboarding.emergencyContactRelationship]
+    );
+    // Store the initial application for the admin review queue.
+    // Payment verification and Shihan approval happen separately.
+    await client.query(
+      `INSERT INTO membership_applications
+         (student_id, plan_id, centre_id, approval_status, book_status)
+       VALUES ($1, $2, $3, 'pending', 'not_prepared')`,
+      [user.id, planId, preferredCentreId]
     );
     await client.query("COMMIT");
     return user;

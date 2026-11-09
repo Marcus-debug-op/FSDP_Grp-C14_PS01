@@ -7,7 +7,7 @@ import "../../css/discover.css";
 export default function Dojos() {
   const [region, setRegion] = useState("All");
   const [query, setQuery] = useState("");
-  const [hideUnavailable, setHideUnavailable] = useState(false);
+  const [hideUnavailable, setHideUnavailable] = useState(true);
 
   const q = query.trim().toLowerCase();
   const matches = dojos.filter(
@@ -35,39 +35,75 @@ export default function Dojos() {
           </p>
         </ScrollReveal>
 
-        <div className="chip-row" role="group" aria-label="Filter by region">
-          {["All", ...REGIONS].map((r) => (
-            <button key={r} type="button" className="chip" aria-pressed={region === r} onClick={() => setRegion(r)}>
-              {r} <span className="chip-count">{countFor(r)}</span>
-            </button>
-          ))}
-        </div>
+        <div className="dj-layout">
+          <aside className="dj-filter-panel" aria-label="Dojo filters">
+            <div className="dj-filter-heading">
+              <div>
+                <p className="dj-filter-overline">EXPLORE LOCATIONS</p>
+                <h2>Find your dojo</h2>
+              </div>
+              {(region !== "All" || query || hideUnavailable) && (
+                <button className="dj-reset" type="button" onClick={() => {
+                  setRegion("All");
+                  setQuery("");
+                  setHideUnavailable(false);
+                }}>Clear</button>
+              )}
+            </div>
 
-        <div className="dj-tools">
-          <label className="dj-search">
-            <span className="sr-only">Search dojos</span>
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)}
-                   placeholder="Search by name or address" />
-          </label>
-          <label className="dj-check">
-            <input type="checkbox" checked={hideUnavailable} onChange={(e) => setHideUnavailable(e.target.checked)} />
-            Hide closed dojos
-          </label>
-        </div>
+            <label className="dj-search dj-search-sidebar">
+              <span className="dj-filter-label">Search locations</span>
+              <input type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+                placeholder="Name, area or address" />
+            </label>
 
-        <p className="result-count" aria-live="polite">
-          Showing {sorted.length} {sorted.length === 1 ? "dojo" : "dojos"}
-          {unavailableCount > 0 && ` \u00b7 ${unavailableCount} currently unavailable`}
-        </p>
+            <div className="dj-region-filter">
+              <p className="dj-filter-label" id="dj-region-label">Region</p>
+              <div className="dj-region-list" role="group" aria-labelledby="dj-region-label">
+                {["All", ...REGIONS].map((r) => (
+                  <button key={r} type="button" className="dj-region-option"
+                    aria-pressed={region === r} onClick={() => setRegion(r)}>
+                    <span>{r === "All" ? "All regions" : r}</span>
+                    <span className="dj-region-count">{countFor(r)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {sorted.length === 0 ? (
-          <p>No dojos match. Try another region or clear the search.</p>
-        ) : (
-          // key restarts the entrance animation whenever the filters change
-          <div className="dj-grid" key={`${region}-${q}-${hideUnavailable}`}>
-            {sorted.map((d, i) => <DojoCard key={d.code} dojo={d} index={i} />)}
+            <label className="dj-check dj-check-sidebar">
+              <input type="checkbox" checked={hideUnavailable}
+                onChange={(e) => setHideUnavailable(e.target.checked)} />
+              <span>Show available dojos only</span>
+            </label>
+          </aside>
+
+          <div className="dj-results">
+            <div className="dj-results-head">
+              <div>
+                <p className="dj-results-overline">DOJO DIRECTORY</p>
+                <h2>{region === "All" ? "Explore our dojos" : `${region} dojos`}</h2>
+              </div>
+              <p className="result-count" aria-live="polite">
+                {sorted.length} {sorted.length === 1 ? "dojo" : "dojos"}
+                {unavailableCount > 0 && ` · ${unavailableCount} unavailable`}
+              </p>
+            </div>
+
+            {sorted.length === 0 ? (
+              <div className="dj-no-results">
+                <h3>No dojos found</h3>
+                <p>Try another region or change your search.</p>
+                <button type="button" className="dj-reset" onClick={() => {
+                  setRegion("All"); setQuery(""); setHideUnavailable(false);
+                }}>Clear all filters</button>
+              </div>
+            ) : (
+              <div className="dj-grid" key={`${region}-${q}-${hideUnavailable}`}>
+                {sorted.map((d, i) => <DojoCard key={d.code} dojo={d} index={i} />)}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </section>
   );

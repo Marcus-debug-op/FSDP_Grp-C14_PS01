@@ -14,6 +14,8 @@ const adminLinks = [
   { to: "/dashboard", label: "Dashboard", end: true },
   { to: "/admin/schedule", label: "Timetable" },
   { to: "/admin/attendance", label: "Attendance" },
+  { to: "/admin/students", label: "Students" },
+  { to: "/admin/private-lessons", label: "Lessons" },
   { to: "/admin/dojos", label: "Dojos" },
 ];
 
@@ -109,12 +111,14 @@ export default function Navbar() {
                   {firstName} <span aria-hidden="true">▾</span>
                 </button>
                 <div id="account-menu" className={accountOpen ? "account-menu open" : "account-menu"}>
+                  <Link to="/profile" onClick={close}>My Profile</Link>
                   <Link to="/settings" onClick={close}>Settings</Link>
                   <button type="button" onClick={handleSignOut}>Sign Out</button>
                 </div>
               </div>
 
               {/* Phones: the same two items, listed in the menu */}
+              <NavLink to="/profile" onClick={close} className="nav-link nav-mobile-only">My Profile</NavLink>
               <NavLink to="/settings" onClick={close} className="nav-link nav-mobile-only">Settings</NavLink>
               <button type="button" className="btn btn-outline btn-small nav-mobile-only" onClick={handleSignOut}>
                 Sign Out
