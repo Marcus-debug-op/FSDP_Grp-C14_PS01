@@ -1,26 +1,77 @@
 /* Styles for the belt card and belt progression (FSDP-9, FSDP-62). Uses the tokens from index.css. */
-.belt-swatch { display: inline-block; width: 1.1rem; height: 1.1rem; border: 1px solid var(--text); border-radius: 50%; vertical-align: -0.15rem; margin-right: 0.5rem; }
-.belt-card h3 { display: flex; align-items: center; }
-.belt-card .details dt { min-width: 7.5rem; }
+.belt-swatch { display: inline-block; width: 1.1rem; height: 1.1rem; border: 1px solid rgba(38, 35, 31, 0.5); border-radius: 50%; vertical-align: -0.15rem; margin-right: 0.6rem; flex: 0 0 auto; box-shadow: 0 0 0 3px rgba(38, 35, 31, 0.06); }
 .belt-error { color: var(--accent-text); }
 
-.belt-history-title { margin-top: 2.5rem; padding-bottom: 0.7rem; border-bottom: 1px solid var(--line); }
+/* ---------- Page layout ---------- */
+.belt-section { background: linear-gradient(180deg, var(--surface) 0, var(--bg) 420px); }
+.belt-header { margin-bottom: 2.2rem; }
+.belt-header h1 { margin-bottom: 0.4rem; font-size: clamp(2rem, 4vw, 2.6rem); letter-spacing: -0.02em; }
+.belt-lead { margin: 0; max-width: 560px; color: var(--muted); font-size: 1.02rem; }
+
+/* Two balanced columns; the left one stays in view while the history scrolls. */
+.belt-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.belt-col { display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
+.belt-col-side { position: sticky; top: 6rem; }
+
+/* Shared card surface for the three panels on the page. */
+.card.belt-card, .belt-panel, .belt-next {
+  position: relative; overflow: hidden;
+  background: #fff; border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(168, 63, 49, 0.06), 0 10px 28px -12px rgba(168, 63, 49, 0.28);
+}
+
+/* ---------- Current belt card ---------- */
+.card.belt-card { padding: 2rem 1.75rem 1.5rem; align-items: stretch; }
+.belt-stripe { position: absolute; inset: 0 0 auto 0; height: 8px; box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08); }
+.belt-card-label, .belt-next-label { margin: 0 0 0.45rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.belt-card h3 { display: flex; align-items: center; margin: 0 0 1.2rem; font-size: 1.85rem; letter-spacing: -0.02em; }
+.belt-card .details { margin: 0; }
+.belt-card .details div { padding: 0.65rem 0; align-items: baseline; }
+.belt-card .details div:last-child { border-bottom: 0; padding-bottom: 0; }
+.belt-card .details dt { min-width: 7.5rem; font-size: 0.88rem; }
+.belt-card .details dd { font-weight: 600; text-transform: capitalize; }
+
+/* ---------- Next-step card ---------- */
+.belt-next { padding: 1.5rem 1.75rem; background: linear-gradient(135deg, #fff 0%, #faf3f1 100%); }
+.belt-next-title { margin: 0 0 0.35rem; font-size: 1.25rem; letter-spacing: -0.01em; }
+.belt-next-note { margin: 0 0 1.1rem; font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+
+/* ---------- History panel ---------- */
+.belt-panel { padding: 1.6rem 1.75rem 0.6rem; }
+.belt-history-title { margin: 0; padding-bottom: 0.9rem; border-bottom: 1px solid var(--line); font-size: 1.25rem; letter-spacing: -0.01em; }
 
 /* Progression ladder (FSDP-62) */
-/* The left margin moves the line in so the dot's left edge (half its width minus half the line) meets the card's left edge. */
-.belt-ladder { list-style: none; padding: 0; margin: 1.5rem 0 0 calc(0.525rem - 1px); border-left: 2px solid var(--line); }
-/* Ladder margin + 2px line + this padding = the card's padding + its 1px border, so history rows line up with the card's content. */
-.belt-ladder li { position: relative; padding: 0 0 1.6rem 0.975rem; }
+/* The left margin moves the line in so the dot's left edge (half its width minus half the line) meets the panel's content edge. */
+.belt-ladder { list-style: none; padding: 0; margin: 1.4rem 0 0 calc(0.525rem - 1px); border-left: 2px solid var(--line); }
+.belt-ladder li { position: relative; padding: 0 0 1.4rem 1.1rem; }
+.belt-ladder li:last-child { padding-bottom: 1rem; }
 /* The dot is 0.525rem from edge to centre (0.8rem wide + 2px borders); -1px reaches the middle of the 2px line. */
-.belt-ladder li::before { content: ""; position: absolute; left: calc(-1px - 0.525rem); top: 0.5rem; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: var(--bg); border: 2px solid var(--line); }
+.belt-ladder li::before { content: ""; position: absolute; left: calc(-1px - 0.525rem); top: 0.95rem; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: var(--bg); border: 2px solid var(--line); }
 .belt-ladder li.achieved::before { background: var(--accent); border-color: var(--accent); }
 .belt-ladder li.current::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(168, 63, 49, 0.2); }
-.belt-rank-name { font-family: var(--font-heading); font-size: 1.2rem; display: flex; align-items: center; }
-/* Indented by the swatch's width + margin (1.1rem + 0.5rem) so it lines up with the belt name. */
-.belt-rank-meta { color: var(--muted); font-size: 0.9rem; margin: 0.1rem 0 0; padding-left: 1.6rem; }
+
+/* Each entry sits on a soft tile; the current belt is highlighted. */
+.belt-ladder li .belt-rank-name { padding: 0.55rem 0.9rem 0; border-radius: 12px 12px 0 0; }
+.belt-ladder li .belt-rank-meta { padding: 0.1rem 0.9rem 0.6rem 2.6rem; border-radius: 0 0 12px 12px; }
+.belt-ladder li.current .belt-rank-name, .belt-ladder li.current .belt-rank-meta { background: var(--surface); }
+
+.belt-rank-name { font-family: var(--font-heading); font-size: 1.2rem; display: flex; align-items: center; flex-wrap: wrap; }
+/* Indented by the swatch's width + margin (1.1rem + 0.6rem) so it lines up with the belt name. */
+.belt-rank-meta { color: var(--muted); font-size: 0.88rem; margin: 0; padding-left: 1.7rem; }
 .belt-ladder li.upcoming .belt-rank-name, .belt-ladder li.upcoming .belt-rank-meta { color: var(--muted); }
 .belt-reqs { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.9rem; color: var(--muted); }
 .belt-reqs li { padding: 0; margin: 0 0 0.2rem; list-style: disc; }
 .belt-reqs li::before { content: none; }
-.belt-status-tag { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; border: 1px solid var(--accent); color: var(--accent-text); padding: 0.05rem 0.5rem; margin-left: 0.6rem; }
-.belt-note { font-size: 0.9rem; color: var(--muted); margin-top: 1.5rem; }
+.belt-status-tag { font-family: var(--font-body); font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; background: var(--accent); color: #fff; padding: 0.15rem 0.6rem; border-radius: 999px; margin-left: 0.7rem; }
+.belt-note { font-size: 0.9rem; color: var(--muted); margin: 1.2rem 0 1rem; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .belt-grid { grid-template-columns: minmax(0, 1fr); }
+  .belt-col-side { position: static; }
+}
+@media (max-width: 560px) {
+  .card.belt-card, .belt-panel, .belt-next { border-radius: 14px; padding-left: 1.15rem; padding-right: 1.15rem; }
+  .belt-card h3 { font-size: 1.55rem; }
+  .belt-card .details div { flex-direction: column; gap: 0.1rem; }
+}

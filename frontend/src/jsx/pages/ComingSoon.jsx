@@ -29,17 +29,8 @@ export const PLACEHOLDERS = {
       "Past lessons marked Attended, Missed or Cancelled",
     ],
   },
-  grading: {
-    kanji: "審査",
-    eyebrow: "Grading",
-    title: "Grading applications are on their way.",
-    lead: "Soon you'll be able to check your eligibility and apply for the next grading here.",
-    planned: [
-      "See whether you meet the requirements for your next rank",
-      "Apply for grading and pay the exam fee",
-      "Track the status of your application",
-    ],
-  },
+  // "grading" used to live here. It is a real page now:
+  // pages/student/Grading.jsx, routed at /grading.   FSDP-61, FSDP-63
   checkIn: {
     kanji: "出席",
     eyebrow: "Check in",
