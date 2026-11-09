@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 // Instructor links. Each page is added here once it exists.
 const links = [
   { to: "/dashboard", label: "My Classes" },
+  { to: "/instructor/calendar", label: "Calendar" },
 ];
 
 // Same look as the student navbar, using its classes from index.css.

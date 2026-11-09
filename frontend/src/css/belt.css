@@ -4,14 +4,20 @@
 .belt-card .details dt { min-width: 7.5rem; }
 .belt-error { color: var(--accent-text); }
 
+.belt-history-title { margin-top: 2.5rem; padding-bottom: 0.7rem; border-bottom: 1px solid var(--line); }
+
 /* Progression ladder (FSDP-62) */
-.belt-ladder { list-style: none; padding: 0; margin: 1.5rem 0 0; border-left: 2px solid var(--line); }
-.belt-ladder li { position: relative; padding: 0 0 1.6rem 1.6rem; }
-.belt-ladder li::before { content: ""; position: absolute; left: -0.45rem; top: 0.5rem; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: var(--bg); border: 2px solid var(--line); }
+/* The left margin moves the line in so the dot's left edge (half its width minus half the line) meets the card's left edge. */
+.belt-ladder { list-style: none; padding: 0; margin: 1.5rem 0 0 calc(0.525rem - 1px); border-left: 2px solid var(--line); }
+/* Ladder margin + 2px line + this padding = the card's padding + its 1px border, so history rows line up with the card's content. */
+.belt-ladder li { position: relative; padding: 0 0 1.6rem 0.975rem; }
+/* The dot is 0.525rem from edge to centre (0.8rem wide + 2px borders); -1px reaches the middle of the 2px line. */
+.belt-ladder li::before { content: ""; position: absolute; left: calc(-1px - 0.525rem); top: 0.5rem; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: var(--bg); border: 2px solid var(--line); }
 .belt-ladder li.achieved::before { background: var(--accent); border-color: var(--accent); }
 .belt-ladder li.current::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(168, 63, 49, 0.2); }
 .belt-rank-name { font-family: var(--font-heading); font-size: 1.2rem; display: flex; align-items: center; }
-.belt-rank-meta { color: var(--muted); font-size: 0.9rem; margin: 0.1rem 0 0; }
+/* Indented by the swatch's width + margin (1.1rem + 0.5rem) so it lines up with the belt name. */
+.belt-rank-meta { color: var(--muted); font-size: 0.9rem; margin: 0.1rem 0 0; padding-left: 1.6rem; }
 .belt-ladder li.upcoming .belt-rank-name, .belt-ladder li.upcoming .belt-rank-meta { color: var(--muted); }
 .belt-reqs { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.9rem; color: var(--muted); }
 .belt-reqs li { padding: 0; margin: 0 0 0.2rem; list-style: disc; }

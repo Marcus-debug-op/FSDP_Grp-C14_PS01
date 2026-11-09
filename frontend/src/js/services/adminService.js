@@ -26,6 +26,7 @@ async function request(path, { method = "GET", body, query } = {}) {
 }
 
 export const getOverview = () => request("/overview");
+export const getDashboard = (view) => request("/dashboard", { query: { view } });
 
 export const getCentres = () => request("/centres").then((d) => d.centres);
 export const createCentre = (centre) => request("/centres", { method: "POST", body: centre }).then((d) => d.centre);
@@ -36,3 +37,21 @@ export const setCentreStatus = (id, isActive) =>
 export const getInstructors = () => request("/instructors").then((d) => d.instructors);
 
 export const getSchedule = (query) => request("/schedule", { query });
+
+export const getAttendance = (query) => request("/attendance", { query });
+export const getSessionAttendance = (id) => request(`/attendance/sessions/${id}`);
+
+export const getBelts = () => request("/belts").then((d) => d.belts);
+export const searchStudents = (query) => request("/students", { query });
+export const getStudent = (id) => request(`/students/${id}`);
+
+export const getPrivateLessons = (view) => request("/private-lessons", { query: { view } });
+export const getInstructorAvailability = (query) =>
+  request("/private-lessons/availability", { query }).then((d) => d.instructors);
+export const createPrivateLesson = (lesson) => request("/private-lessons", { method: "POST", body: lesson }).then((d) => d.lesson);
+export const schedulePrivateLesson = (id, lesson) =>
+  request(`/private-lessons/${id}/schedule`, { method: "PATCH", body: lesson }).then((d) => d.lesson);
+export const cancelPrivateLesson = (id, adminNote) =>
+  request(`/private-lessons/${id}/cancel`, { method: "PATCH", body: { adminNote } });
+export const recordPrivateLessonOutcome = (id, outcome) =>
+  request(`/private-lessons/${id}/outcome`, { method: "PATCH", body: { outcome } }).then((d) => d.lesson);

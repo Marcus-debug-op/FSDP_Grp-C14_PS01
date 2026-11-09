@@ -1,4 +1,5 @@
 import * as Admin from "../model/adminModel.js";
+import * as Lessons from "../model/privateLessonModel.js";
 import { addDays, dateFromToday, isValidDate, isValidTime, mondayOf } from "../utils/schedule.js";
 
 class HttpError extends Error {
@@ -16,7 +17,9 @@ function handle(fn) {
     try {
       await fn(req, res);
     } catch (err) {
-      if (err instanceof HttpError) return res.status(err.status).json({ message: err.message });
+      if (err instanceof HttpError || err instanceof Lessons.LessonError) {
+        return res.status(err.status).json({ message: err.message });
+      }
       next(err);
     }
   };
@@ -115,3 +118,201 @@ export const getSchedule = handle(async (req, res) => {
 });
 
 
+
+export const listAttendance = handle(async (req, res) => {
+  const from = validDate(req.query.from || dateFromToday(-6), "From date");
+  const to = validDate(req.query.to || dateFromToday(0), "To date");
+  if (to < from) throw badRequest("The end date must be on or after the start date.");
+  if (addDays(from, 92) < to) throw badRequest("Please choose a range of 3 months or less.");
+  const student = text(req.query.student, "Student search", { required: false, max: 100 }) || undefined;
+  const sessions = await Admin.listAttendanceSessions({
+    from,
+    to,
+    centreId: optionalId(req.query.centreId, "Dojo ID"),
+    instructorId: optionalId(req.query.instructorId, "Instructor ID"),
+    student,
+  });
+  res.json({ from, to, sessions });
+});
+
+export const getSessionAttendance = handle(async (req, res) => {
+  const id = parseId(req.params.id, "Session ID");
+  const session = await Admin.findAttendanceSession(id);
+  if (!session) throw notFound("Session not found.");
+  res.json({ session, students: await Admin.listSessionStudents(id) });
+});
+
+function monthStart(value) {
+  return `${value.slice(0, 7)}-01`;
+}
+
+function monthEnd(value) {
+  const [y, m] = value.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  return `${value.slice(0, 7)}-${String(last).padStart(2, "0")}`;
+}
+
+function shiftMonths(value, months) {
+  const [y, m] = value.split("-").map(Number);
+  const date = new Date(y, m - 1 + months, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+export const dashboard = handle(async (req, res) => {
+  const view = req.query.view === "monthly" ? "monthly" : "daily";
+  const today = dateFromToday(0);
+
+  if (view === "daily") {
+    const yesterday = addDays(today, -1);
+    const weekFrom = addDays(today, -6);
+    const [todayTotals, yesterdayTotals, weekTotals, series, centres, todayClasses, todaySessions] = await Promise.all([
+      Admin.getAttendanceTotals({ from: today, to: today }),
+      Admin.getAttendanceTotals({ from: yesterday, to: yesterday }),
+      Admin.getAttendanceTotals({ from: weekFrom, to: today }),
+      Admin.getDailyAttendance({ from: addDays(today, -13), to: today }),
+      Admin.getCentreAttendance({ from: weekFrom, to: today }),
+      Admin.listSchedule({ from: today, to: today }),
+      Admin.listAttendanceSessions({ from: today, to: today }),
+    ]);
+    const counts = new Map(todaySessions.map((s) => [`session-${s.id}`, s]));
+    const classes = todayClasses.map((item) => {
+      const session = counts.get(item.id);
+      return {
+        ...item,
+        sessionId: session?.id ?? null,
+        booked: session?.booked ?? 0,
+        attended: session ? session.present + session.late : 0,
+        absent: session?.absent ?? 0,
+      };
+    });
+    return res.json({
+      view, today,
+      period: { from: today, to: today, label: "Today" },
+      totals: { ...todayTotals, classesScheduled: todayClasses.length },
+      previous: { label: "yesterday", ...yesterdayTotals },
+      rolling: { label: "last 7 days", from: weekFrom, to: today, ...weekTotals },
+      series, centres, classes,
+    });
+  }
+
+  const from = monthStart(today);
+  const to = monthEnd(today);
+  const lastFrom = shiftMonths(today, -1);
+  const lastTo = monthEnd(lastFrom);
+  const [monthTotals, lastTotals, series, centres] = await Promise.all([
+    Admin.getAttendanceTotals({ from, to: today }),
+    Admin.getAttendanceTotals({ from: lastFrom, to: lastTo }),
+    Admin.getMonthlyAttendance({ from: shiftMonths(today, -5), to: today }),
+    Admin.getCentreAttendance({ from, to: today }),
+  ]);
+  res.json({
+    view, today,
+    period: { from, to, label: "This month" },
+    totals: monthTotals,
+    previous: { label: "last month", ...lastTotals },
+    series, centres,
+  });
+});
+
+export const listBelts = handle(async (req, res) => {
+  res.json({ belts: await Admin.listBelts() });
+});
+
+export const searchStudents = handle(async (req, res) => {
+  const query = text(req.query.q, "Search", { required: false, max: 100 }) || undefined;
+  const result = await Admin.searchStudents({
+    query,
+    centreId: optionalId(req.query.centreId, "Dojo ID"),
+    beltId: optionalId(req.query.beltId, "Belt ID"),
+    limit: 50,
+  });
+  res.json({ ...result, limit: 50 });
+});
+
+export const getStudent = handle(async (req, res) => {
+  const id = parseId(req.params.id, "Student ID");
+  const student = await Admin.findStudentProfile(id);
+  if (!student) throw notFound("Student not found.");
+  const [attendanceSummary, recentAttendance, memberships, gradings] = await Promise.all([
+    Admin.getStudentAttendanceSummary(id),
+    Admin.listStudentAttendance(id, 10),
+    Admin.listStudentMemberships(id),
+    Admin.listStudentGradings(id),
+  ]);
+  res.json({ student, attendanceSummary, recentAttendance, memberships, gradings });
+});
+
+const LESSON_VIEWS = ["requests", "upcoming", "past"];
+const LESSON_OUTCOMES = ["completed", "no_show"];
+
+function singaporeToday() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" });
+}
+
+function lessonSlot(body) {
+  const date = validDate(body.date, "Lesson date");
+  if (date < singaporeToday()) throw badRequest("The lesson date cannot be in the past.");
+  const { startTime, endTime } = timeRange(body.startTime, body.endTime);
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
+  const minutes = eh * 60 + em - (sh * 60 + sm);
+  if (minutes < 30) throw badRequest("A private lesson must be at least 30 minutes.");
+  if (minutes > 180) throw badRequest("A private lesson can be at most 3 hours.");
+  return { date, startTime, endTime };
+}
+
+export const listPrivateLessons = handle(async (req, res) => {
+  const view = req.query.view || "requests";
+  if (!LESSON_VIEWS.includes(view)) throw badRequest("View must be requests, upcoming or past.");
+  const [lessons, counts] = await Promise.all([Lessons.listLessons(view), Lessons.countLessons()]);
+  res.json({ view, lessons, counts });
+});
+
+export const getInstructorAvailability = handle(async (req, res) => {
+  const date = validDate(req.query.date, "Lesson date");
+  const { startTime, endTime } = timeRange(req.query.startTime, req.query.endTime);
+  const excludeLessonId = optionalId(req.query.lessonId, "Lesson ID") || null;
+  res.json({ instructors: await Lessons.listInstructorAvailability({ date, startTime, endTime, excludeLessonId }) });
+});
+
+export const createPrivateLesson = handle(async (req, res) => {
+  const body = req.body || {};
+  const lesson = await Lessons.scheduleLesson({
+    studentId: parseId(body.studentId, "Student"),
+    centreId: parseId(body.centreId, "Dojo"),
+    instructorId: parseId(body.instructorId, "Instructor"),
+    ...lessonSlot(body),
+    adminNote: text(body.adminNote, "Note", { required: false, max: 500 }) || null,
+    adminId: req.user.id,
+  });
+  res.status(201).json({ lesson });
+});
+
+export const schedulePrivateLesson = handle(async (req, res) => {
+  const body = req.body || {};
+  const lesson = await Lessons.scheduleLesson({
+    lessonId: parseId(req.params.id, "Lesson ID"),
+    centreId: parseId(body.centreId, "Dojo"),
+    instructorId: parseId(body.instructorId, "Instructor"),
+    ...lessonSlot(body),
+    adminNote: text(body.adminNote, "Note", { required: false, max: 500 }) || null,
+    adminId: req.user.id,
+  });
+  res.json({ lesson });
+});
+
+export const cancelPrivateLesson = handle(async (req, res) => {
+  const body = req.body || {};
+  const result = await Lessons.cancelLesson({
+    lessonId: parseId(req.params.id, "Lesson ID"),
+    adminNote: text(body.adminNote, "Reason", { required: false, max: 500 }) || null,
+  });
+  res.json(result);
+});
+
+export const recordPrivateLessonOutcome = handle(async (req, res) => {
+  const outcome = (req.body || {}).outcome;
+  if (!LESSON_OUTCOMES.includes(outcome)) throw badRequest("Outcome must be completed or no_show.");
+  const lesson = await Lessons.recordOutcome({ lessonId: parseId(req.params.id, "Lesson ID"), outcome });
+  res.json({ lesson });
+});
