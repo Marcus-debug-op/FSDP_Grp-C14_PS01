@@ -1,6 +1,12 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import * as User from "../model/userModel.js";
+// the contact fields on the Profile step are validated by the same
+// rules as the settings page, so the two can't drift apart. This file used to
+// have its own boundedText(); it now comes from here instead, unchanged.
+import {
+  LIMITS, boundedText, phoneNumber, postalCode, assertPresent,
+} from "../utils/contactValidation.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FILE_TYPES = new Map([
@@ -31,12 +37,6 @@ function createToken(user) {
 }
 function publicUser(row) {
   return { id: row.id, fullName: row.full_name, email: row.email, role: row.role };
-}
-function boundedText(value, max, label) {
-  if (value !== undefined && value !== null && typeof value !== "string") throw new Error(`${label} must be text.`);
-  const text = (value || "").trim();
-  if (text.length > max) throw new Error(`${label} is too long (max ${max} characters).`);
-  return text;
 }
 function parseEvidence(input) {
   if (!input) return { fileName: null, fileMime: null, fileBuffer: null };
@@ -88,8 +88,37 @@ export async function signup(req, res, next) {
         experienceNotes: beginner ? "" : boundedText(req.body.experienceNotes, 1000, "Training background"),
         ...(!beginner ? parseEvidence(req.body.experienceFile) : { fileName: null, fileMime: null, fileBuffer: null }),
         preferredName: boundedText(req.body.preferredName, 100, "Preferred name"),
-        phone: boundedText(req.body.phone, 30, "Phone number"),
+        // Was boundedText, so any text up to 30 characters was accepted. Now
+        // checked by the same rule as the settings page, which means a number
+        // that sign-up lets through is a number the settings page will too.
+        phone: phoneNumber(req.body.phone, "Phone number"),
         trainingGoal: boundedText(req.body.trainingGoal, 500, "Training goal"),
+
+        // address and emergency contact, collected on the Profile
+        // step after the membership step. All required except the
+        // relationship, which is a nicety rather than something we'd need in
+        // an emergency.
+        address: assertPresent(
+          boundedText(req.body.address, LIMITS.address, "Address"),
+          "Please enter your home address."
+        ),
+        postalCode: assertPresent(
+          postalCode(req.body.postalCode),
+          "Please enter your 6-digit postal code."
+        ),
+        emergencyContactName: assertPresent(
+          boundedText(req.body.emergencyContactName, LIMITS.emergencyContactName, "Emergency contact name"),
+          "Please enter the name of your emergency contact."
+        ),
+        emergencyContactPhone: assertPresent(
+          phoneNumber(req.body.emergencyContactPhone, "Emergency contact number"),
+          "Please enter a contact number for your emergency contact."
+        ),
+        emergencyContactRelationship: boundedText(
+          req.body.emergencyContactRelationship,
+          LIMITS.emergencyContactRelationship,
+          "Relationship"
+        ),
       };
     } catch (error) {
       return res.status(400).json({ message: error.message });
@@ -99,6 +128,14 @@ export async function signup(req, res, next) {
     return res.status(201).json({ token: createToken(user), user: publicUser(user) });
   } catch (err) {
     if (err.code === "23505") return res.status(409).json({ message: "An account with this email already exists." });
+    // A CHECK constraint rejected something. Validation above should have
+    // caught it first, so this is a backstop: without it the sign-up
+    // transaction rolls back and the student sees the generic 500 from
+    // server.js with no idea which field was wrong.
+    if (err.code === "23514") {
+      const field = err.constraint === "student_onboarding_postal_code_check" ? "postal code" : "details";
+      return res.status(400).json({ message: `Please check your ${field} and try again.` });
+    }
     next(err);
   }
 }

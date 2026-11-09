@@ -3,9 +3,14 @@
 //   users(id, full_name, email)                              read-only here
 //   student_onboarding(user_id, phone, address, postal_code, emergency_*)
 //                                                            the editable fields
-//   student_profiles(user_id, home_centre_id)                home dojo only
 //   centres(id, name, address, is_active)                    read-only here
 //   memberships + membership_plans                           read-only here
+//
+// student_onboarding is the ONLY table this file writes to. Nothing here
+// touches student_profiles, which DATABASE.md marks SHARED: the nearest dojo
+// is worked out from the student's postal code each time it is asked for, and
+// is never stored. student_profiles.home_centre_id stays what it always was,
+// something the front desk sets.
 //
 // Belt is read through beltModel.findCurrentBelt, not re-queried here, so the
 // Settings page and the My Belt page can never disagree.
@@ -70,20 +75,6 @@ export async function updateContactDetails(userId, changes) {
   return findContactDetails(userId);
 }
 
-// The student's home dojo and membership, both view-only on this page.
-// Returns undefined when the student has no student_profiles row (not yet
-// enrolled by the front desk).
-export async function findHomeDojo(userId) {
-  const result = await pool.query(
-    `SELECT p.home_centre_id, c.name AS centre_name, c.address AS centre_address
-     FROM student_profiles p
-     LEFT JOIN centres c ON c.id = p.home_centre_id
-     WHERE p.user_id = $1`,
-    [userId]
-  );
-  return result.rows[0];
-}
-
 // The membership in force today, or the most recent one. Same query shape as
 // studentModel.getMembership so the dashboard and this page agree.
 export async function findMembership(userId) {
@@ -102,30 +93,12 @@ export async function findMembership(userId) {
   return result.rows[0] || null;
 }
 
-// Every dojo a student could choose as their home dojo. Closed and
+// Every dojo the nearest-dojo ranking can consider. Closed and
 // under-renovation dojos (is_active = FALSE) are left out on purpose: there is
-// no point suggesting somewhere nobody can train.
+// no point telling a student their nearest dojo is one nobody can train at.
 export async function listActiveCentres() {
   const result = await pool.query(
     "SELECT id, name, address FROM centres WHERE is_active ORDER BY name"
   );
   return result.rows;
-}
-
-// Sets the student's home dojo, but only to a dojo that exists and is open.
-// The centre check is inside the statement so a closed or made-up centre id
-// matches no row rather than being written and rejected later.
-// Returns undefined if nothing was updated (no profile row, or a bad centre id),
-// which the controller turns into a clear message.
-export async function setHomeDojo(userId, centreId) {
-  const result = await pool.query(
-    `UPDATE student_profiles
-        SET home_centre_id = $2, updated_at = NOW()
-      WHERE user_id = $1
-        AND EXISTS (SELECT 1 FROM centres c WHERE c.id = $2 AND c.is_active)
-      RETURNING home_centre_id`,
-    [userId, centreId]
-  );
-  if (result.rowCount === 0) return undefined;
-  return findHomeDojo(userId);
 }

@@ -32,16 +32,12 @@ async function request(path, { method = "GET", body } = {}) {
 }
 
 // Everything the settings page shows, in one call:
-//   { profileReady, contact, belt, membership, homeDojo, nearbyDojos }
-// belt and membership are for display only -- there is no route that writes them.
+//   { contact, belt, membership, nearestDojo, nearbyDojos }
+// belt, membership and the dojos are all for display only -- there is no route
+// that writes any of them.
 export const getSettings = () => request("/api/student/settings");
 
 // Saves only the fields passed in, and returns the same shape as getSettings,
-// with nearbyDojos recalculated from the new postal code.
+// with nearestDojo and nearbyDojos recalculated from the new postal code.
 export const saveSettings = (changes) =>
   request("/api/student/settings", { method: "PATCH", body: changes });
-
-// Confirms one of the suggested dojos as the student's home dojo.
-// Returns the same shape as getSettings.
-export const chooseHomeDojo = (centreId) =>
-  request("/api/student/settings/home-dojo", { method: "PUT", body: { centreId } });
