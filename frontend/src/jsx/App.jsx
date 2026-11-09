@@ -20,6 +20,7 @@ import AdminStudents from "./pages/admin/AdminStudents.jsx";
 import AdminStudentProfile from "./pages/admin/AdminStudentProfile.jsx";
 import AdminPrivateLessons from "./pages/admin/AdminPrivateLessons.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
+import BookLessons from "./pages/student/BookLessons.jsx";
 import ClassRoster from "./pages/instructor/ClassRoster.jsx";
 import InstructorCalendar from "./pages/instructor/InstructorCalendar.jsx";
 
@@ -50,8 +51,9 @@ export default function App() {
           {/* Student payments (Stripe Checkout, test mode) */}
           <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
           <Route path="/payments/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+          {/* Browse and book group lessons */}
+          <Route path="/lessons" element={<ProtectedRoute><BookLessons /></ProtectedRoute>} />
           {/* Student pages not built yet: placeholders until the real pages are ready */}
-          <Route path="/lessons" element={<ProtectedRoute><ComingSoon page="lessons" /></ProtectedRoute>} />
           <Route path="/timetable" element={<ProtectedRoute><ComingSoon page="timetable" /></ProtectedRoute>} />
           <Route path="/check-in" element={<ProtectedRoute><ComingSoon page="checkIn" /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><ComingSoon page="settings" /></ProtectedRoute>} />
