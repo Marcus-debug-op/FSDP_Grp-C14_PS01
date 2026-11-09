@@ -35,6 +35,9 @@ export default function SignUpForm() {
     fullName: "", email: "", dateOfBirth: "", gender: "", password: "", confirm: "",
     experienceLevel: "beginner", experienceNotes: "", previousRank: "",
     phone: "", trainingGoal: "",
+    // FSDP-42: contact details, captured on the Profile step after membership.
+    address: "", postalCode: "",
+    emergencyContactName: "", emergencyContactPhone: "", emergencyContactRelationship: "",
   });
   const [plans, setPlans] = useState([]);
   const [planLoading, setPlanLoading] = useState(true);
@@ -144,6 +147,13 @@ export default function SignUpForm() {
     if (!selectedPlanId || !plans.some(p => p.id === selectedPlanId)) return setError("Please choose a registration plan.");
     if (!profilePhoto) return setError("Please upload a profile photo to complete your profile.");
     if (!details.phone.trim()) return setError("Please enter your contact number.");
+    // FSDP-42. These repeat the server's rules so a typo is caught here rather
+    // than after a round trip. The postal code strips spaces first, exactly as
+    // utils/contactValidation.js does, so "579 783" is accepted both places.
+    if (!details.address.trim()) return setError("Please enter your home address.");
+    if (!/^\d{6}$/.test(details.postalCode.replace(/\s/g, ""))) return setError("Please enter your 6-digit postal code.");
+    if (!details.emergencyContactName.trim()) return setError("Please enter the name of your emergency contact.");
+    if (!details.emergencyContactPhone.trim()) return setError("Please enter a contact number for your emergency contact.");
     if (!details.trainingGoal.trim()) return setError("Please enter your Aikido training goal.");
     if (centreLoading || centreError || !centres.some(c => String(c.id) === preferredCentreId)) {
       return setError("Please select an available preferred dojo.");
@@ -170,6 +180,11 @@ export default function SignUpForm() {
         profilePhoto: photoData ? { name: profilePhoto.name, type: profilePhoto.type, dataUrl: photoData } : null,
         phone: details.phone.trim(),
         trainingGoal: details.trainingGoal.trim(),
+        address: details.address.trim(),
+        postalCode: details.postalCode.replace(/\s/g, ""),
+        emergencyContactName: details.emergencyContactName.trim(),
+        emergencyContactPhone: details.emergencyContactPhone.trim(),
+        emergencyContactRelationship: details.emergencyContactRelationship.trim(),
         preferredCentreId: Number(preferredCentreId),
       });
       // AuthContext handles the signed-in state and existing dashboard redirect.
@@ -304,6 +319,21 @@ export default function SignUpForm() {
               {!centreLoading && !centreError && centres.length === 0 && <small role="alert">No active dojos available.</small>}
             </label>
             <label>Contact number <input required type="tel" autoComplete="tel" placeholder="e.g. +65 9123 4567" maxLength={30} value={details.phone} onChange={e => update("phone", e.target.value)} /></label>
+            <label>Postal code <input required type="text" autoComplete="postal-code" inputMode="numeric" placeholder="e.g. 579783" maxLength={7} value={details.postalCode} onChange={e => update("postalCode", e.target.value)} /></label>
+            <label className="signup-span-full">Home address <textarea required maxLength={255} rows={2} placeholder="e.g. Blk 123 Bishan Street 12, #08-34" autoComplete="street-address" value={details.address} onChange={e => update("address", e.target.value)} />
+              <span className="form-hint">Include your unit number, if you have one. We use your postal code to suggest dojos near you.</span>
+            </label>
+
+            {/* FSDP-42. Its own group with a line of explanation: people give a
+                far more useful answer when they know why a dojo is asking. */}
+            <div className="signup-span-full">
+              <strong>Emergency contact</strong>
+              <p className="form-hint">Who we should call if something happens while you're training.</p>
+            </div>
+            <label>Contact name <input required type="text" placeholder="e.g. Mei Ling Tan" maxLength={100} value={details.emergencyContactName} onChange={e => update("emergencyContactName", e.target.value)} /></label>
+            <label>Their contact number <input required type="tel" placeholder="e.g. +65 9123 4567" maxLength={30} value={details.emergencyContactPhone} onChange={e => update("emergencyContactPhone", e.target.value)} /></label>
+            <label className="signup-span-full">Relationship to you <span className="signup-optional">(optional)</span><input type="text" placeholder="e.g. Mother" maxLength={50} value={details.emergencyContactRelationship} onChange={e => update("emergencyContactRelationship", e.target.value)} /></label>
+
             <label className="signup-span-full">Your training goal <textarea required maxLength={500} rows={3} placeholder="What would you like to achieve through Aikido?" value={details.trainingGoal} onChange={e => update("trainingGoal", e.target.value)} /></label>
           </div>
           <p className="signup-soft-note">When you finish, your pending account will be created and you will proceed to secure payment.</p>

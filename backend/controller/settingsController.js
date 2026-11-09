@@ -1,99 +1,63 @@
 // CONTROLLER: FSDP-42 "Manage personal settings".
 //
-// What a student may change here: phone, address, emergency contact, and
-// (after confirming a suggestion) which dojo is their home dojo.
-// What they may not: belt and membership. Those are sent for display only and
-// there is no route that writes them.
+// What a student may change here: phone, address, emergency contact.
+// What they may not: belt, membership, or any dojo. Those are sent for display
+// only and there is no route that writes them.
+//
+// The nearest dojo is not a setting. It is derived from the student's postal
+// code on every request, so it follows the address automatically and there is
+// nothing stored that could fall out of step with it.
 import * as Settings from "../model/settingsModel.js";
 import { findCurrentBelt } from "../model/beltModel.js";
-import { isPostalCode, rankByProximity, proximityLabel } from "../utils/singaporeLocation.js";
+import { rankByProximity, proximityLabel } from "../utils/singaporeLocation.js";
+import {
+  LIMITS, boundedText, phoneNumber, postalCode, assertEmergencyPair, assertPresent,
+} from "../utils/contactValidation.js";
 
 const NEARBY_LIMIT = 5;
-
-// ---------------------------------------------------------------------
-// Validation. Each helper throws a message meant to be read by a student,
-// and the handlers turn that into a 400.
-// ---------------------------------------------------------------------
-
-// Trims, checks the type, and enforces the column's own length limit.
-// Treats null/undefined as "not given" -> "", matching how this table stores
-// optional text (NOT NULL DEFAULT '').
-function text(value, max, label) {
-  if (value === undefined || value === null) return "";
-  if (typeof value !== "string") throw new Error(`${label} must be text.`);
-  const trimmed = value.trim();
-  if (trimmed.length > max) throw new Error(`${label} is too long (max ${max} characters).`);
-  return trimmed;
-}
-
-// Deliberately permissive about shape -- students write numbers as
-// "+65 9123 4567", "91234567" or "9123-4567" and all of those are fine. It
-// only insists on enough digits to be a real number, so an obvious typo is
-// caught at the form rather than being discovered in an emergency.
-function phone(value, label) {
-  const trimmed = text(value, 30, label);
-  if (trimmed === "") return "";
-  if (!/^[0-9+()\-\s]+$/.test(trimmed)) {
-    throw new Error(`${label} can only contain digits, spaces and + - ( ).`);
-  }
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length < 8 || digits.length > 15) {
-    throw new Error(`${label} must have between 8 and 15 digits.`);
-  }
-  return trimmed;
-}
-
-// '' means "not given yet", which is allowed. Anything else must be a real
-// 6-digit Singapore postal code, because the nearby-dojo suggestions read it.
-//
-// Checked directly rather than through text() so that every wrong value gets
-// the same useful message. Going through text() first would answer "579 7831"
-// with "too long (max 6 characters)", which tells a student nothing about what
-// a postal code should look like.
-//
-// Inner spaces are stripped before checking: a postal code is only ever
-// digits, so "579 783" is unambiguously 579783 and worth accepting rather
-// than bouncing back at someone who typed it the way they say it.
-function postalCode(value) {
-  if (value === undefined || value === null) return "";
-  if (typeof value !== "string") throw new Error("Postal code must be text.");
-  const compact = value.replace(/\s/g, "");
-  if (compact === "") return "";
-  if (!isPostalCode(compact)) {
-    throw new Error("Postal code must be 6 digits, for example 579783.");
-  }
-  return compact;
-}
 
 // Builds the set of columns to update from whatever the request actually sent.
 // A field the request leaves out is left alone, so the page can save one
 // section without blanking the others.
+//
+// The rules themselves live in utils/contactValidation.js, because the sign-up
+// form accepts the same fields and the two must not drift apart.
 function readChanges(body) {
   const changes = {};
-  if ("phone" in body) changes.phone = phone(body.phone, "Phone number");
+  if ("phone" in body) changes.phone = phoneNumber(body.phone, "Phone number");
   // One field for the whole address, unit number included.
-  if ("address" in body) changes.address = text(body.address, 255, "Address");
+  if ("address" in body) changes.address = boundedText(body.address, LIMITS.address, "Address");
   if ("postalCode" in body) changes.postal_code = postalCode(body.postalCode);
 
   const hasName = "emergencyContactName" in body;
   const hasPhone = "emergencyContactPhone" in body;
-  if (hasName) changes.emergency_contact_name = text(body.emergencyContactName, 100, "Emergency contact name");
-  if (hasPhone) changes.emergency_contact_phone = phone(body.emergencyContactPhone, "Emergency contact number");
+  if (hasName) {
+    changes.emergency_contact_name =
+      boundedText(body.emergencyContactName, LIMITS.emergencyContactName, "Emergency contact name");
+  }
+  if (hasPhone) {
+    changes.emergency_contact_phone = phoneNumber(body.emergencyContactPhone, "Emergency contact number");
+  }
   if ("emergencyContactRelationship" in body) {
-    changes.emergency_contact_relationship = text(body.emergencyContactRelationship, 50, "Relationship");
+    changes.emergency_contact_relationship =
+      boundedText(body.emergencyContactRelationship, LIMITS.emergencyContactRelationship, "Relationship");
   }
 
-  // A name with no number is no use in an emergency, and a number with no name
-  // is no use either. Only check when the request touches one of them, so
-  // saving an unrelated field can't fail on this.
-  if (hasName || hasPhone) {
-    const name = hasName ? changes.emergency_contact_name : undefined;
-    const number = hasPhone ? changes.emergency_contact_phone : undefined;
-    if (name !== undefined && number !== undefined) {
-      if (name !== "" && number === "") throw new Error("Please give a contact number for your emergency contact.");
-      if (number !== "" && name === "") throw new Error("Please give a name for your emergency contact.");
-    }
+  // The emergency contact is required at sign-up, so it must not be possible
+  // to blank it afterwards -- otherwise the sign-up requirement means nothing.
+  // Editing it is fine; emptying it is not. This only fires when the request
+  // actually carries the field, so a student editing their phone number is
+  // unaffected, as is an older account that never had one recorded.
+  if (hasName) {
+    assertPresent(changes.emergency_contact_name, "Please give a name for your emergency contact.");
   }
+  if (hasPhone) {
+    assertPresent(changes.emergency_contact_phone, "Please give a contact number for your emergency contact.");
+  }
+  assertEmergencyPair(
+    hasName ? changes.emergency_contact_name : undefined,
+    hasPhone ? changes.emergency_contact_phone : undefined
+  );
 
   return changes;
 }
@@ -165,9 +129,8 @@ function publicMembership(row, onboarding) {
 // The whole settings payload, rebuilt from the database every time so a save
 // and a reload can never show different things.
 async function buildSettings(userId, contactRow) {
-  const [belt, home, membership, centres] = await Promise.all([
+  const [belt, membership, centres] = await Promise.all([
     findCurrentBelt(userId),
-    Settings.findHomeDojo(userId),
     Settings.findMembership(userId),
     Settings.listActiveCentres(),
   ]);
@@ -182,19 +145,17 @@ async function buildSettings(userId, contactRow) {
     distanceKm: row.distanceKm,
     label: proximityLabel(row),
     sameDistrict: row.sameDistrict,
-    isHomeDojo: Boolean(home && home.home_centre_id === row.id),
   }));
 
   return {
-    // false means the front desk hasn't recorded a belt and home dojo yet.
-    // Contact details are still editable; the home-dojo button is not.
-    profileReady: Boolean(home),
     contact: publicContact(contactRow),
     belt: publicBelt(belt),
     membership: publicMembership(membership, contactRow),
-    homeDojo: home && home.home_centre_id
-      ? { id: home.home_centre_id, name: home.centre_name, address: home.centre_address }
-      : null,
+    // The closest open dojo to the student's postal code. Worked out fresh on
+    // every request and never stored, so it simply follows the address: there
+    // is nothing for a student to pick and nothing to go stale. null until
+    // they give a usable postal code.
+    nearestDojo: nearbyDojos[0] || null,
     nearbyDojos,
   };
 }
@@ -220,7 +181,8 @@ export async function getSettings(req, res, next) {
 
 // PATCH /api/student/settings  (students only)
 // Saves only the fields the request sent, then returns the full page payload,
-// including the nearby-dojo list recalculated from the new postal code.
+// with the nearest dojo and the nearby list recalculated from the new postal
+// code -- which is how changing an address changes the dojo shown.
 export async function updateSettings(req, res, next) {
   try {
     if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
@@ -246,33 +208,6 @@ export async function updateSettings(req, res, next) {
   }
 }
 
-// PUT /api/student/settings/home-dojo  (students only)
-// The student has seen the suggestions and picked one. Nothing changes a home
-// dojo without going through here, so it is never a side effect of saving an
-// address.
-export async function setHomeDojo(req, res, next) {
-  try {
-    const centreId = Number(req.body?.centreId);
-    if (!Number.isInteger(centreId) || centreId < 1) {
-      return res.status(400).json({ message: "Please choose a dojo." });
-    }
-
-    const contact = await Settings.findContactDetails(req.user.id);
-    if (!contact) return res.status(409).json({ message: NO_RECORD });
-
-    const updated = await Settings.setHomeDojo(req.user.id, centreId);
-    if (!updated) {
-      // Either the student has no profile row, or that dojo is closed or gone.
-      const home = await Settings.findHomeDojo(req.user.id);
-      return res.status(home ? 400 : 409).json({
-        message: home
-          ? "That dojo isn't open for new students right now."
-          : "Your belt and home dojo haven't been recorded yet. Please ask the front desk.",
-      });
-    }
-
-    res.json(await buildSettings(req.user.id, contact));
-  } catch (err) {
-    next(err);
-  }
-}
+// There is deliberately no route here that writes a dojo. The nearest dojo is
+// derived from the address the student already saves through PATCH, so it needs
+// no endpoint of its own and cannot disagree with the address it came from.

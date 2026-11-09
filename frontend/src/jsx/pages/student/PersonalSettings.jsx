@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getSettings, saveSettings, chooseHomeDojo } from "../../../js/services/settingsService.js";
+import { getSettings, saveSettings } from "../../../js/services/settingsService.js";
 import { colourHex, formatDate, timeAtBelt } from "../../../js/utils/beltFormat.js";
 import "../../../css/settings.css";
 
 // FSDP-42 "Manage personal settings".
 //
 // Editable: phone, address, emergency contact.
-// View-only: belt and membership -- shown as plain text with no inputs, because
-// only an instructor or the front desk can change those.
-// Changing the address changes the nearby-dojo suggestions below it; the
-// student then has to confirm one before their home dojo actually moves.
+// View-only: belt, membership, and the nearest dojo.
+//
+// The nearest dojo is an indicator, not a setting. It is worked out from the
+// postal code the student saves, so it moves when their address moves and
+// there is nothing for them to choose, confirm or keep up to date.
 
 // The fields this page can save, and the label used when reporting an error
 // about one. Keys match the API's camelCase body.
@@ -54,7 +55,6 @@ export default function PersonalSettings() {
   const [saveError, setSaveError] = useState("");
   const [status, setStatus] = useState("");    // success message, announced politely
   const [saving, setSaving] = useState(false);
-  const [choosing, setChoosing] = useState(0); // centre id currently being confirmed
 
   useEffect(() => {
     getSettings()
@@ -96,33 +96,21 @@ export default function PersonalSettings() {
     setSaving(true);
     setSaveError("");
     setStatus("");
-    // Remember whether the address moved, so the confirmation can say so.
+    // Remember whether the address moved, so the confirmation can name the new
+    // nearest dojo rather than just saying "Saved".
     const addressChanged = "postalCode" in changes || "address" in changes;
     try {
       const payload = await saveSettings(changes);
       applyPayload(
         payload,
-        addressChanged && payload.nearbyDojos.length > 0
-          ? "Saved. Your nearby dojos have been updated below."
+        addressChanged && payload.nearestDojo
+          ? `Saved. Your nearest dojo is now ${payload.nearestDojo.name}.`
           : "Saved."
       );
     } catch (err) {
       setSaveError(err.message);
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleChooseDojo(centre) {
-    setChoosing(centre.id);
-    setSaveError("");
-    setStatus("");
-    try {
-      applyPayload(await chooseHomeDojo(centre.id), `${centre.name} is now your home dojo.`);
-    } catch (err) {
-      setSaveError(err.message);
-    } finally {
-      setChoosing(0);
     }
   }
 
@@ -160,7 +148,9 @@ export default function PersonalSettings() {
     );
   }
 
-  const { belt, membership, homeDojo, nearbyDojos, profileReady } = data;
+  const { belt, membership, nearestDojo, nearbyDojos } = data;
+  // nearestDojo is nearbyDojos[0], so the rest are the runners-up.
+  const others = nearbyDojos.slice(1);
 
   return (
     <section className="section">
@@ -180,9 +170,24 @@ export default function PersonalSettings() {
         {saveError && <p className="form-error" role="alert">{saveError}</p>}
 
         {/* ---------- Editable ---------- */}
-        <form className="set-form" onSubmit={handleSubmit} noValidate>
-          <fieldset className="set-card" disabled={saving}>
-            <legend className="set-card-title">Contact details</legend>
+        {/* One card around both groups, with the save row as its footer, so
+            it reads as saving everything in the card -- not just the group
+            sitting directly above the button. */}
+        <form
+          className="set-card set-form"
+          onSubmit={handleSubmit}
+          noValidate
+          aria-labelledby="set-form-title"
+        >
+          <div className="set-form-head">
+            <h2 className="set-card-title" id="set-form-title">Your details</h2>
+            <p className="set-card-note">
+              Both sections below are saved together with the button at the bottom.
+            </p>
+          </div>
+
+          <fieldset className="set-section" disabled={saving}>
+            <legend className="set-section-title">Contact details</legend>
 
             <div className="set-grid">
               <label className="set-span-full">
@@ -234,8 +239,8 @@ export default function PersonalSettings() {
             </div>
           </fieldset>
 
-          <fieldset className="set-card" disabled={saving}>
-            <legend className="set-card-title">Emergency contact</legend>
+          <fieldset className="set-section" disabled={saving}>
+            <legend className="set-section-title">Emergency contact</legend>
             <p className="set-card-note">
               Who we should call if something happens during training.
             </p>
@@ -300,65 +305,58 @@ export default function PersonalSettings() {
           </div>
         </form>
 
-        {/* ---------- Nearby dojos, driven by the postal code above ---------- */}
+        {/* ---------- Nearest dojo, derived from the postal code above ---------- */}
         <section className="set-card set-nearby" aria-labelledby="set-nearby-title">
-          <h2 className="set-card-title" id="set-nearby-title">Dojos near you</h2>
+          <h2 className="set-card-title" id="set-nearby-title">Your nearest dojo</h2>
 
-          {homeDojo ? (
-            <p className="set-card-note">
-              Your home dojo is <strong>{homeDojo.name}</strong>. It's used to pick which
-              classes your dashboard suggests.
-            </p>
+          {nearestDojo ? (
+            <>
+              {/* The indicator itself: one dojo, stated plainly. Deliberately
+                  not a live region -- the save confirmation above already
+                  announces the new nearest dojo by name, and two live regions
+                  would read it out twice. */}
+              <div className="set-nearest">
+                <p className="set-nearest-label">Closest to your address</p>
+                <h3 className="set-nearest-name">{nearestDojo.name}</h3>
+                <p className="set-dojo-address">{nearestDojo.address}</p>
+                <p className="set-dojo-distance">
+                  {nearestDojo.label}
+                  {nearestDojo.area && <span className="set-dojo-area"> · {nearestDojo.area}</span>}
+                </p>
+              </div>
+
+              {others.length > 0 && (
+                <>
+                  <p className="set-card-note set-others-title">Others nearby</p>
+                  <ul className="set-dojo-list">
+                    {others.map((dojo) => (
+                      <li key={dojo.id}>
+                        <div className="set-dojo-text">
+                          <h3>{dojo.name}</h3>
+                          <p className="set-dojo-address">{dojo.address}</p>
+                          <p className="set-dojo-distance">
+                            {dojo.label}
+                            {dojo.area && <span className="set-dojo-area"> · {dojo.area}</span>}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              <p className="set-card-note set-fineprint">
+                Worked out from your postal code area rather than your exact address, so
+                treat the distances as rough. Closed and renovating dojos aren't listed.
+                This updates by itself whenever you change your address.
+              </p>
+            </>
           ) : (
-            <p className="set-card-note">You don't have a home dojo yet.</p>
-          )}
-
-          {nearbyDojos.length === 0 ? (
             <p className="set-empty">
               {form.postalCode
-                ? "Save your postal code to see the dojos closest to you."
-                : "Add your postal code above and we'll show the dojos closest to you."}
+                ? "Save your postal code and we'll show the dojo closest to you."
+                : "Add your postal code above and we'll show the dojo closest to you."}
             </p>
-          ) : (
-            <>
-              <ul className="set-dojo-list">
-                {nearbyDojos.map((dojo) => (
-                  <li key={dojo.id} className={dojo.isHomeDojo ? "is-home" : undefined}>
-                    <div className="set-dojo-text">
-                      <h3>
-                        {dojo.name}
-                        {dojo.isHomeDojo && <span className="set-chip">Home dojo</span>}
-                      </h3>
-                      <p className="set-dojo-address">{dojo.address}</p>
-                      <p className="set-dojo-distance">
-                        {dojo.label}
-                        {dojo.area && <span className="set-dojo-area"> · {dojo.area}</span>}
-                      </p>
-                    </div>
-                    {!dojo.isHomeDojo && (
-                      <button
-                        type="button"
-                        className="btn btn-outline btn-small"
-                        onClick={() => handleChooseDojo(dojo)}
-                        disabled={!profileReady || choosing !== 0}
-                      >
-                        {choosing === dojo.id ? "Saving..." : "Make this my home dojo"}
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <p className="set-card-note set-fineprint">
-                Distances are rough, worked out from your postal code area rather than your
-                exact address. Closed and renovating dojos aren't listed.
-              </p>
-              {!profileReady && (
-                <p className="set-empty">
-                  Your belt and home dojo haven't been recorded yet, so you can't set a home
-                  dojo here. Ask the front desk and these buttons will start working.
-                </p>
-              )}
-            </>
           )}
         </section>
 
@@ -366,8 +364,8 @@ export default function PersonalSettings() {
         <section className="set-card set-readonly" aria-labelledby="set-readonly-title">
           <h2 className="set-card-title" id="set-readonly-title">Account, belt and membership</h2>
           <p className="set-card-note">
-            These are kept by the school and can't be edited here. To change your name or
-            email address, ask the front desk.
+            None of these can be edited here. To change your name or email address, ask the
+            front desk; your nearest dojo follows the address you set above.
             {belt && <> See <Link to="/belt-progress">My Belt</Link> for your full history.</>}
           </p>
 
@@ -408,8 +406,8 @@ export default function PersonalSettings() {
               <div><dt>Renews on</dt><dd>{formatDate(membership.endDate)}</dd></div>
             )}
             <div>
-              <dt>Home dojo</dt>
-              <dd>{homeDojo ? homeDojo.name : "Not set"}</dd>
+              <dt>Nearest dojo</dt>
+              <dd>{nearestDojo ? nearestDojo.name : "Add a postal code to see this"}</dd>
             </div>
           </dl>
         </section>
