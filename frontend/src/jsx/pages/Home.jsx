@@ -73,7 +73,7 @@ function HomePage() {
       <section className="hero hero-split" ref={heroRef}>
         <div className={`container hs-grid hero-scroll-content ${photoOk ? "" : "no-photo"}`}>
           <div className="hs-copy">
-            <p className="eyebrow">Aikido School &mdash; Singapore</p>
+            <p className="eyebrow">Aikido Shinju-Kai &mdash; Singapore</p>
             <p className="hero-kanji" aria-hidden="true">合気道</p>
             <h1>Begin Your Aikido Journey</h1>
             <span className="rule" aria-hidden="true"></span>

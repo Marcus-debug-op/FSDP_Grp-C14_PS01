@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { getRegistrationPlans, getRegistrationCentres } from "../../js/services/registrationService.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const STEPS = ["Account", "Experience", "Membership", "Profile"];
@@ -35,6 +36,35 @@ export default function SignUpForm() {
     experienceLevel: "beginner", experienceNotes: "", previousRank: "",
     phone: "", trainingGoal: "",
   });
+  const [plans, setPlans] = useState([]);
+  const [planLoading, setPlanLoading] = useState(true);
+  const [planError, setPlanError] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
+  useEffect(() => {
+    let active = true;
+    getRegistrationPlans().then((rows) => {
+      if (!active) return;
+      setPlans(rows);
+      setSelectedPlanId(rows.length === 1 ? rows[0].id : null);
+      setPlanLoading(false);
+    }).catch((err) => {
+      if (active) { setPlanError(err.message); setPlanLoading(false); }
+    });
+    return () => { active = false; };
+  }, []);
+  const [centres, setCentres] = useState([]);
+  const [centreLoading, setCentreLoading] = useState(true);
+  const [centreError, setCentreError] = useState("");
+  const [preferredCentreId, setPreferredCentreId] = useState("");
+  useEffect(() => {
+    let active = true;
+    getRegistrationCentres().then((rows) => {
+      if (active) { setCentres(rows); setCentreLoading(false); }
+    }).catch((err) => {
+      if (active) { setCentreError(err.message); setCentreLoading(false); }
+    });
+    return () => { active = false; };
+  }, []);
   const [experienceFile, setExperienceFile] = useState(null);
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [photoPreview, setPhotoPreview] = useState("");
@@ -60,6 +90,7 @@ export default function SignUpForm() {
       if (details.password.length < 8 || details.password.length > 72) return setError("Password must be between 8 and 72 characters.");
       if (details.password !== details.confirm) return setError("Passwords do not match.");
     }
+    if (step === 2 && (!selectedPlanId || !plans.some(p => p.id === selectedPlanId))) return setError("Choose a registration plan before continuing.");
     if (step === 1 && details.experienceNotes.length > 1000) return setError("Training notes must be under 1,000 characters.");
     // The Membership step always navigates to Profile; never creates an account.
     goTo(Math.min(3, step + 1));
@@ -110,13 +141,20 @@ export default function SignUpForm() {
     // Ignore an accidental second click while the Profile step is animating in.
     if (Date.now() - lastStepChangeAt.current < TRANSITION_GUARD_MS) return;
     setError("");
+    if (!selectedPlanId || !plans.some(p => p.id === selectedPlanId)) return setError("Please choose a registration plan.");
     if (!profilePhoto) return setError("Please upload a profile photo to complete your profile.");
     if (!details.phone.trim()) return setError("Please enter your contact number.");
     if (!details.trainingGoal.trim()) return setError("Please enter your Aikido training goal.");
+    if (centreLoading || centreError || !centres.some(c => String(c.id) === preferredCentreId)) {
+      return setError("Please select an available preferred dojo.");
+    }
     setSubmitting(true);
     try {
       const evidence = details.experienceLevel === "experienced" && experienceFile ? await fileToDataUrl(experienceFile) : null;
       const photoData = profilePhoto ? await fileToDataUrl(profilePhoto) : null;
+      // Store only the server-issued plan identifier, not a client-supplied price.
+      // The post-signup page resumes checkout if Stripe is temporarily unavailable.
+      sessionStorage.setItem("pending_registration_plan_id", String(selectedPlanId));
       await signup({
         fullName: details.fullName.trim(),
         email: details.email.trim(),
@@ -128,9 +166,11 @@ export default function SignUpForm() {
         previousRank: details.experienceLevel === "experienced" ? details.previousRank.trim() : "",
         experienceFile: evidence ? { name: experienceFile.name, type: experienceFile.type, dataUrl: evidence } : null,
         membershipSelection: "annual_pending_payment",
+        selectedRegistrationPlanId: selectedPlanId,
         profilePhoto: photoData ? { name: profilePhoto.name, type: profilePhoto.type, dataUrl: photoData } : null,
         phone: details.phone.trim(),
         trainingGoal: details.trainingGoal.trim(),
+        preferredCentreId: Number(preferredCentreId),
       });
       // AuthContext handles the signed-in state and existing dashboard redirect.
     } catch (err) {
@@ -198,14 +238,37 @@ export default function SignUpForm() {
         </>}
 
         {step === 2 && <>
-          <h2>Your membership</h2>
-          <p className="signup-subtitle">Explore the annual plan before completing your profile.</p>
-          <div className="signup-membership-card">
-            <div className="signup-plan-top"><span>STUDENT MEMBERSHIP</span><span className="signup-plan-tag">12 MONTHS</span></div>
-            <h3>Annual membership</h3>
-            <p>Access your student membership journey and upcoming training features.</p>
-            <div className="signup-plan-note"><strong>Payment coming soon</strong><span>Stripe is not connected yet. No payment will be collected, and membership stays pending until payment is implemented.</span></div>
-          </div>
+          <h2>Choose your membership</h2>
+          <p className="signup-subtitle">Select your registration package. Payment is completed securely after profile setup.</p>
+          {planLoading && <p role="status" className="signup-soft-note">Loading membership options...</p>}
+          {planError && <p role="alert" className="signup-soft-note">Could not load membership plans: {planError}</p>}
+          {!planLoading && !planError && plans.length === 0 && (
+            <p role="alert" className="signup-soft-note">No registration package is available. Please contact the team.</p>
+          )}
+          {!planLoading && !planError && plans.map((plan) => (
+            <label key={plan.id} className="signup-membership-card" style={{ display: "block", cursor: "pointer", marginBottom: "1rem" }}>
+              <div className="signup-plan-top">
+                <span>NEW STUDENT REGISTRATION</span>
+                <span className="signup-plan-tag">{plan.durationMonths} MONTHS</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginTop: "1rem" }}>
+                <h3 style={{ margin: 0 }}>{plan.name}</h3>
+                <input
+                  type="radio"
+                  name="registrationPlan"
+                  value={plan.id}
+                  checked={selectedPlanId === plan.id}
+                  onChange={() => setSelectedPlanId(plan.id)}
+                  aria-label={`Select ${plan.name}`}
+                />
+              </div>
+              <p style={{ marginTop: ".75rem" }}><strong>SGD {(plan.priceCents / 100).toFixed(2)}</strong> one-time registration charge</p>
+              <div className="signup-plan-note">
+                <strong>Payment required to activate membership</strong>
+                <span>Complete your profile next, then proceed to Stripe Checkout. Training credits and top-ups are separate.</span>
+              </div>
+            </label>
+          ))}
         </>}
 
         {step === 3 && <>
@@ -227,10 +290,23 @@ export default function SignUpForm() {
                 </div>
               </div>
             </div>
+            <label className="signup-span-full">Preferred dojo
+              <select
+                required
+                value={preferredCentreId}
+                onChange={e => setPreferredCentreId(e.target.value)}
+                disabled={centreLoading || !!centreError}
+              >
+                <option value="">{centreLoading ? "Loading dojos…" : "Select your preferred dojo"}</option>
+                {centres.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+              </select>
+              {centreError && <small role="alert">Could not load dojos: {centreError}</small>}
+              {!centreLoading && !centreError && centres.length === 0 && <small role="alert">No active dojos available.</small>}
+            </label>
             <label>Contact number <input required type="tel" autoComplete="tel" placeholder="e.g. +65 9123 4567" maxLength={30} value={details.phone} onChange={e => update("phone", e.target.value)} /></label>
             <label className="signup-span-full">Your training goal <textarea required maxLength={500} rows={3} placeholder="What would you like to achieve through Aikido?" value={details.trainingGoal} onChange={e => update("trainingGoal", e.target.value)} /></label>
           </div>
-          <p className="signup-soft-note">When you finish, your account will be created and you'll be signed in.</p>
+          <p className="signup-soft-note">When you finish, your pending account will be created and you will proceed to secure payment.</p>
         </>}
       </div>
 
@@ -238,7 +314,7 @@ export default function SignUpForm() {
         {step > 0 && <button type="button" className="btn btn-outline" disabled={submitting} onClick={() => goTo(step - 1)}>Back</button>}
 
         {step < 3
-          ? <button type="button" className="btn btn-primary signup-next" onClick={next}>I am a beginner <span aria-hidden="true">→</span></button>
+          ? <button type="button" className="btn btn-primary signup-next" disabled={step === 2 && (planLoading || !!planError || !selectedPlanId)} onClick={next}>Continue <span aria-hidden="true">→</span></button>
           : <button type="submit" className="btn btn-primary signup-next" disabled={submitting}>{submitting ? "Creating account…" : "Create account →"}</button>}
       </div>
     </form>

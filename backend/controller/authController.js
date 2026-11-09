@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import * as User from "../model/userModel.js";
+import pool from "../db.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FILE_TYPES = new Map([
@@ -74,7 +75,14 @@ export async function signup(req, res, next) {
     if (!EMAIL_PATTERN.test(email) || email.length > 255) return res.status(400).json({ message: "Please enter a valid email address." });
     if (!["male", "female", "other", "prefer_not_to_say"].includes(req.body.gender)) return res.status(400).json({ message: "Please select a gender option." });
     if (password.length < 8 || password.length > 72) return res.status(400).json({ message: "Password must be 8–72 characters." });
-    if (req.body.membershipSelection !== "annual_pending_payment") return res.status(400).json({ message: "Please select the annual membership option." });
+    if (req.body.membershipSelection !== "annual_pending_payment") return res.status(400).json({ message: "Please select a registration plan." });
+    const selectedPlanId = Number(req.body.selectedRegistrationPlanId);
+    if (!Number.isInteger(selectedPlanId)) return res.status(400).json({ message: "Please choose a registration plan." });
+    const availablePlan = await pool.query(
+      "SELECT id FROM membership_plans WHERE id = $1 AND name = 'Registration (New Member)' AND is_active = TRUE",
+      [selectedPlanId]
+    );
+    if (!availablePlan.rowCount) return res.status(400).json({ message: "Selected registration plan is unavailable." });
     if (!["beginner", "experienced"].includes(req.body.experienceLevel)) return res.status(400).json({ message: "Please select your experience level." });
     let onboarding;
     try {
@@ -94,8 +102,19 @@ export async function signup(req, res, next) {
     } catch (error) {
       return res.status(400).json({ message: error.message });
     }
+    const preferredCentreId = Number(req.body.preferredCentreId);
+    if (!Number.isSafeInteger(preferredCentreId) || preferredCentreId <= 0) {
+      return res.status(400).json({ message: "Please choose a preferred dojo." });
+    }
+    const centreResult = await pool.query(
+      "SELECT id FROM centres WHERE id = $1 AND is_active = TRUE",
+      [preferredCentreId]
+    );
+    if (centreResult.rowCount === 0) {
+      return res.status(400).json({ message: "The selected dojo is unavailable." });
+    }
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.createStudent({ fullName, email, passwordHash, onboarding });
+    const user = await User.createStudent({ fullName, email, passwordHash, onboarding, planId: selectedPlanId, preferredCentreId });
     return res.status(201).json({ token: createToken(user), user: publicUser(user) });
   } catch (err) {
     if (err.code === "23505") return res.status(409).json({ message: "An account with this email already exists." });

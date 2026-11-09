@@ -13,7 +13,11 @@ export default function AuthPage() {
   const navigate = useNavigate();
 
   // Already signed in? Go straight to the dashboard.
-  if (user) return <Navigate to="/dashboard" replace />;
+  if (user) {
+    const pendingPlanId = sessionStorage.getItem("pending_registration_plan_id");
+    if (user.role === "student" && pendingPlanId) return <Navigate to="/registration/checkout" replace />;
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const isSignUp = pathname === "/signup";
 

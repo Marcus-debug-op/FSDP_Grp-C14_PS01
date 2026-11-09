@@ -23,3 +23,6 @@ async function request(path) {
 
 // Everything the student dashboard shows, in one call.
 export const getDashboard = () => request("/api/student/dashboard");
+
+// Student personal data: protected, no hardcoded values.
+export const getProfile = () => request("/api/student/profile");
