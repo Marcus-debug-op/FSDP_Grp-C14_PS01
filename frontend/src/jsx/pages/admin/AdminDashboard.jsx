@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { getDashboard } from "../../../js/services/adminService.js";
 import { formatDayHeading, formatTime } from "../../../js/utils/formatters.js";
 import BarChart from "../../components/admin/BarChart.jsx";
+import PageHeader from "../../components/admin/PageHeader.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -11,13 +12,6 @@ const VIEWS = [
   { key: "daily", label: "Daily" },
   { key: "monthly", label: "Monthly" },
 ];
-
-function greeting() {
-  const hour = Number(new Date().toLocaleString("en-SG", { hour: "numeric", hour12: false, timeZone: "Asia/Singapore" }));
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-}
 
 function monthName(period, style = "short") {
   const [y, m] = period.split("-").map(Number);
@@ -181,11 +175,7 @@ export default function AdminDashboard() {
   return (
     <section className="section">
       <div className="container">
-        <div className="adm-greeting">
-          <p className="adm-hero-eyebrow">Overview · All dojos</p>
-          <h1>{greeting()}, {user.fullName.split(" ")[0]}</h1>
-          <p className="lead">How classes and attendance are going across every dojo.</p>
-        </div>
+        <PageHeader eyebrow="Overview · All dojos" title="Admin Dashboard" lead="How classes and attendance are going across every dojo." />
 
         <div className="adm-toolbar">
           <div className="auth-toggle" role="group" aria-label="Dashboard view">
