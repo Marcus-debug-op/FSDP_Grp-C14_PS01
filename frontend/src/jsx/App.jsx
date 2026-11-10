@@ -18,6 +18,7 @@ import AdminSchedule from "./pages/admin/AdminSchedule.jsx";
 import ManageDojos from "./pages/admin/ManageDojos.jsx";
 import AdminAttendance from "./pages/admin/AdminAttendance.jsx";
 import AdminStudents from "./pages/admin/AdminStudents.jsx";
+import AdminMembershipApplications from "./pages/admin/AdminMembershipApplications.jsx";
 import AdminStudentProfile from "./pages/admin/AdminStudentProfile.jsx";
 import AdminPrivateLessons from "./pages/admin/AdminPrivateLessons.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
@@ -25,7 +26,6 @@ import StudentProfile from "./pages/student/StudentProfile.jsx";
 import PersonalSettings from "./pages/student/PersonalSettings.jsx";
 import ClassRoster from "./pages/instructor/ClassRoster.jsx";
 import InstructorCalendar from "./pages/instructor/InstructorCalendar.jsx";
-import Grading from "./pages/student/Grading.jsx";
 
 // AuthProvider makes the signed-in user available to every page below it.
 export default function App() {
@@ -62,11 +62,12 @@ export default function App() {
           {/* Personal settings is built: contact details editable, belt and membership view-only. FSDP-42 */}
           <Route path="/settings" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
           {/* Grading is a teammate's part; swap in their page when it's ready */}
-          <Route path="/grading" element={<ProtectedRoute><Grading /></ProtectedRoute>} />
+          <Route path="/grading" element={<ProtectedRoute><ComingSoon page="grading" /></ProtectedRoute>} />
           <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
           <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
           <Route path="/admin/attendance" element={<ProtectedRoute role="admin"><AdminAttendance /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute role="student"><StudentProfile /></ProtectedRoute>} />
+          <Route path="/admin/applications" element={<ProtectedRoute role="admin"><AdminMembershipApplications /></ProtectedRoute>} />
           <Route path="/admin/students" element={<ProtectedRoute role="admin"><AdminStudents /></ProtectedRoute>} />
           <Route path="/admin/students/:id" element={<ProtectedRoute role="admin"><AdminStudentProfile /></ProtectedRoute>} />
           <Route path="/admin/private-lessons" element={<ProtectedRoute role="admin"><AdminPrivateLessons /></ProtectedRoute>} />

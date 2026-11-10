@@ -78,6 +78,7 @@ export async function findStripeCustomer(studentId) {
 }
 
 export async function createPendingPayment({ studentId, purpose, amountCents }) {
+
   const result = await pool.query(
     `INSERT INTO payments (student_id, purpose, amount_cents, currency, status)
      VALUES ($1, $2, $3, 'sgd', 'pending') RETURNING id`,
@@ -92,6 +93,45 @@ export async function attachCheckoutSession(paymentId, sessionId) {
     [paymentId, sessionId]
   );
 }
+
+
+export async function linkRegistrationPayment(studentId, planId, paymentId) {
+  const result = await pool.query(
+    `UPDATE membership_applications a
+     SET registration_payment_id = $3
+     WHERE a.student_id = $1
+       AND a.plan_id = $2
+       AND a.approval_status = 'pending'
+       AND (
+         a.registration_payment_id IS NULL
+         OR NOT EXISTS (
+           SELECT 1
+           FROM payments old
+           WHERE old.id = a.registration_payment_id
+             AND old.status = 'succeeded'
+         )
+       )
+       AND EXISTS (
+         SELECT 1
+         FROM payments p
+         WHERE p.id = $3
+           AND p.student_id = $1
+           AND p.purpose = 'membership'
+           AND p.status = 'pending'
+           AND p.currency = 'sgd'
+           AND p.amount_cents = (
+             SELECT price_cents
+             FROM membership_plans
+             WHERE id = $2
+           )
+       )
+     RETURNING a.id`,
+    [studentId, planId, paymentId]
+  );
+
+  return result.rowCount === 1;
+}
+
 
 // Used by the success page: only the student's own payment is returned.
 export async function findBySession(studentId, sessionId) {
@@ -146,17 +186,24 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
       // New student registration is an APPLICATION payment, not membership activation.
       // Admin/Shihan approval and payment verification will activate it in Step 5.
       const isRegistration = plan.name === "Registration (New Member)";
+      
       if (isRegistration) {
         const application = await client.query(
-          `SELECT id FROM membership_applications
-           WHERE student_id = $1 AND plan_id = $2 AND approval_status = 'pending'
-           FOR UPDATE`,
-          [studentId, plan.id]
+          `SELECT id
+          FROM membership_applications
+          WHERE student_id = $1
+            AND plan_id = $2
+            AND registration_payment_id = $3`,
+          [studentId, plan.id, paymentId]
         );
+
         if (application.rowCount !== 1) {
-          throw new Error("Registration payment has no pending application to review.");
+          console.warn(
+            "Paid registration is not linked to current application",
+            paymentId
+          );
         }
-      } else {
+        } else {
       // Existing membership purchase / renewal: preserve the original behaviour.
       // A renewal starts the day after the current membership ends; otherwise today.
       await client.query(
