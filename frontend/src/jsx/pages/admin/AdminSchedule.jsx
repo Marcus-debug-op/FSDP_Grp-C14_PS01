@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getCentres, getInstructors, getSchedule } from "../../../js/services/adminService.js";
 import { addDays, formatDayHeading, formatTime, formatWeekRange, todayString } from "../../../js/utils/formatters.js";
+import PageHeader from "../../components/admin/PageHeader.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -150,13 +151,15 @@ export default function AdminSchedule() {
   return (
     <section className="section">
       <div className="container">
-        <p className="eyebrow">Timetable</p>
-        <h1>{selectedCentre ? selectedCentre.name : "Class Timetable"}</h1>
-        <p className="lead">
-          {selectedCentre
-            ? selectedCentre.address || "No address saved for this dojo yet."
-            : "Every class across all dojos. Choose a dojo or an instructor to narrow it down."}
-        </p>
+        <PageHeader
+          eyebrow="Scheduling · Timetable"
+          title={selectedCentre ? selectedCentre.name : "Class Timetable"}
+          lead={
+            selectedCentre
+              ? selectedCentre.address || "No address saved for this dojo yet."
+              : "Every class across all dojos. Choose a dojo or an instructor to narrow it down."
+          }
+        />
 
         <div className="filters">
           <label>
