@@ -11,6 +11,7 @@ import {
   searchStudents,
 } from "../../../js/services/adminService.js";
 import { formatShortDate, formatTime, todayString } from "../../../js/utils/formatters.js";
+import PageHeader from "../../components/admin/PageHeader.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -368,15 +369,16 @@ export default function AdminPrivateLessons() {
   return (
     <section className="section">
       <div className="container">
-        <p className="eyebrow">Scheduling</p>
-        <h1>Private Lessons</h1>
-        <p className="lead">Schedule one-to-one lessons with an instructor who is free. Credits are taken when you schedule and returned if you cancel.</p>
-
-        {!form && (
-          <div className="button-row">
-            <button type="button" className="btn btn-primary" onClick={() => openForm(null)}>New Private Lesson</button>
-          </div>
-        )}
+        <PageHeader
+          eyebrow="Scheduling"
+          title="Private Lessons"
+          lead="Schedule one-to-one lessons with an instructor who is free. Credits are taken when you schedule and returned if you cancel."
+          actions={
+            !form && (
+              <button type="button" className="btn btn-primary" onClick={() => openForm(null)}>New Private Lesson</button>
+            )
+          }
+        />
 
         {notice && <p className="notice admin-notice" role="status">{notice}</p>}
         {error && <p className="form-error" role="alert">{error}</p>}

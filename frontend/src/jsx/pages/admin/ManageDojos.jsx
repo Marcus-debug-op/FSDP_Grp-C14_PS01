@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { createCentre, getCentres, setCentreStatus, updateCentre } from "../../../js/services/adminService.js";
+import PageHeader from "../../components/admin/PageHeader.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -94,15 +95,16 @@ export default function ManageDojos() {
   return (
     <section className="section">
       <div className="container">
-        <p className="eyebrow">Setup</p>
-        <h1>Dojos</h1>
-        <p className="lead">Every venue where classes run. Open a dojo to see its weekly class timetable.</p>
-
-        {!editing && (
-          <div className="button-row">
-            <button type="button" className="btn btn-primary" onClick={() => openForm(null)}>Add Dojo</button>
-          </div>
-        )}
+        <PageHeader
+          eyebrow="Setup"
+          title="Dojos"
+          lead="Every venue where classes run. Open a dojo to see its weekly class timetable."
+          actions={
+            !editing && (
+              <button type="button" className="btn btn-primary" onClick={() => openForm(null)}>Add Dojo</button>
+            )
+          }
+        />
 
         {notice && <p className="notice admin-notice" role="status">{notice}</p>}
         {error && <p className="form-error" role="alert">{error}</p>}

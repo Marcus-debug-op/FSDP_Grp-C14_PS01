@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getBelts, getCentres, searchStudents } from "../../../js/services/adminService.js";
 import { formatShortDate } from "../../../js/utils/formatters.js";
+import PageHeader from "../../components/admin/PageHeader.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -62,9 +63,7 @@ export default function AdminStudents() {
   return (
     <section className="section">
       <div className="container">
-        <p className="eyebrow">Students</p>
-        <h1>Student Records</h1>
-        <p className="lead">Find any student across every dojo and open their full record.</p>
+        <PageHeader eyebrow="Records" title="Students" lead="Find any student across every dojo and open their full record." />
 
         <div className="filters">
           <label className="adm-search">

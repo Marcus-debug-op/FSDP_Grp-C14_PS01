@@ -1,9 +1,10 @@
 import { Routes, Route, useLocation } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext.jsx";
+import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
 import ScrollToTop from "./components/ScrollToTop.jsx";
+import AdminShell from "./components/admin/AdminShell.jsx";
 import Home from "./pages/Home.jsx";
 import PublicTimetable from "./pages/PublicTimetable.jsx";
 import About from "./pages/About.jsx";
@@ -37,10 +38,8 @@ export default function App() {
   ].includes(pathname);
   return (
     <AuthProvider>
-      <a className="skip-link" href="#main">Skip to content</a>
       <ScrollToTop />
-      <Navbar />
-      <main id="main" className={isPublicPage ? "public-page-enter" : ""} key={isPublicPage ? pathname : "private"}>
+      <SiteFrame isPublicPage={isPublicPage} pathname={pathname}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/classes" element={<PublicTimetable />} />
@@ -76,8 +75,23 @@ export default function App() {
           {/* Any unknown address falls back to the homepage */}
           <Route path="*" element={<Home />} />
         </Routes>
+      </SiteFrame>
+    </AuthProvider>
+  );
+}
+
+function SiteFrame({ isPublicPage, pathname, children }) {
+  const { user } = useAuth();
+  const adminArea = user?.role === "admin" && (pathname === "/dashboard" || pathname.startsWith("/admin/"));
+  if (adminArea) return <AdminShell>{children}</AdminShell>;
+  return (
+    <>
+      <a className="skip-link" href="#main">Skip to content</a>
+      <Navbar />
+      <main id="main" className={isPublicPage ? "public-page-enter" : ""} key={isPublicPage ? pathname : "private"}>
+        {children}
       </main>
       <Footer />
-    </AuthProvider>
+    </>
   );
 }

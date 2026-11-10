@@ -12,6 +12,13 @@ const VIEWS = [
   { key: "monthly", label: "Monthly" },
 ];
 
+function greeting() {
+  const hour = Number(new Date().toLocaleString("en-SG", { hour: "numeric", hour12: false, timeZone: "Asia/Singapore" }));
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 function monthName(period, style = "short") {
   const [y, m] = period.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-SG", { month: style, year: style === "long" ? "numeric" : undefined });
@@ -174,9 +181,11 @@ export default function AdminDashboard() {
   return (
     <section className="section">
       <div className="container">
-        <span className="role-badge">{user.role}</span>
-        <h1>Welcome, {user.fullName}</h1>
-        <p className="lead">How classes and attendance are going across every dojo.</p>
+        <div className="adm-greeting">
+          <p className="adm-hero-eyebrow">Overview · All dojos</p>
+          <h1>{greeting()}, {user.fullName.split(" ")[0]}</h1>
+          <p className="lead">How classes and attendance are going across every dojo.</p>
+        </div>
 
         <div className="adm-toolbar">
           <div className="auth-toggle" role="group" aria-label="Dashboard view">
