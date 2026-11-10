@@ -6,6 +6,7 @@
 // credits: students buy credits separately, and 1 credit = 1 lesson.
 import { getStripe } from "../stripe.js";
 import * as Payment from "../model/paymentModel.js";
+import { activateApplicationAfterPayment } from "../model/registrationActivationModel.js";
 
 const FRONTEND_URL = () => (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 
@@ -73,11 +74,32 @@ export async function createCheckout(req, res, next) {
       : `${item.credits} lesson credits · 1 credit = 1 lesson`;
 
     const paymentId = await Payment.createPendingPayment({
+
       studentId: req.user.id,
       purpose,
       amountCents: item.price_cents,
     });
 
+
+    if (
+      kind === "membership" &&
+      item.name === "Registration (New Member)"
+    ) {
+      const linked = await Payment.linkRegistrationPayment(
+        req.user.id,
+        item.id,
+        paymentId
+      );
+
+      if (!linked) {
+        return res.status(409).json({
+          message:
+            "Registration payment already recorded or application unavailable."
+        });
+      }
+    }
+
+    
     const metadata = { paymentId: String(paymentId), kind, itemId: String(itemId) };
     const customer = await Payment.findStripeCustomer(req.user.id);
 
@@ -145,17 +167,33 @@ export async function stripeWebhook(req, res) {
     const paymentId = Number(obj.metadata?.paymentId);
 
     switch (event.type) {
-      case "checkout.session.completed":
-      case "checkout.session.async_payment_succeeded":
-        if (paymentId && obj.payment_status === "paid") {
-          await Payment.markSucceeded({
+      
+    case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded":
+      if (paymentId && obj.payment_status === "paid") {
+        await Payment.markSucceeded({
+          paymentId,
+          paymentIntentId: obj.payment_intent,
+          customerId: obj.customer,
+          item: {
+            kind: obj.metadata.kind,
+            itemId: Number(obj.metadata.itemId),
+          },
+        });
+
+        if (obj.metadata.kind === "membership") {
+          const outcome =
+            await activateApplicationAfterPayment(paymentId);
+
+          console.log(
+            "Registration activation check",
             paymentId,
-            paymentIntentId: obj.payment_intent,
-            customerId: obj.customer,
-            item: { kind: obj.metadata.kind, itemId: Number(obj.metadata.itemId) },
-          });
+            outcome
+          );
         }
-        break;
+      }
+      break;
+
 
       case "checkout.session.async_payment_failed":
         if (paymentId) await Payment.markFailed(paymentId, "The payment could not be completed.");

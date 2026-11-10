@@ -26,3 +26,22 @@ export const getDashboard = () => request("/api/student/dashboard");
 
 // Student personal data: protected, no hardcoded values.
 export const getProfile = () => request("/api/student/profile");
+
+export const getPhotoReviewStatus = () => request('/api/student/application/photo-status');
+export async function resubmitApplicationPhoto(file) {
+  if (!API_URL) throw new Error('Backend address not configured.');
+  if (!['image/jpeg','image/png','image/webp'].includes(file?.type) || file.size > 2*1024*1024 || !file.size) {
+    throw new Error('Choose a JPEG, PNG or WebP photo under 2MB.');
+  }
+  const res = await fetch(`${API_URL}/api/student/application/photo`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) || ''}`, 'Content-Type': file.type },
+    body: file,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Could not submit your photo.');
+  return data;
+}
+
+// Read-only, authenticated membership application progress.
+export const getApplicationStatus = () => request("/api/student/application/status");

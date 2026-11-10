@@ -15,6 +15,7 @@ const adminLinks = [
   { to: "/admin/schedule", label: "Timetable" },
   { to: "/admin/attendance", label: "Attendance" },
   { to: "/admin/students", label: "Students" },
+  { to: "/admin/applications", label: "Applications" },
   { to: "/admin/private-lessons", label: "Lessons" },
   { to: "/admin/dojos", label: "Dojos" },
 ];
