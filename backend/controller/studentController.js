@@ -1,5 +1,6 @@
 // CONTROLLER: builds the student dashboard from the model's queries.
 import * as Student from "../model/studentModel.js";
+import { CANCEL_NOTICE_HOURS } from "../model/lessonModel.js";
 
 // GET /api/student/dashboard  (students only)
 export async function getDashboard(req, res, next) {
@@ -48,12 +49,16 @@ export async function getDashboard(req, res, next) {
         applicationStatus: grading.application_status,
       },
       nextClass: nextClass && {
+        sessionId: nextClass.session_id,
         title: nextClass.title,
         centre: nextClass.centre,
         instructor: nextClass.instructor,
         date: nextClass.session_date,
         startTime: nextClass.start_time,
+        freeCancel: nextClass.free_cancel,
+        cancelBy: { date: nextClass.cancel_by_date, time: nextClass.cancel_by_time },
       },
+      cancelNoticeHours: CANCEL_NOTICE_HOURS,
       attendance: {
         thisMonth: attendance.this_month,
         attended: attendance.attended,

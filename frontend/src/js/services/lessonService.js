@@ -25,6 +25,7 @@ async function request(path, options = {}) {
   if (!res.ok) {
     const error = new Error(data.message || "Something went wrong.");
     error.status = res.status;
+    error.code = data.code;
     throw error;
   }
   return data;
@@ -45,3 +46,13 @@ export function getLessons(filters = {}) {
 // { bookingId, creditsLeft, lesson: { id, title, centre, date, startTime } }
 export const bookLesson = (sessionId) =>
   request(`/api/student/lessons/${encodeURIComponent(sessionId)}/book`, { method: "POST" });
+
+// Cancels the student's booking for a session (FSDP-55).
+// Inside the notice period the server answers 409 with code "late_cancel"
+// unless acceptLostCredit is true.
+// { bookingId, refunded, lateCancel, creditsLeft, lesson: { id, title, centre, date, startTime } }
+export const cancelLesson = (sessionId, { acceptLostCredit = false } = {}) =>
+  request(`/api/student/lessons/${encodeURIComponent(sessionId)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ acceptLostCredit }),
+  });

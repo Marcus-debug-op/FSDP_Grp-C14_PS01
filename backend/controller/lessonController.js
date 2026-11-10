@@ -1,4 +1,4 @@
-// CONTROLLER: browse and book group lessons (FSDP-50, FSDP-53).
+// CONTROLLER: browse, book and cancel group lessons (FSDP-50, FSDP-53, FSDP-55).
 import * as Lesson from "../model/lessonModel.js";
 import * as Student from "../model/studentModel.js";
 
@@ -35,6 +35,7 @@ export async function listLessons(req, res, next) {
 
     res.json({
       daysAhead: Lesson.DAYS_AHEAD,
+      cancelNoticeHours: Lesson.CANCEL_NOTICE_HOURS,
       credits,
       membership: membership && {
         plan: membership.plan,
@@ -58,6 +59,8 @@ export async function listLessons(req, res, next) {
         openToAll: l.open_to_all,
         suitsBelt: l.suits_belt,
         bookedByMe: l.booked_by_me,
+        freeCancel: l.free_cancel,
+        cancelBy: { date: l.cancel_by_date, time: l.cancel_by_time },
       })),
     });
   } catch (err) {
@@ -76,6 +79,26 @@ export async function bookLesson(req, res, next) {
   } catch (err) {
     if (err instanceof Lesson.BookingError) {
       return res.status(err.status).json({ message: err.message });
+    }
+    next(err);
+  }
+}
+
+// POST /api/student/lessons/:sessionId/cancel   body: { acceptLostCredit?: true }
+// A late cancel (inside the notice period) answers 409 with code "late_cancel"
+// until the student confirms they accept losing the credit.
+export async function cancelLesson(req, res, next) {
+  const sessionId = readId(req.params.sessionId);
+  if (!sessionId) return res.status(400).json({ message: "That lesson couldn't be found." });
+
+  try {
+    const result = await Lesson.cancelBooking(req.user.id, sessionId, {
+      acceptLostCredit: req.body?.acceptLostCredit === true,
+    });
+    res.json(result);
+  } catch (err) {
+    if (err instanceof Lesson.BookingError) {
+      return res.status(err.status).json({ message: err.message, code: err.code });
     }
     next(err);
   }

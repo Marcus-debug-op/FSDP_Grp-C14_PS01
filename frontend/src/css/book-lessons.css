@@ -111,3 +111,8 @@
   .bk-stats-link { margin-left: 0; width: 100%; }
   .bk-filters label, .bk-filters select { width: 100%; min-width: 0; }
 }
+
+/* ---------- Cancelling a booking (FSDP-55) ---------- */
+.bk-policy { max-width: 620px; margin: 0.6rem 0 0; font-size: 0.95rem; color: var(--muted); }
+.bk-booked-box { margin-top: auto; width: 100%; }
+.bk-booked-box .bk-booked { margin: 0; }

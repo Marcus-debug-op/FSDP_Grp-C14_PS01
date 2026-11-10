@@ -71,3 +71,7 @@
 .coming-soon-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
 .coming-soon-list li { padding: 0.6rem 0 0.6rem 1.4rem; border-bottom: 1px solid var(--line); position: relative; }
 .coming-soon-list li::before { content: ""; position: absolute; left: 0; top: 1.25rem; width: 0.55rem; height: 2px; background: var(--accent); }
+
+/* ---------- Cancel from "Next class" (FSDP-55) ---------- */
+.dash-cancel-note { max-width: 720px; margin: 1.5rem auto 0; color: var(--text); }
+.dash-glance .cb { margin-top: 0.9rem; }

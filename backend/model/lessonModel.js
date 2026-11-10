@@ -1,4 +1,5 @@
-// MODEL: SQL for browsing and booking group lessons (FSDP-50, FSDP-53).
+// MODEL: SQL for browsing, booking and cancelling group lessons
+// (FSDP-50, FSDP-53, FSDP-55).
 // Tables come from database/migrations/001_shared_schema.sql (see database/DATABASE.md).
 import pool from "../db.js";
 
@@ -10,6 +11,17 @@ const SESSION_START = "((cs.session_date + cs.start_time) AT TIME ZONE 'Asia/Sin
 
 // How far ahead students can see and book lessons.
 export const DAYS_AHEAD = 14;
+
+// Cancelling at least this many hours before a lesson gives the credit back.
+// Later than that, the booking can still be cancelled but the credit is lost.
+// There are no make-up lessons for any reason, including an MC.
+// Change this one number if the instructor picks a different notice period.
+export const CANCEL_NOTICE_HOURS = 24;
+
+// The last moment a session can be cancelled with a refund, in Singapore time.
+// Needs $n to be CANCEL_NOTICE_HOURS.
+const cancelBy = (n) => `(cs.session_date + cs.start_time - make_interval(hours => $${n}::int))`;
+const FREE_CANCEL = (n) => `(${cancelBy(n)} AT TIME ZONE 'Asia/Singapore' > NOW())`;
 
 // Thrown when a booking breaks a rule. The controller sends `status` and
 // `message` straight back to the browser.
@@ -55,7 +67,10 @@ export async function listUpcoming(studentId, rankOrder, filters = {}) {
               (SELECT COUNT(*)::int FROM bookings b
                WHERE b.session_id = cs.id AND b.status = 'booked') AS booked,
               EXISTS (SELECT 1 FROM bookings b
-                      WHERE b.session_id = cs.id AND b.student_id = $1 AND b.status = 'booked') AS booked_by_me
+                      WHERE b.session_id = cs.id AND b.student_id = $1 AND b.status = 'booked') AS booked_by_me,
+              ${FREE_CANCEL(8)} AS free_cancel,
+              to_char(${cancelBy(8)}, 'YYYY-MM-DD') AS cancel_by_date,
+              to_char(${cancelBy(8)}, 'HH24:MI') AS cancel_by_time
        FROM class_sessions cs
        JOIN classes cl ON cl.id = cs.class_id
        JOIN centres ce ON ce.id = cl.centre_id
@@ -79,6 +94,7 @@ export async function listUpcoming(studentId, rankOrder, filters = {}) {
       filters.dayOfWeek ?? null,
       filters.instructorId ?? null,
       Boolean(filters.suitsBelt),
+      CANCEL_NOTICE_HOURS,
     ]
   );
   return result.rows;
@@ -222,6 +238,108 @@ export async function bookSession(studentId, sessionId) {
         centre: session.centre,
         date: session.session_date,
         startTime: session.start_time,
+      },
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// Cancels a student's booking for one session, as one transaction (FSDP-55).
+// - At least CANCEL_NOTICE_HOURS before the lesson: the credits it used come
+//   back as a 'booking_refund' row.
+// - Later than that: the credits are kept, so the student must send
+//   acceptLostCredit = true to show they saw the warning.
+// - If the dojo cancelled the session, the credits always come back.
+// Money is never refunded, only credits. The ledger is only ever added to.
+export async function cancelBooking(studentId, sessionId, { acceptLostCredit = false } = {}) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Same lock as bookSession, so a cancel and a booking at the same moment
+    // can't both read an old credit balance.
+    await client.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [studentId]);
+
+    const bookingResult = await client.query(
+      `SELECT b.id, b.status, cs.status AS session_status, cl.title, ce.name AS centre,
+              to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
+              to_char(cs.start_time, 'HH24:MI') AS start_time,
+              ${SESSION_START} <= NOW() AS has_started,
+              ${FREE_CANCEL(3)} AS free_cancel
+       FROM bookings b
+       JOIN class_sessions cs ON cs.id = b.session_id
+       JOIN classes cl ON cl.id = cs.class_id
+       JOIN centres ce ON ce.id = cl.centre_id
+       WHERE b.session_id = $1 AND b.student_id = $2
+       FOR UPDATE OF b`,
+      [sessionId, studentId, CANCEL_NOTICE_HOURS]
+    );
+    const booking = bookingResult.rows[0];
+    if (!booking || booking.status !== "booked") {
+      throw new BookingError(404, "You don't have a booking for this lesson.");
+    }
+
+    const dojoCancelled = booking.session_status === "cancelled";
+    if (!dojoCancelled && (booking.session_status === "completed" || booking.has_started)) {
+      throw new BookingError(409, "This lesson has already started, so it can't be cancelled.");
+    }
+
+    const refund = dojoCancelled || booking.free_cancel;
+    if (!refund && !acceptLostCredit) {
+      const err = new BookingError(
+        409,
+        `It's less than ${CANCEL_NOTICE_HOURS} hours before this lesson, so cancelling now won't give your credit back. There are no make-up lessons.`
+      );
+      err.code = "late_cancel";
+      throw err;
+    }
+
+    // Credits this booking is holding right now: what it was charged, minus
+    // anything already given back. Works even if the lesson was booked,
+    // cancelled and booked again (the same bookings row is reused).
+    const heldResult = await client.query(
+      `SELECT COALESCE(-SUM(change), 0)::int AS held
+       FROM credit_transactions
+       WHERE booking_id = $1 AND reason IN ('booking', 'booking_refund')`,
+      [booking.id]
+    );
+    const held = Math.max(0, heldResult.rows[0].held);
+
+    await client.query(
+      "UPDATE bookings SET status = 'cancelled', cancelled_at = NOW() WHERE id = $1",
+      [booking.id]
+    );
+
+    const refunded = refund ? held : 0;
+    if (refunded > 0) {
+      await client.query(
+        `INSERT INTO credit_transactions (student_id, change, reason, booking_id, note)
+         VALUES ($1, $2, 'booking_refund', $3, $4)`,
+        [studentId, refunded, booking.id, `Cancelled ${booking.title} on ${booking.session_date}`]
+      );
+    }
+
+    const balanceResult = await client.query(
+      "SELECT COALESCE(SUM(change), 0)::int AS balance FROM credit_transactions WHERE student_id = $1",
+      [studentId]
+    );
+
+    await client.query("COMMIT");
+    return {
+      bookingId: booking.id,
+      refunded,
+      lateCancel: !refund,
+      creditsLeft: balanceResult.rows[0].balance,
+      lesson: {
+        id: sessionId,
+        title: booking.title,
+        centre: booking.centre,
+        date: booking.session_date,
+        startTime: booking.start_time,
       },
     };
   } catch (err) {

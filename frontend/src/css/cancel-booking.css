@@ -1,0 +1,15 @@
+/* Cancel booking control (FSDP-55), used on Book Lessons and the dashboard.
+   Built on index.css (btn, btn-small, btn-outline, btn-primary). */
+
+.cb { width: 100%; margin-top: 0.8rem; }
+.cb-hint { margin: 0 0 0.6rem; font-size: 0.9rem; color: var(--muted); }
+.cb .btn { margin-top: 0; }
+.cb-error { margin: 0.6rem 0 0; font-size: 0.9rem; color: var(--accent-text); }
+
+.cb-confirm { padding-top: 0.8rem; border-top: 1px solid var(--line); }
+.cb-confirm p { margin: 0 0 0.8rem; font-size: 0.95rem; }
+.cb-confirm.is-late p { padding: 0.6rem 0.8rem; border-left: 4px solid var(--accent); background: #fbefec; color: var(--text); }
+.cb-confirm.is-late strong { color: var(--accent-text); }
+.cb-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.cb .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.cb button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }

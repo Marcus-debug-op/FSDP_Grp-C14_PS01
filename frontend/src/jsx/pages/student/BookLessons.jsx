@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import ScrollReveal from "../../components/ScrollReveal.jsx";
+import CancelBooking from "../../components/student/CancelBooking.jsx";
 import { getLessons, bookLesson } from "../../../js/services/lessonService.js";
 import { formatTime, formatDayHeading, formatShortDate } from "../../../js/utils/formatters.js";
 import "../../../css/content.css";
 import "../../../css/book-lessons.css";
 
-// FSDP-50 Browse available lessons + FSDP-53 Book a group lesson.
+// FSDP-50 Browse available lessons + FSDP-53 Book a group lesson
+// + FSDP-55 Cancel a booking.
 // Lessons for the next two weeks at every dojo. Booking uses credits and
 // needs an active membership; the server checks every rule again.
 
@@ -39,14 +41,19 @@ function dateHeading(ymd) {
 }
 
 // One lesson card. "Book" opens a small confirm step inside the card.
-function LessonCard({ lesson, credits, confirming, busy, onAsk, onCancel, onConfirm }) {
+function LessonCard({ lesson, credits, noticeHours, confirming, busy, onAsk, onCancel, onConfirm, onBookingCancelled }) {
   const full = lesson.spotsLeft === 0;
   const notEnough = credits < lesson.creditCost;
   const cost = plural(lesson.creditCost, "credit");
 
   let action;
   if (lesson.bookedByMe) {
-    action = <p className="bk-booked">Booked ✓</p>;
+    action = (
+      <div className="bk-booked-box">
+        <p className="bk-booked">Booked ✓</p>
+        <CancelBooking lesson={lesson} noticeHours={noticeHours} onCancelled={onBookingCancelled} />
+      </div>
+    );
   } else if (full) {
     action = <button type="button" className="btn btn-outline btn-small" disabled>Full</button>;
   } else if (confirming) {
@@ -175,6 +182,24 @@ export default function BookLessons() {
     }
   }
 
+  function bookingCancelled(lesson, result) {
+    setData((current) => ({
+      ...current,
+      credits: result.creditsLeft,
+      lessons: current.lessons.map((l) =>
+        l.id === lesson.id ? { ...l, bookedByMe: false, spotsLeft: l.spotsLeft + 1 } : l
+      ),
+    }));
+    const when = `${lesson.title} on ${formatShortDate(lesson.date)} at ${formatTime(lesson.startTime)}`;
+    setMessage({
+      type: "success",
+      text: result.refunded > 0
+        ? `Cancelled ${when}. ${plural(result.refunded, "credit")} returned, so you have ${plural(result.creditsLeft, "credit")}.`
+        : `Cancelled ${when}. Your credit wasn't returned because it was less than ${data.cancelNoticeHours} hours before the lesson.`,
+      link: null,
+    });
+  }
+
   const lessons = data?.lessons || [];
   const groups = [];
   for (const lesson of lessons) {
@@ -193,6 +218,10 @@ export default function BookLessons() {
           <h1>Book a Lesson</h1>
           <p className="lead">
             Lessons at every dojo for the next {data ? data.daysAhead / 7 : 2} weeks. Each group lesson costs 1 credit.
+          </p>
+          <p className="bk-policy">
+            Cancel at least {data?.cancelNoticeHours ?? 24} hours before a lesson to get your credit back.
+            Later cancellations lose the credit. There are no make-up lessons, even with an MC.
           </p>
         </ScrollReveal>
 
@@ -290,11 +319,13 @@ export default function BookLessons() {
                       key={lesson.id}
                       lesson={lesson}
                       credits={data.credits}
+                      noticeHours={data.cancelNoticeHours}
                       confirming={confirmId === lesson.id}
                       busy={busyId === lesson.id}
                       onAsk={() => { setMessage(null); setConfirmId(lesson.id); }}
                       onCancel={() => setConfirmId(null)}
                       onConfirm={() => confirmBooking(lesson)}
+                      onBookingCancelled={(result) => bookingCancelled(lesson, result)}
                     />
                   ))}
                 </div>
