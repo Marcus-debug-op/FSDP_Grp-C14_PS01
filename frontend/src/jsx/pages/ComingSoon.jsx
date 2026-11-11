@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import ScrollReveal from "../components/ScrollReveal.jsx";
 
 // Placeholder for student pages that aren't built yet.
@@ -48,6 +48,7 @@ export const PLACEHOLDERS = {
 
 export default function ComingSoon({ page }) {
   const p = PLACEHOLDERS[page];
+  if (!p) return <Navigate to="/dashboard" replace />;
   return (
     <section className="section coming-soon">
       <div className="container two-col">
