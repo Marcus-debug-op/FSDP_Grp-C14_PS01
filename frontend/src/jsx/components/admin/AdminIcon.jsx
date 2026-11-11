@@ -27,6 +27,12 @@ const PATHS = {
       <path d="M16 4.1a4 4 0 0 1 0 7.8M22 21c0-3-1.8-5.6-4.5-6.6" />
     </>
   ),
+  applications: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </>
+  ),
   attendance: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="2" />

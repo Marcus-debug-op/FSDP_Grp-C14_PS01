@@ -18,6 +18,7 @@ const GROUPS = [
     links: [
       { to: "/admin/students", label: "Students", icon: "students" },
       { to: "/admin/attendance", label: "Attendance", icon: "attendance" },
+      { to: "/admin/applications", label: "Membership Applications", icon: "applications" },
     ],
   },
   { label: "Setup", links: [{ to: "/admin/dojos", label: "Dojos", icon: "dojos" }] },

@@ -95,7 +95,7 @@ export default function AdminMembershipApplications() {
   const paymentLabel = (a) => Number(a.succeeded_count) > 0 ? 'Possible paid registration (verify)' : Number(a.pending_count) > 0 ? 'Payment pending' : 'No matching payment';
   return <section className="section"><div className="container adm-app">
     <p className="eyebrow">Administration</p><h1>Membership Applications</h1>
-    <p className="lead">Review student registrations and record the Shihan's decision. This page never activates memberships.</p>
+    <p className="lead">Review registration applications and record the Shihan's decision. Membership activation requires verified payment, approval and an accepted photo.</p>
     <div className="adm-app-toolbar">
       <label>Application status <select value={status} onChange={e=>setStatus(e.target.value)}>
         <option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All</option>
