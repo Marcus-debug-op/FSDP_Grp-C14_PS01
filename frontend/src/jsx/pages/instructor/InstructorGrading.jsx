@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getGradingReadiness } from "../../../js/services/instructorService.js";
+import { REGIONS, dojos } from "../../../js/data/dojos.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
 import "../../../css/auth.css";
 import "../../../css/instructor.css";
@@ -11,18 +12,39 @@ const STATUS_LABEL = {
   no_profile: "No belt recorded",
 };
 
+// Dojo names differ slightly between the database and the dojo directory
+// ("Our Tampines Hub Dojo" and "Our Tampines Hub"), so compare them without
+// the word "dojo", spaces or punctuation.
+const simplify = (name) => (name || "").toLowerCase().replace(/\bdojo\b/g, "").replace(/[^a-z0-9]/g, "");
+const REGION_OF = new Map(dojos.map((dojo) => [simplify(dojo.name), dojo.region]));
+const regionOf = (dojoName) => REGION_OF.get(simplify(dojoName)) || null;
+
 // Grading readiness (FSDP-72): the instructor's students, each checked
 // against the rules for their next belt.
 export default function InstructorGrading() {
   const [students, setStudents] = useState(null);
   const [error, setError] = useState("");
+  const [region, setRegion] = useState("All");
+  const [dojoSearch, setDojoSearch] = useState("");
 
   useEffect(() => {
     getGradingReadiness().then(setStudents).catch((err) => setError(err.message));
   }, []);
 
-  const readyCount = students?.filter((s) => s.status === "ready").length ?? 0;
-  const notYetCount = students?.filter((s) => s.status === "not_yet").length ?? 0;
+  const search = dojoSearch.trim().toLowerCase();
+  const shown = (students || []).filter((s) =>
+    (region === "All" || regionOf(s.homeDojo) === region) &&
+    (!search || (s.homeDojo || "").toLowerCase().includes(search))
+  );
+
+  // Says which filter left the list empty, e.g. "from dojos in the West matching "bedok"".
+  const filterWords = [
+    region !== "All" && `in the ${region}`,
+    search && `matching "${dojoSearch.trim()}"`,
+  ].filter(Boolean).join(" ");
+
+  const readyCount = shown.filter((s) => s.status === "ready").length;
+  const notYetCount = shown.filter((s) => s.status === "not_yet").length;
 
   return (
     <div className="instructor-portal">
@@ -46,19 +68,47 @@ export default function InstructorGrading() {
 
           {students && students.length > 0 && (
             <>
-              <ul className="stats roster-stats">
+              <div className="filters">
+                <label>
+                  Region
+                  <select value={region} onChange={(e) => setRegion(e.target.value)}>
+                    <option value="All">All regions</option>
+                    {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </label>
+                <label>
+                  Dojo
+                  <input
+                    type="search"
+                    value={dojoSearch}
+                    placeholder="Search by dojo name"
+                    onChange={(e) => setDojoSearch(e.target.value)}
+                  />
+                </label>
+              </div>
+
+              <ul className="stats roster-stats" aria-live="polite">
                 <li className="stat-ready"><strong>{readyCount}</strong><span>Ready</span></li>
                 <li className="stat-not-yet"><strong>{notYetCount}</strong><span>Not yet</span></li>
-                <li><strong>{students.length}</strong><span>Students</span></li>
+                <li><strong>{shown.length}</strong><span>Students</span></li>
               </ul>
 
+              {shown.length === 0 && (
+                <p className="notice readiness-empty">You have no students from dojos {filterWords}.</p>
+              )}
+
               <ul className="readiness-list">
-                {students.map((student) => (
+                {shown.map((student) => (
                   <li className={`readiness-row readiness-row-${student.status}`} key={student.studentId}>
                     <div className="readiness-student">
                       <strong>{student.fullName}</strong>
                       <span className="roster-belt">
                         {student.nextBelt ? `${student.currentBelt} to ${student.nextBelt}` : student.currentBelt || "No belt recorded"}
+                      </span>
+                      <span className="roster-belt">
+                        {student.homeDojo
+                          ? `${student.homeDojo}${regionOf(student.homeDojo) ? `, ${regionOf(student.homeDojo)}` : ""}`
+                          : "No home dojo"}
                       </span>
                       <span className={`readiness-status readiness-status-${student.status}`}>
                         {STATUS_LABEL[student.status]}

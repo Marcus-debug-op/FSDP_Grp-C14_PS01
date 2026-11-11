@@ -92,7 +92,7 @@ export async function listGradingProgress(instructorId) {
        WHERE cs.instructor_id = $1 AND b.status = 'booked'
          AND cs.session_date >= ${TODAY} - INTERVAL '3 months'
      )
-     SELECT u.id, u.full_name,
+     SELECT u.id, u.full_name, hc.name AS home_dojo,
             cb.name AS current_belt, nb.name AS next_belt,
             nb.min_months_at_rank, nb.min_classes_at_rank,
             (EXTRACT(YEAR FROM age(${TODAY}, sp.belt_awarded_on)) * 12
@@ -115,6 +115,7 @@ export async function listGradingProgress(instructorId) {
      FROM my_students s
      JOIN users u ON u.id = s.student_id
      LEFT JOIN student_profiles sp ON sp.user_id = u.id
+     LEFT JOIN centres hc ON hc.id = sp.home_centre_id
      LEFT JOIN belt_ranks cb ON cb.id = sp.current_belt_id
      LEFT JOIN belt_ranks nb ON nb.rank_order = cb.rank_order + 1
      ORDER BY u.full_name`,

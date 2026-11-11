@@ -103,11 +103,12 @@ const MIN_MONTHS_AS_MEMBER = 3;
 
 // Checks one student against the rules for their next belt.
 function gradingProgress(row) {
+  const student = { studentId: row.id, fullName: row.full_name, homeDojo: row.home_dojo };
   if (!row.current_belt) {
-    return { studentId: row.id, fullName: row.full_name, status: "no_profile", checks: [] };
+    return { ...student, status: "no_profile", checks: [] };
   }
   if (!row.next_belt) {
-    return { studentId: row.id, fullName: row.full_name, currentBelt: row.current_belt, status: "top_belt", checks: [] };
+    return { ...student, currentBelt: row.current_belt, status: "top_belt", checks: [] };
   }
 
   const memberMonths = row.months_as_member ?? 0;
@@ -135,8 +136,7 @@ function gradingProgress(row) {
   ];
 
   return {
-    studentId: row.id,
-    fullName: row.full_name,
+    ...student,
     currentBelt: row.current_belt,
     nextBelt: row.next_belt,
     status: checks.every((check) => check.met) ? "ready" : "not_yet",
