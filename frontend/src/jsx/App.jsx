@@ -23,6 +23,7 @@ import AdminMembershipApplications from "./pages/admin/AdminMembershipApplicatio
 import AdminStudentProfile from "./pages/admin/AdminStudentProfile.jsx";
 import AdminPrivateLessons from "./pages/admin/AdminPrivateLessons.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
+import Grading from "./pages/student/Grading.jsx";
 import StudentProfile from "./pages/student/StudentProfile.jsx";
 import PersonalSettings from "./pages/student/PersonalSettings.jsx";
 import ClassRoster from "./pages/instructor/ClassRoster.jsx";
@@ -60,8 +61,7 @@ export default function App() {
           <Route path="/check-in" element={<ProtectedRoute><ComingSoon page="checkIn" /></ProtectedRoute>} />
           {/* Personal settings is built: contact details editable, belt and membership view-only. FSDP-42 */}
           <Route path="/settings" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
-          {/* Grading is a teammate's part; swap in their page when it's ready */}
-          <Route path="/grading" element={<ProtectedRoute><ComingSoon page="grading" /></ProtectedRoute>} />
+          <Route path="/grading" element={<ProtectedRoute role="student"><Grading /></ProtectedRoute>} />
           <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
           <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
           <Route path="/admin/attendance" element={<ProtectedRoute role="admin"><AdminAttendance /></ProtectedRoute>} />
