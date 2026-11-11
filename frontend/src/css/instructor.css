@@ -85,7 +85,23 @@ button.calendar-day:hover { background: var(--surface); }
 .calendar-list-title { font-size: 1.6rem; }
 .calendar-upcoming { margin: 0; font-size: 0.9rem; color: var(--muted); }
 
+/* ---------- Grading readiness ---------- */
+.readiness-list { list-style: none; padding: 0; margin: 2rem 0 0; border-top: 1px solid var(--line); }
+.readiness-row { display: grid; grid-template-columns: minmax(14rem, 1fr) minmax(0, 3fr); gap: 0.8rem 2rem; padding: 1.2rem 0; border-bottom: 1px solid var(--line); }
+.readiness-student { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+.readiness-status { margin-top: 0.4rem; padding: 0.1rem 0.6rem; border: 1px solid var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.readiness-status-ready { border-color: var(--accent); background: var(--accent); color: #fff; }
+.readiness-checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem 1.5rem; margin: 0; }
+.readiness-checks dt { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.readiness-checks dd { margin: 0.2rem 0 0; }
+.readiness-mark { display: block; font-weight: 600; }
+.readiness-checks .is-met .readiness-mark { color: var(--text); }
+.readiness-checks .is-unmet .readiness-mark { color: var(--accent-text); }
+
 @media (max-width: 800px) {
+  .readiness-row { grid-template-columns: 1fr; }
+  .readiness-checks { grid-template-columns: 1fr; }
+
   .instructor-kanji-section { min-height: 0; }
   .instructor-kanji { top: 1.5rem; right: -1.5rem; transform: none; font-size: 12rem; }
   .instructor-kanji-low { top: auto; bottom: 1rem; }
