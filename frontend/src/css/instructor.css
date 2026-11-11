@@ -86,17 +86,40 @@ button.calendar-day:hover { background: var(--surface); }
 .calendar-upcoming { margin: 0; font-size: 0.9rem; color: var(--muted); }
 
 /* ---------- Grading readiness ---------- */
-.readiness-list { list-style: none; padding: 0; margin: 2rem 0 0; border-top: 1px solid var(--line); }
-.readiness-row { display: grid; grid-template-columns: minmax(14rem, 1fr) minmax(0, 3fr); gap: 0.8rem 2rem; padding: 1.2rem 0; border-bottom: 1px solid var(--line); }
+/* Green and red so a met or unmet rule reads at a glance. The words and the
+   ✓ / ✗ marks say the same thing, so colour is never the only signal. */
+.instructor-portal {
+  --ok: #2f6b45;          /* about 6.5:1 on white */
+  --ok-soft: #e8f2eb;
+  --ok-line: #b7d4c0;
+  --bad-soft: #f9ebe8;
+  --bad-line: #e5c2bb;
+}
+
+.readiness-list { list-style: none; padding: 0; margin: 2rem 0 0; display: grid; gap: 1rem; }
+.readiness-row {
+  display: grid; grid-template-columns: minmax(14rem, 1fr) minmax(0, 3fr); gap: 0.8rem 2rem;
+  padding: 1.2rem 1.2rem; border: 1px solid var(--line); border-left: 5px solid var(--muted); background: var(--bg);
+}
+.readiness-row-ready { border-left-color: var(--ok); }
+.readiness-row-not_yet { border-left-color: var(--accent); }
 .readiness-student { display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; }
-.readiness-status { margin-top: 0.4rem; padding: 0.1rem 0.6rem; border: 1px solid var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-.readiness-status-ready { border-color: var(--accent); background: var(--accent); color: #fff; }
-.readiness-checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem 1.5rem; margin: 0; }
+.readiness-status { margin-top: 0.4rem; padding: 0.15rem 0.7rem; border: 1px solid var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.readiness-status-ready { border-color: var(--ok); background: var(--ok); color: #fff; }
+.readiness-status-not_yet { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+.readiness-checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; margin: 0; }
+.readiness-checks > div { padding: 0.7rem 0.9rem; border: 1px solid; }
+.readiness-checks .is-met { background: var(--ok-soft); border-color: var(--ok-line); }
+.readiness-checks .is-unmet { background: var(--bad-soft); border-color: var(--bad-line); }
 .readiness-checks dt { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-.readiness-checks dd { margin: 0.2rem 0 0; }
-.readiness-mark { display: block; font-weight: 600; }
-.readiness-checks .is-met .readiness-mark { color: var(--text); }
+.readiness-checks dd { margin: 0.3rem 0 0; color: var(--text); }
+.readiness-mark { display: block; font-weight: 700; }
+.readiness-checks .is-met .readiness-mark { color: var(--ok); }
 .readiness-checks .is-unmet .readiness-mark { color: var(--accent-text); }
+
+.roster-stats .stat-ready strong { color: var(--ok); }
+.roster-stats .stat-not-yet strong { color: var(--accent-text); }
 
 @media (max-width: 800px) {
   .readiness-row { grid-template-columns: 1fr; }

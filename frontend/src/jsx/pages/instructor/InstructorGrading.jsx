@@ -47,14 +47,14 @@ export default function InstructorGrading() {
           {students && students.length > 0 && (
             <>
               <ul className="stats roster-stats">
-                <li><strong>{readyCount}</strong><span>Ready</span></li>
-                <li><strong>{notYetCount}</strong><span>Not yet</span></li>
+                <li className="stat-ready"><strong>{readyCount}</strong><span>Ready</span></li>
+                <li className="stat-not-yet"><strong>{notYetCount}</strong><span>Not yet</span></li>
                 <li><strong>{students.length}</strong><span>Students</span></li>
               </ul>
 
               <ul className="readiness-list">
                 {students.map((student) => (
-                  <li className="readiness-row" key={student.studentId}>
+                  <li className={`readiness-row readiness-row-${student.status}`} key={student.studentId}>
                     <div className="readiness-student">
                       <strong>{student.fullName}</strong>
                       <span className="roster-belt">
@@ -71,7 +71,10 @@ export default function InstructorGrading() {
                           <div className={check.met ? "is-met" : "is-unmet"} key={check.key}>
                             <dt>{check.label}</dt>
                             <dd>
-                              <span className="readiness-mark">{check.met ? "Met" : "Not met"}</span>
+                              <span className="readiness-mark">
+                                <span aria-hidden="true">{check.met ? "✓ " : "✗ "}</span>
+                                {check.met ? "Met" : "Not met"}
+                              </span>
                               {check.value}
                             </dd>
                           </div>
