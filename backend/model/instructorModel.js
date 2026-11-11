@@ -74,6 +74,56 @@ export async function listGradingsBetween(instructorId, from, to) {
   return result.rows;
 }
 
+// Grading progress for every student who trained in, or booked, this
+// instructor's classes in the last 3 months. Classes are counted the same way
+// as the student's own grading page (gradingModel.findTrainingSinceBelt):
+// present or late, after the belt was awarded, plus external sessions.
+export async function listGradingProgress(instructorId) {
+  const result = await pool.query(
+    `WITH my_students AS (
+       SELECT a.student_id
+       FROM attendance a
+       JOIN class_sessions cs ON cs.id = a.session_id
+       WHERE cs.instructor_id = $1 AND cs.session_date >= ${TODAY} - INTERVAL '3 months'
+       UNION
+       SELECT b.student_id
+       FROM bookings b
+       JOIN class_sessions cs ON cs.id = b.session_id
+       WHERE cs.instructor_id = $1 AND b.status = 'booked'
+         AND cs.session_date >= ${TODAY} - INTERVAL '3 months'
+     )
+     SELECT u.id, u.full_name, hc.name AS home_dojo,
+            cb.name AS current_belt, nb.name AS next_belt,
+            nb.min_months_at_rank, nb.min_classes_at_rank,
+            (EXTRACT(YEAR FROM age(${TODAY}, sp.belt_awarded_on)) * 12
+             + EXTRACT(MONTH FROM age(${TODAY}, sp.belt_awarded_on)))::int AS months_at_belt,
+            (SELECT COUNT(*)::int
+             FROM attendance a
+             JOIN class_sessions cs ON cs.id = a.session_id
+             WHERE a.student_id = u.id AND a.status IN ('present', 'late')
+               AND cs.status <> 'cancelled' AND cs.session_date > sp.belt_awarded_on)
+            + (SELECT COUNT(*)::int
+               FROM external_attendance e
+               WHERE e.student_id = u.id AND e.attended_on > sp.belt_awarded_on) AS classes_since_belt,
+            EXISTS (SELECT 1 FROM memberships m
+                    WHERE m.student_id = u.id AND m.status = 'active'
+                      AND m.end_date >= ${TODAY}) AS membership_active,
+            (SELECT (EXTRACT(YEAR FROM age(${TODAY}, MIN(m.start_date))) * 12
+                     + EXTRACT(MONTH FROM age(${TODAY}, MIN(m.start_date))))::int
+             FROM memberships m
+             WHERE m.student_id = u.id AND m.status IN ('active', 'expired')) AS months_as_member
+     FROM my_students s
+     JOIN users u ON u.id = s.student_id
+     LEFT JOIN student_profiles sp ON sp.user_id = u.id
+     LEFT JOIN centres hc ON hc.id = sp.home_centre_id
+     LEFT JOIN belt_ranks cb ON cb.id = sp.current_belt_id
+     LEFT JOIN belt_ranks nb ON nb.rank_order = cb.rank_order + 1
+     ORDER BY u.full_name`,
+    [instructorId]
+  );
+  return result.rows;
+}
+
 // One session, only if this instructor teaches it.
 export async function findSession(sessionId, instructorId) {
   const result = await pool.query(
