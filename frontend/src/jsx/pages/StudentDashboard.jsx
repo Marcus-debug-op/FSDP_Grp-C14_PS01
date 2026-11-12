@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getDashboard } from "../../js/services/studentService.js";
 import ScrollReveal from "../components/ScrollReveal.jsx";
+import CancelBooking from "../components/student/CancelBooking.jsx";
 import useHeroScrollFade from "../../js/hooks/useHeroScrollFade.js";
 import "../../css/dashboard.css";
 
@@ -129,7 +130,7 @@ function RankSection({ rank }) {
 }
 
 // Same grey band and column layout as the homepage's "Getting started".
-function GlanceSection({ nextClass, attendance, membership, credits }) {
+function GlanceSection({ nextClass, attendance, membership, credits, noticeHours, cancelNote, onBookingCancelled }) {
   const membershipItem = !membership
     ? { value: "None", sub: "Choose a plan to start training." }
     : membership.state === "expired"
@@ -146,6 +147,15 @@ function GlanceSection({ nextClass, attendance, membership, credits }) {
       label: "Next class",
       value: nextClass ? `${fmtDay(nextClass.date)}, ${fmtTime(nextClass.startTime)}` : "Nothing booked",
       sub: nextClass ? `${nextClass.title} · ${nextClass.centre}` : "Book a class to see it here.",
+      // FSDP-55: cancel straight from the dashboard.
+      extra: nextClass && (
+        <CancelBooking
+          key={nextClass.sessionId}
+          lesson={{ ...nextClass, id: nextClass.sessionId }}
+          noticeHours={noticeHours}
+          onCancelled={onBookingCancelled}
+        />
+      ),
     },
     {
       kanji: "出",
@@ -171,6 +181,7 @@ function GlanceSection({ nextClass, attendance, membership, credits }) {
           <p className="eyebrow center">At a glance</p>
           <h2 className="center" id="glance-title">Your training this month</h2>
         </ScrollReveal>
+        {cancelNote && <p className="notice dash-cancel-note" role="status">{cancelNote}</p>}
         <ul className="dash-glance">
           {items.map((item, i) => (
             <ScrollReveal key={item.label} as="li" className="step" delay={i * 110}>
@@ -179,6 +190,7 @@ function GlanceSection({ nextClass, attendance, membership, credits }) {
               <h3>{item.value}</h3>
               <p>{item.sub}</p>
               {item.tag && <span className="tag dash-tag">{item.tag}</span>}
+              {item.extra}
               {item.link && <Link to={item.link.to} className="dash-link">{item.link.label}</Link>}
             </ScrollReveal>
           ))}
@@ -271,10 +283,25 @@ export default function StudentDashboard() {
   useHeroScrollFade(heroRef);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [cancelNote, setCancelNote] = useState("");
 
+  const load = () => getDashboard().then(setData).catch((err) => setError(err.message));
   useEffect(() => {
-    getDashboard().then(setData).catch((err) => setError(err.message));
+    load();
   }, []);
+
+  // After a cancel, say what happened and reload so "Next class" and the
+  // credit count show the new state.
+  function bookingCancelled(result) {
+    const { title, date, startTime } = result.lesson;
+    const when = `${title} on ${fmtShortDate(date)} at ${fmtTime(startTime)}`;
+    setCancelNote(
+      result.refunded > 0
+        ? `Cancelled ${when}. ${plural(result.refunded, "credit")} returned, so you have ${plural(result.creditsLeft, "credit")}.`
+        : `Cancelled ${when}. Your credit wasn't returned because it was less than ${data.cancelNoticeHours} hours before the lesson.`
+    );
+    load();
+  }
 
   const ready = data && data.profileReady;
   let body = "Loading your progress...";
@@ -326,6 +353,9 @@ export default function StudentDashboard() {
             attendance={data.attendance}
             membership={data.membership}
             credits={data.credits}
+            noticeHours={data.cancelNoticeHours}
+            cancelNote={cancelNote}
+            onBookingCancelled={bookingCancelled}
           />
           <RecommendedSection recommended={data.recommended} />
           <PaymentsSection payments={data.payments} />

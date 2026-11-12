@@ -1,12 +1,13 @@
 // ROUTES: student self-service portal. Every route needs a signed-in student.
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
+import { listLessons, bookLesson, cancelLesson } from "../controller/lessonController.js";
 import { getDashboard, getProfile } from "../controller/studentController.js";
 import { getApplicationStatus } from "../controller/studentApplicationStatusController.js";
 import { getSettings, updateSettings } from "../controller/settingsController.js";
 import { photoStatus, resubmitPhoto } from "../controller/photoResubmissionController.js";
 import express from "express";
-
+https://github.com/Marcus-debug-op/FSDP_Grp-C14_PS01/pull/38/conflict?name=frontend%252Fsrc%252Fcss%252Fdashboard.css&ancestor_oid=82c046bffccd0aeabff92dcbd2033c9420d86195&base_oid=e934d5a6cc5816389f82bdb29496ea44d679e75a&head_oid=5b8e4be71d062109b7439848d2a30a68906e82a4
 
 const router = Router();
 
@@ -24,5 +25,9 @@ router.post("/application/photo", express.raw({ type: ["image/jpeg", "image/png"
 // code saved by PATCH below.                                      FSDP-42
 router.get("/settings", getSettings);
 router.patch("/settings", updateSettings);
+
+router.get("/lessons", listLessons);                    // FSDP-50
+router.post("/lessons/:sessionId/book", bookLesson);    // FSDP-53
+router.post("/lessons/:sessionId/cancel", cancelLesson); // FSDP-55
 
 export default router;
