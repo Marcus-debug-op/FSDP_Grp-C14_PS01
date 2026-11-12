@@ -39,6 +39,10 @@ router.patch("/private-lessons/:id/schedule", admin.schedulePrivateLesson);
 router.patch("/private-lessons/:id/cancel", admin.cancelPrivateLesson);
 router.patch("/private-lessons/:id/outcome", admin.recordPrivateLessonOutcome);
 
+router.get("/grading-sessions", admin.listGradingSessions);
+router.post("/grading-sessions", admin.createGradingSession);
+router.get("/grading-sessions/:id/applications", admin.getGradingApplications);
+
 router.get("/attendance", admin.listAttendance);
 router.get("/attendance/sessions/:id", admin.getSessionAttendance);
 

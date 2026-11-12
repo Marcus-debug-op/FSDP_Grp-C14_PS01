@@ -1,5 +1,6 @@
 import * as Admin from "../model/adminModel.js";
 import * as Lessons from "../model/privateLessonModel.js";
+import * as Grading from "../model/adminGradingModel.js";
 import { addDays, dateFromToday, isValidDate, isValidTime, mondayOf } from "../utils/schedule.js";
 
 class HttpError extends Error {
@@ -315,4 +316,115 @@ export const recordPrivateLessonOutcome = handle(async (req, res) => {
   if (!LESSON_OUTCOMES.includes(outcome)) throw badRequest("Outcome must be completed or no_show.");
   const lesson = await Lessons.recordOutcome({ lessonId: parseId(req.params.id, "Lesson ID"), outcome });
   res.json({ lesson });
+});
+
+function plural(n, one, many) {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+function checkEligibility(row, session) {
+  const reasons = [];
+  const classes = { have: row.classes_since_belt ?? 0, need: row.min_classes_at_rank ?? 0 };
+  const months = { have: row.months_at_belt ?? 0, need: row.min_months_at_rank ?? 0 };
+
+  if (!row.current_belt_id) {
+    reasons.push("No belt recorded for this student yet");
+  } else if (!row.next_belt_id) {
+    reasons.push(`Already at ${row.current_belt_name}, the highest belt on record`);
+  } else {
+    if (row.target_belt_id !== row.next_belt_id) {
+      reasons.push(`Applied for ${row.target_belt_name}, but their next belt is ${row.next_belt_name}`);
+    }
+    if (classes.have < classes.need) {
+      reasons.push(`${plural(classes.need - classes.have, "more class", "more classes")} needed (${classes.have} of ${classes.need})`);
+    }
+    if (months.have < months.need) {
+      reasons.push(`${plural(months.need - months.have, "more month", "more months")} at ${row.current_belt_name} needed (${months.have} of ${months.need})`);
+    }
+  }
+
+  const { minBelt, maxBelt } = session;
+  const belowRange = minBelt && row.target_belt_rank < minBelt.rankOrder;
+  const aboveRange = maxBelt && row.target_belt_rank > maxBelt.rankOrder;
+  if (belowRange || aboveRange) {
+    reasons.push(`This grading is for ${minBelt ? minBelt.name : "any belt"} to ${maxBelt ? maxBelt.name : "any belt"} only`);
+  }
+  if (!row.member_on_grading_date) {
+    reasons.push("No active membership on the grading date");
+  }
+
+  return { eligible: reasons.length === 0, reasons, classes, months, membershipActive: row.member_on_grading_date };
+}
+
+function toApplication(row, session) {
+  return {
+    id: row.id,
+    status: row.status,
+    appliedOn: row.applied_on,
+    student: { id: row.student_id, name: row.student_name, email: row.student_email },
+    currentBelt: row.current_belt_name,
+    targetBelt: row.target_belt_name,
+    instructorApproval: { by: row.approved_by, on: row.approved_on },
+    ...checkEligibility(row, session),
+  };
+}
+
+export const listGradingSessions = handle(async (req, res) => {
+  const sessions = await Grading.listSessions();
+  res.json({
+    upcoming: sessions.filter((s) => s.isUpcoming),
+    past: sessions.filter((s) => !s.isUpcoming).reverse(),
+  });
+});
+
+export const createGradingSession = handle(async (req, res) => {
+  const body = req.body || {};
+  const today = singaporeToday();
+
+  const centreId = parseId(body.centreId, "Dojo");
+  const gradingDate = validDate(body.gradingDate, "Grading date");
+  if (gradingDate < today) throw badRequest("The grading date cannot be in the past.");
+  if (!isValidTime(body.startTime)) throw badRequest("Start time must be a valid time.");
+  const startTime = body.startTime;
+  const registrationClosesOn = validDate(body.registrationClosesOn, "Applications close date");
+  if (registrationClosesOn > gradingDate) throw badRequest("Applications must close on or before the grading date.");
+  if (registrationClosesOn < today) throw badRequest("Applications cannot close in the past.");
+  if (!body.minBeltId || !body.maxBeltId) throw badRequest("Please choose the belts being graded.");
+  const minBeltId = parseId(body.minBeltId, "Lowest belt graded");
+  const maxBeltId = parseId(body.maxBeltId, "Highest belt graded");
+  const examinerId = optionalId(body.examinerId, "Examiner") || null;
+
+  const [centre, minBelt, maxBelt, examiner] = await Promise.all([
+    Grading.findActiveCentre(centreId),
+    Grading.findBelt(minBeltId),
+    Grading.findBelt(maxBeltId),
+    examinerId ? Grading.findInstructor(examinerId) : null,
+  ]);
+  if (!centre) throw badRequest("Please choose an open dojo.");
+  if (!minBelt || !maxBelt) throw badRequest("Please choose the belts being graded.");
+  if (minBelt.rank_order > maxBelt.rank_order) throw badRequest("The lowest belt graded must come before the highest.");
+  if (examinerId && !examiner) throw badRequest("The examiner must be an instructor.");
+
+  if (await Grading.findClashingSession({ centreId, gradingDate, startTime })) {
+    throw new HttpError(409, `There is already a grading at ${centre.name} at that date and time.`);
+  }
+
+  const session = await Grading.createSession({ centreId, gradingDate, startTime, registrationClosesOn, examinerId, minBeltId, maxBeltId });
+  res.status(201).json({ session });
+});
+
+export const getGradingApplications = handle(async (req, res) => {
+  const session = await Grading.findSession(parseId(req.params.id, "Grading ID"));
+  if (!session) throw notFound("Grading session not found.");
+  const rows = await Grading.listApprovedApplications(session.id);
+  const applications = rows.map((row) => toApplication(row, session));
+  res.json({
+    session,
+    applications,
+    counts: {
+      total: applications.length,
+      eligible: applications.filter((a) => a.eligible).length,
+      awaitingInstructor: session.awaitingCount,
+    },
+  });
 });

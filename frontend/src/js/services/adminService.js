@@ -85,3 +85,8 @@ export const acceptMembershipApplicationPhoto = (id) =>
 // Admin-only membership book tracking.
 export const advanceMembershipBook = (id, status) =>
   request(`/applications/${id}/book`, { method: "PATCH", body: { status } }).then((r) => r.book);
+
+export const getGradingSessions = () => request("/grading-sessions");
+export const createGradingSession = (session) =>
+  request("/grading-sessions", { method: "POST", body: session }).then((d) => d.session);
+export const getGradingApplications = (id) => request(`/grading-sessions/${id}/applications`);
