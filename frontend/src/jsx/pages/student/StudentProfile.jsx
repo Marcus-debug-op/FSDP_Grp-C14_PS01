@@ -60,18 +60,33 @@ function ApplicationStatusCard({ application, busy, error, onRefresh }) {
           {application.membership && <Field label="Membership" value={application.membership.status} />}
           {application.membership?.endDate && <Field label="Membership ends" value={application.membership.endDate} />}
         </dl>
-        {application.status === "rejected" && application.rejectionReason &&
-          <p className="stprofile-application-note"><strong>Reason:</strong> {application.rejectionReason}</p>}
-        {application.status === "rejected" && <form onSubmit={submitReapplication} className="stprofile-application-note">
-          <h3>Request reconsideration</h3>
-          <p>Use your existing account. Your original application details will be submitted again for admin review. Do not make another payment unless the system requests one.</p>
-          <label>Reason for reconsideration
-            <textarea rows={3} maxLength={500} required value={reapplyNote} onChange={e=>setReapplyNote(e.target.value)} placeholder="Explain why you wish to reapply (10–500 characters)." />
-          </label>
-          <button type="submit" className="stprofile-action" disabled={reapplyBusy || reapplyNote.trim().length < 10}>{reapplyBusy ? 'Submitting…' : 'Request reconsideration'}</button>
-          {reapplyError && <p role="alert">{reapplyError}</p>}
-          {reapplyMessage && <p role="status">{reapplyMessage}</p>}
-        </form>}
+        {application.status === "rejected" && <div className="stprofile-reconsideration-flow">
+          <div className="stprofile-rejection-reason" role="note">
+            <div className="stprofile-rejection-symbol" aria-hidden="true">!</div>
+            <div>
+              <h3>Application not approved</h3>
+              <p className="stprofile-rejection-label">Reason provided by the administrator</p>
+              <p className="stprofile-rejection-detail">{application.rejectionReason || "Please contact the administrator for more information."}</p>
+            </div>
+          </div>
+          <form onSubmit={submitReapplication} className="stprofile-reapply-panel">
+            <div className="stprofile-reapply-title">
+              <div>
+                <h3>Request reconsideration</h3>
+                <p>Have additional information to share? Submit an explanation for the administrator to review your application again.</p>
+              </div>
+            </div>
+            <label htmlFor="stprofile-reapply-reason">Your explanation <span className="stprofile-required">Required</span></label>
+            <textarea id="stprofile-reapply-reason" rows={5} minLength={10} maxLength={500} required value={reapplyNote} onChange={e=>setReapplyNote(e.target.value)} placeholder="Explain what has changed, or provide the additional training details requested by the administrator." />
+            <div className="stprofile-reapply-bottom">
+              <span className="stprofile-reapply-hint">{reapplyNote.trim().length}/500 characters · Minimum 10</span>
+              <button type="submit" className="stprofile-action stprofile-reapply-submit" disabled={reapplyBusy || reapplyNote.trim().length < 10}>{reapplyBusy ? "Submitting…" : "Submit reconsideration"}</button>
+            </div>
+            <p className="stprofile-reapply-footnote">Your existing account will be reused. Don't pay again unless the system explicitly asks you to.</p>
+            {reapplyError && <p className="stprofile-reapply-feedback error" role="alert">{reapplyError}</p>}
+            {reapplyMessage && <p className="stprofile-reapply-feedback success" role="status">{reapplyMessage}</p>}
+          </form>
+        </div>}
         {application.status === "photo_resubmission_required" && application.photoReviewNote &&
           <p className="stprofile-application-note"><strong>Photo update requested:</strong> {application.photoReviewNote}</p>}
       </>}
