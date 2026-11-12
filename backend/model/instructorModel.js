@@ -220,14 +220,20 @@ export async function getRoster(sessionId) {
 }
 
 // Saves a list of { studentId, status } in one statement, so either all
-// of them are saved or none are. Marking a student again replaces their status.
+// of them are saved or none are. Marking a student again replaces their status,
+// and a null status removes their mark.
 export async function saveAttendance(sessionId, instructorId, records) {
+  const marked = records.filter((r) => r.status !== null);
+  const cleared = records.filter((r) => r.status === null).map((r) => r.studentId);
   await pool.query(
-    `INSERT INTO attendance (session_id, student_id, status, method, recorded_by)
+    `WITH cleared AS (
+       DELETE FROM attendance WHERE session_id = $1 AND student_id = ANY($5::int[])
+     )
+     INSERT INTO attendance (session_id, student_id, status, method, recorded_by)
      SELECT $1, r.student_id, r.status, 'manual', $2
      FROM unnest($3::int[], $4::text[]) AS r(student_id, status)
      ON CONFLICT (session_id, student_id)
      DO UPDATE SET status = EXCLUDED.status, method = 'manual', recorded_by = EXCLUDED.recorded_by`,
-    [sessionId, instructorId, records.map((r) => r.studentId), records.map((r) => r.status)]
+    [sessionId, instructorId, marked.map((r) => r.studentId), marked.map((r) => r.status), cleared]
   );
 }

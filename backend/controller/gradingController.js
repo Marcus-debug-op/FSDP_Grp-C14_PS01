@@ -26,7 +26,7 @@ export async function getEligibility(req, res, next) {
       findCurrentBelt(userId),
       Grading.findNextBelt(userId),
       Grading.findTrainingSinceBelt(userId),
-      Grading.findNextGradingSession(),
+      Grading.findNextGradingSession(userId),
     ]);
 
     // No student_profiles row: the front desk hasn't recorded a belt yet, so
@@ -140,6 +140,7 @@ export async function getEligibility(req, res, next) {
             daysToGrading: nextGrading.days_to_grading,
             centreName: nextGrading.centre_name,
             centreAddress: nextGrading.centre_address,
+            ladder: nextGrading.ladder,
           }
         : null,
       application: application

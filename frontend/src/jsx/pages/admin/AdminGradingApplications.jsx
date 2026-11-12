@@ -106,13 +106,6 @@ export default function AdminGradingApplications() {
           </li>
         </ul>
 
-        {counts.awaitingInstructor > 0 && (
-          <p className="notice admin-notice">
-            {plural(counts.awaitingInstructor, "more application is", "more applications are")} waiting for an instructor to
-            approve. They will show here once approved.
-          </p>
-        )}
-
         <div className="adm-toolbar">
           <div className="auth-toggle" role="group" aria-label="Applications to show">
             {FILTERS.map((f) => (
@@ -124,7 +117,7 @@ export default function AdminGradingApplications() {
         </div>
 
         {applications.length === 0 ? (
-          <p className="adm-empty">No instructor-approved applications for this grading yet.</p>
+          <p className="adm-empty">No applications for this grading yet. Students apply once their instructor has approved them.</p>
         ) : shown.length === 0 ? (
           <p className="adm-empty">{filter === "eligible" ? "No eligible applications." : "Every application is eligible."}</p>
         ) : (
@@ -146,12 +139,21 @@ export default function AdminGradingApplications() {
                   <td data-label="Student">
                     <Link to={`/admin/students/${a.student.id}`} className="adm-link att-name">{a.student.name}</Link>
                     <span className="att-sub">Applied {formatShortDate(a.appliedOn)} · {STATUS_LABEL[a.status] || a.status}</span>
+                    {a.ladder === "children" && (
+                      <span className="att-sub">
+                        {a.ageOnGradingDate === null ? "Age not recorded" : `Age ${a.ageOnGradingDate} on grading day`}
+                      </span>
+                    )}
                   </td>
                   <td data-label="Grading for">
                     {a.targetBelt}
                     <span className="att-sub">From {a.currentBelt || "no belt"}</span>
                   </td>
-                  <td data-label="Classes">{a.classes.have} of {a.classes.need}</td>
+                  <td data-label="Classes">
+                    {a.classes.need === 0
+                      ? `${plural(a.classes.have, "class", "classes")}, no minimum`
+                      : `${a.classes.have} of ${a.classes.need}`}
+                  </td>
                   <td data-label="Time at belt">
                     {a.months.need === 0
                       ? `${plural(a.months.have, "month", "months")}, no minimum`
