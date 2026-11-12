@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getStudent } from "../../../js/services/adminService.js";
 import { formatShortDate, formatTime, todayString } from "../../../js/utils/formatters.js";
+import PageHeader from "../../components/admin/PageHeader.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -120,13 +121,17 @@ export default function AdminStudentProfile() {
     <section className="section">
       <div className="container">
         <Link to="/admin/students" className="adm-link adm-back">Back to students</Link>
-        <p className="eyebrow">Student record</p>
-        <h1>{student.fullName}</h1>
-        <p className="lead">
-          {contact}
-          <br />
-          {student.centreName ? `Home dojo: ${student.centreName}` : "No home dojo set"} · Joined {formatShortDate(student.joinedOn)}
-        </p>
+        <PageHeader
+          eyebrow="Student record"
+          title={student.fullName}
+          lead={
+            <>
+              {contact}
+              <br />
+              {student.centreName ? `Home dojo: ${student.centreName}` : "No home dojo set"} · Joined {formatShortDate(student.joinedOn)}
+            </>
+          }
+        />
 
         <ul className="stats admin-stats">
           <li><strong>{student.belt ? student.belt.name : "-"}</strong><span>Current belt</span></li>

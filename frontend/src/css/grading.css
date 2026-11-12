@@ -1,0 +1,77 @@
+.grad-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
+
+.grad-status { gap: 0.6rem; }
+
+.grad-status.is-ok { border-color: #bfe2cc; background: linear-gradient(180deg, #f6fcf8, #fff); }
+
+.grad-status-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+
+.grad-status-title { margin: 0.2rem 0 0; font-size: clamp(1.4rem, 3vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; }
+
+.grad-path { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin: 0; font-size: 0.9rem; font-weight: 600; }
+
+.grad-path-step {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.3rem 0.7rem; border-radius: 999px; background: var(--prog-soft);
+}
+
+.grad-path-step.is-next { background: var(--prog-card); box-shadow: inset 0 0 0 1px var(--prog-line); }
+
+.grad-path-arrow { color: var(--prog-muted); }
+
+.grad-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.2rem 0 0; padding: 0; }
+
+.grad-chips li {
+  padding: 0.4rem 0.75rem; border-radius: 8px; font-size: 0.88rem; font-weight: 600;
+  background: var(--prog-accent-soft); color: var(--prog-accent);
+}
+
+.grad-stat { gap: 0.55rem; }
+
+.grad-stat-value { margin: 0; font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+.grad-stat-value span { margin-left: 0.35rem; font-size: 0.9rem; font-weight: 500; letter-spacing: 0; color: var(--prog-muted); }
+
+.grad-stat-note { margin: 0; font-size: 0.82rem; color: var(--prog-muted); }
+
+.grad-stat-note.is-ok { color: var(--prog-ok); font-weight: 600; }
+
+.grad-event { display: flex; align-items: center; gap: 1rem; }
+
+.grad-date {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 4.2rem; height: 4.4rem; border-radius: 12px; background: var(--prog-text); color: #fff;
+}
+
+.grad-date span { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
+
+.grad-date strong { font-size: 1.7rem; line-height: 1; font-weight: 700; }
+
+.grad-event-info { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+
+.grad-event-title { margin: 0; font-weight: 650; }
+
+.grad-event-foot { margin: 0; padding-top: 0.75rem; border-top: 1px solid var(--prog-line); font-size: 0.88rem; color: var(--prog-muted); }
+
+.grad-event-foot strong { color: var(--prog-text); }
+
+.grad-applied { margin: 0; padding: 0.7rem 0.9rem; border-radius: 10px; background: var(--prog-soft); font-size: 0.88rem; }
+
+.grad-syllabus { list-style: none; counter-reset: syl; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+
+.grad-syllabus li {
+  counter-increment: syl; display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.5rem 0.6rem; border-radius: 10px; font-size: 0.92rem;
+}
+
+.grad-syllabus li:hover { background: var(--prog-soft); }
+
+.grad-syllabus li::before {
+  content: counter(syl); flex: 0 0 auto; display: inline-grid; place-items: center;
+  width: 1.6rem; height: 1.6rem; border-radius: 7px; background: var(--prog-soft);
+  font-size: 0.75rem; font-weight: 700; color: var(--prog-muted);
+}
+
+@media (max-width: 860px) {
+  .grad-tiles { grid-template-columns: minmax(0, 1fr); }
+}

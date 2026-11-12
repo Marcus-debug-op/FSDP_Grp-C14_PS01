@@ -338,8 +338,8 @@ export default function StudentDashboard() {
       {data && !data.profileReady && (
         <section className="section">
           <div className="container narrow">
-            <p className="notice">
-              Please ask the front desk to record your belt and home centre, then refresh this page.
+            <p className="notice notice-fit">
+              Please ask the front desk to record your belt, then refresh this page.
             </p>
           </div>
         </section>

@@ -55,3 +55,38 @@ export const cancelPrivateLesson = (id, adminNote) =>
   request(`/private-lessons/${id}/cancel`, { method: "PATCH", body: { adminNote } });
 export const recordPrivateLessonOutcome = (id, outcome) =>
   request(`/private-lessons/${id}/outcome`, { method: "PATCH", body: { outcome } }).then((d) => d.lesson);
+
+// New-member application review (admin-only API)
+export const listMembershipApplications = (status = "pending") => request("/applications", { query: { status } }).then((r) => r.applications);
+export const getMembershipApplication = (id) => request(`/applications/${id}`).then((r) => r.application);
+export const decideMembershipApplication = (id, decision, rejectionReason = "") =>
+  request(`/applications/${id}/decision`, { method: "PATCH", body: { decision, rejectionReason } });
+
+// Private profile photo: fetch as a Blob using admin JWT, not a public <img> URL.
+export async function getMembershipApplicationPhoto(id, { signal } = {}) {
+  if (!API_URL) throw new Error('Backend address is not configured.');
+  const res = await fetch(`${API_URL}/api/admin/applications/${encodeURIComponent(id)}/photo`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) || ''}` },
+    signal,
+    cache: 'no-store',
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Could not load the photo (${res.status}).`);
+  const blob = await res.blob();
+  if (!blob.type.startsWith('image/')) throw new Error('Unexpected photo file type.');
+  return blob;
+}
+
+export const requestMembershipPhotoResubmission = (id, reason) =>
+  request(`/applications/${id}/photo/request`, { method: 'PATCH', body: { reason } });
+export const acceptMembershipApplicationPhoto = (id) =>
+  request(`/applications/${id}/photo/accept`, { method: 'PATCH' });
+
+// Admin-only membership book tracking.
+export const advanceMembershipBook = (id, status) =>
+  request(`/applications/${id}/book`, { method: "PATCH", body: { status } }).then((r) => r.book);
+
+export const getGradingSessions = () => request("/grading-sessions");
+export const createGradingSession = (session) =>
+  request("/grading-sessions", { method: "POST", body: session }).then((d) => d.session);
+export const getGradingApplications = (id) => request(`/grading-sessions/${id}/applications`);

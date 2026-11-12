@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { getDashboard } from "../../../js/services/adminService.js";
 import { formatDayHeading, formatTime } from "../../../js/utils/formatters.js";
 import BarChart from "../../components/admin/BarChart.jsx";
+import PageHeader from "../../components/admin/PageHeader.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -174,9 +175,7 @@ export default function AdminDashboard() {
   return (
     <section className="section">
       <div className="container">
-        <span className="role-badge">{user.role}</span>
-        <h1>Welcome, {user.fullName}</h1>
-        <p className="lead">How classes and attendance are going across every dojo.</p>
+        <PageHeader eyebrow="Overview · All dojos" title="Admin Dashboard" lead="How classes and attendance are going across every dojo." />
 
         <div className="adm-toolbar">
           <div className="auth-toggle" role="group" aria-label="Dashboard view">

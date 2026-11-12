@@ -1,26 +1,176 @@
-/* Styles for the belt card and belt progression (FSDP-9, FSDP-62). Uses the tokens from index.css. */
-.belt-swatch { display: inline-block; width: 1.1rem; height: 1.1rem; border: 1px solid var(--text); border-radius: 50%; vertical-align: -0.15rem; margin-right: 0.5rem; }
-.belt-card h3 { display: flex; align-items: center; }
-.belt-card .details dt { min-width: 7.5rem; }
-.belt-error { color: var(--accent-text); }
+.belt-swatch { display: inline-block; width: 1.1rem; height: 1.1rem; border: 1px solid rgba(38, 35, 31, 0.5); border-radius: 50%; vertical-align: -0.15rem; margin-right: 0.6rem; flex: 0 0 auto; box-shadow: 0 0 0 3px rgba(38, 35, 31, 0.06); }
 
-.belt-history-title { margin-top: 2.5rem; padding-bottom: 0.7rem; border-bottom: 1px solid var(--line); }
+.prog {
+  --prog-bg: #f5f5f7;
+  --prog-card: #ffffff;
+  --prog-line: #e4e4e8;
+  --prog-text: #15171c;
+  --prog-muted: #62666f;
+  --prog-soft: #f0f0f3;
+  --prog-accent: #a83f31;
+  --prog-accent-soft: #fbeeeb;
+  --prog-ok: #1f7a4a;
+  --prog-ok-soft: #e7f5ec;
+  --prog-radius: 14px;
+  background: var(--prog-bg);
+  color: var(--prog-text);
+  min-height: calc(100vh - 73px);
+  padding: 2.5rem 0 4rem;
+  font-family: var(--font-body);
+}
 
-/* Progression ladder (FSDP-62) */
-/* The left margin moves the line in so the dot's left edge (half its width minus half the line) meets the card's left edge. */
-.belt-ladder { list-style: none; padding: 0; margin: 1.5rem 0 0 calc(0.525rem - 1px); border-left: 2px solid var(--line); }
-/* Ladder margin + 2px line + this padding = the card's padding + its 1px border, so history rows line up with the card's content. */
-.belt-ladder li { position: relative; padding: 0 0 1.6rem 0.975rem; }
-/* The dot is 0.525rem from edge to centre (0.8rem wide + 2px borders); -1px reaches the middle of the 2px line. */
-.belt-ladder li::before { content: ""; position: absolute; left: calc(-1px - 0.525rem); top: 0.5rem; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: var(--bg); border: 2px solid var(--line); }
-.belt-ladder li.achieved::before { background: var(--accent); border-color: var(--accent); }
-.belt-ladder li.current::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(168, 63, 49, 0.2); }
-.belt-rank-name { font-family: var(--font-heading); font-size: 1.2rem; display: flex; align-items: center; }
-/* Indented by the swatch's width + margin (1.1rem + 0.5rem) so it lines up with the belt name. */
-.belt-rank-meta { color: var(--muted); font-size: 0.9rem; margin: 0.1rem 0 0; padding-left: 1.6rem; }
-.belt-ladder li.upcoming .belt-rank-name, .belt-ladder li.upcoming .belt-rank-meta { color: var(--muted); }
-.belt-reqs { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.9rem; color: var(--muted); }
-.belt-reqs li { padding: 0; margin: 0 0 0.2rem; list-style: disc; }
-.belt-reqs li::before { content: none; }
-.belt-status-tag { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; border: 1px solid var(--accent); color: var(--accent-text); padding: 0.05rem 0.5rem; margin-left: 0.6rem; }
-.belt-note { font-size: 0.9rem; color: var(--muted); margin-top: 1.5rem; }
+.prog h1, .prog h2, .prog h3 { font-family: var(--font-body); }
+
+.prog-wrap { width: min(1040px, calc(100% - 32px)); margin: 0 auto; display: flex; flex-direction: column; gap: 1.25rem; }
+
+.prog-tabs {
+  display: inline-flex; align-self: flex-start; gap: 0.25rem; padding: 0.25rem;
+  background: var(--prog-card); border: 1px solid var(--prog-line); border-radius: 999px;
+}
+
+.prog-tab {
+  padding: 0.45rem 1.1rem; border-radius: 999px; font-size: 0.9rem; font-weight: 600;
+  color: var(--prog-muted); text-decoration: none; transition: background 0.15s, color 0.15s;
+}
+
+.prog-tab:hover { color: var(--prog-text); background: var(--prog-soft); }
+
+.prog-tab.active { background: var(--prog-text); color: #fff; }
+
+.prog-head h1 { margin: 0.25rem 0 0.25rem; font-size: clamp(1.8rem, 4vw, 2.3rem); font-weight: 700; letter-spacing: -0.03em; }
+
+.prog-head p { margin: 0; color: var(--prog-muted); font-size: 1rem; }
+
+.prog-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; }
+
+.prog-card {
+  background: var(--prog-card); border: 1px solid var(--prog-line); border-radius: var(--prog-radius);
+  padding: 1.4rem 1.5rem; margin: 0; display: flex; flex-direction: column; gap: 0.75rem; min-width: 0;
+}
+
+.prog-card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+
+.prog-card-title {
+  display: flex; align-items: center; gap: 0.55rem; margin: 0;
+  font-size: 1.05rem; font-weight: 650; letter-spacing: -0.01em;
+}
+
+.prog-label {
+  margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--prog-muted);
+}
+
+.prog-muted { margin: 0; color: var(--prog-muted); font-size: 0.92rem; line-height: 1.55; }
+
+.prog-cap { text-transform: capitalize; }
+
+.prog-count {
+  min-width: 1.6rem; padding: 0.1rem 0.5rem; border-radius: 999px; text-align: center;
+  background: var(--prog-soft); color: var(--prog-muted); font-size: 0.78rem; font-weight: 700;
+}
+
+.prog-swatch {
+  display: inline-block; flex: 0 0 auto; width: 0.85rem; height: 0.85rem; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.prog-swatch.is-lg { width: 1.4rem; height: 1.4rem; }
+
+.prog-pill {
+  display: inline-flex; align-items: center; gap: 0.35rem; align-self: flex-start;
+  padding: 0.22rem 0.65rem; border-radius: 999px; white-space: nowrap;
+  font-size: 0.75rem; font-weight: 700; background: var(--prog-soft); color: var(--prog-muted);
+}
+
+.prog-pill::before { content: ""; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: currentColor; }
+
+.prog-pill.is-ok { background: var(--prog-ok-soft); color: var(--prog-ok); }
+
+.prog-pill.is-accent { background: var(--prog-accent-soft); color: var(--prog-accent); }
+
+.prog-pill.is-closed { background: var(--prog-soft); color: var(--prog-muted); }
+
+.prog-bar { height: 8px; border-radius: 999px; background: var(--prog-soft); overflow: hidden; }
+
+.prog-bar span { display: block; height: 100%; border-radius: inherit; background: var(--prog-accent); transition: width 0.6s cubic-bezier(.2, .75, .25, 1); }
+
+.prog-btn {
+  align-self: flex-start; margin-top: auto; padding: 0.6rem 1.1rem; border-radius: 10px;
+  background: var(--prog-accent); color: #fff; font-size: 0.9rem; font-weight: 600; text-decoration: none;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.prog-btn:hover { background: #8c3226; transform: translateY(-1px); }
+
+.prog-alert {
+  margin: 0; padding: 0.9rem 1.1rem; border-radius: var(--prog-radius);
+  background: var(--prog-accent-soft); color: var(--prog-accent); font-weight: 600;
+}
+
+.prog-loading { margin: 0; color: var(--prog-muted); }
+
+.belt-hero { position: relative; overflow: hidden; padding-top: 1.9rem; }
+
+.belt-hero::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 6px; background: var(--belt);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.belt-hero-title {
+  display: flex; align-items: center; gap: 0.7rem; margin: 0;
+  font-size: clamp(1.7rem, 3.5vw, 2.1rem); font-weight: 700; letter-spacing: -0.03em;
+}
+
+.belt-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; margin: 0.4rem 0 0; }
+
+.belt-stats div { padding: 0.7rem 0.8rem; border-radius: 10px; background: var(--prog-soft); }
+
+.belt-stats dt { font-size: 0.75rem; color: var(--prog-muted); }
+
+.belt-stats dd { margin: 0.1rem 0 0; font-weight: 650; font-size: 0.95rem; }
+
+.belt-next-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+
+.belt-meter { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.belt-meter-labels { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--prog-muted); font-variant-numeric: tabular-nums; }
+
+.belt-history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+.belt-history li {
+  display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 0.7rem;
+  padding: 0.8rem 0.25rem; border-top: 1px solid var(--prog-line);
+}
+
+.belt-history li:first-child { border-top: 0; }
+
+.belt-history-name { font-weight: 650; }
+
+.belt-history-meta { grid-column: 4; font-size: 0.85rem; color: var(--prog-muted); text-align: right; }
+
+.belt-history li:not(.is-current) .belt-history-name { grid-column: 2 / 4; }
+
+.prog-footnote { margin: 0; font-size: 0.85rem; color: var(--prog-muted); }
+
+.prog-footnote a { color: var(--prog-accent); font-weight: 600; }
+
+.prog :focus-visible { outline: 2px solid var(--prog-accent); outline-offset: 2px; }
+
+@media (max-width: 860px) {
+  .prog-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 520px) {
+  .prog { padding-top: 1.5rem; }
+  .prog-tabs { align-self: stretch; }
+  .prog-tab { flex: 1; text-align: center; }
+  .prog-card { padding: 1.15rem; }
+  .belt-stats { grid-template-columns: minmax(0, 1fr); }
+  .belt-history li { grid-template-columns: auto 1fr auto; }
+  .belt-history-meta { grid-column: 2 / -1; text-align: left; }
+  .belt-history li:not(.is-current) .belt-history-name { grid-column: 2 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prog-bar span, .prog-btn, .prog-tab { transition: none; }
+}

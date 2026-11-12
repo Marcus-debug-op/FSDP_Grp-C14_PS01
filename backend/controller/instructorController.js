@@ -97,6 +97,116 @@ export async function getCalendar(req, res, next) {
   }
 }
 
+// Membership rule from the club's grading SOP: a member for at least 3 months.
+// An active membership stands in for "no outstanding membership fees".
+const MIN_MONTHS_AS_MEMBER = 3;
+
+// Checks one student against the rules for their next belt.
+function gradingProgress(row) {
+  const student = { studentId: row.id, fullName: row.full_name, homeDojo: row.home_dojo };
+  if (!row.current_belt) {
+    return { ...student, status: "no_profile", checks: [] };
+  }
+  if (!row.next_belt) {
+    return { ...student, currentBelt: row.current_belt, status: "top_belt", checks: [] };
+  }
+
+  const memberMonths = row.months_as_member ?? 0;
+  const checks = [
+    {
+      key: "classes",
+      label: "Classes since last grading",
+      value: `${row.classes_since_belt} of ${row.min_classes_at_rank}`,
+      met: row.classes_since_belt >= row.min_classes_at_rank,
+    },
+    {
+      key: "months",
+      label: "Time at current belt",
+      value: row.min_months_at_rank > 0
+        ? `${row.months_at_belt} of ${row.min_months_at_rank} months`
+        : `${row.months_at_belt} months, no minimum`,
+      met: row.months_at_belt >= row.min_months_at_rank,
+    },
+    {
+      key: "membership",
+      label: "Member for 3 months, fees paid",
+      value: row.membership_active ? `Member for ${memberMonths} months` : "No active membership",
+      met: row.membership_active && memberMonths >= MIN_MONTHS_AS_MEMBER,
+    },
+  ];
+
+  return {
+    ...student,
+    currentBelt: row.current_belt,
+    nextBelt: row.next_belt,
+    status: checks.every((check) => check.met) ? "ready" : "not_yet",
+    checks,
+  };
+}
+
+// GET /api/instructor/grading-readiness
+export async function getGradingReadiness(req, res, next) {
+  try {
+    const rows = await Instructor.listGradingProgress(req.user.id);
+    const order = { ready: 0, not_yet: 1, top_belt: 2, no_profile: 3 };
+    const students = rows.map(gradingProgress).sort((a, b) => order[a.status] - order[b.status]);
+    res.json({ students });
+  } catch (err) {
+    next(err);
+  }
+}
+
+function publicGrading(row) {
+  return {
+    id: row.id,
+    centre: row.centre,
+    date: row.grading_date,
+    startTime: row.start_time,
+    closesOn: row.closes_on,
+    registrationOpen: row.registration_open,
+  };
+}
+
+// GET /api/instructor/gradings  (upcoming only)
+export async function listUpcomingGradings(req, res, next) {
+  try {
+    const rows = await Instructor.listUpcomingGradings(req.user.id);
+    res.json({ gradings: rows.map((row) => ({ ...publicGrading(row), myApplicants: row.my_applicants })) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/instructor/gradings/:id/applicants
+// Only the instructor's own students, each with the same readiness checks as
+// the grading readiness page.
+export async function getGradingApplicants(req, res, next) {
+  try {
+    const gradingId = parseId(req.params.id);
+    const grading = gradingId && (await Instructor.findGrading(gradingId));
+    if (!grading) return res.status(404).json({ message: "Grading not found." });
+
+    const [applications, progressRows] = await Promise.all([
+      Instructor.listMyApplicants(req.user.id, grading.id),
+      Instructor.listGradingProgress(req.user.id),
+    ]);
+    const progressById = new Map(progressRows.map((row) => [row.id, gradingProgress(row)]));
+
+    const applicants = applications
+      .filter((application) => progressById.has(application.student_id))
+      .map((application) => ({
+        ...progressById.get(application.student_id),
+        applicationStatus: application.status,
+        targetBelt: application.target_belt,
+        appliedOn: application.applied_on,
+      }));
+
+    res.json({ grading: publicGrading(grading), applicants });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/instructor/sessions/:id/roster
 export async function getRoster(req, res, next) {
   try {

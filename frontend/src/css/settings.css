@@ -1,0 +1,173 @@
+/* Personal settings page (FSDP-42).
+   Reuses the signup wizard's card-and-field look so the portal stays
+   consistent, but scoped under .set-* so nothing else is affected. */
+
+.set-page { max-width: 680px; }
+.set-page h1 { margin-bottom: 0.4rem; }
+.set-page .lead { margin-bottom: 1.6rem; }
+
+/* Reserves a line for the save confirmation so the form doesn't jump when
+   one appears. */
+.set-live { min-height: 1.9rem; }
+.set-status {
+  margin: 0 0 0.6rem; padding: 0.55rem 0.9rem; border-radius: 6px;
+  background: #eef5ee; color: #2d5b36; border-left: 4px solid #2e8b57;
+  font-size: 0.9rem;
+}
+
+
+/* ---------- Cards ---------- */
+/* Also used as <fieldset>, so the browser's default border and padding
+   have to be cleared first. */
+.set-card {
+  border: 1px solid #ded8d2; border-radius: 9px; background: #fff;
+  padding: 1.4rem 1.5rem; margin: 0 0 1.1rem; min-width: 0;
+}
+.set-card-title {
+  font-family: var(--font-heading); font-size: 1.15rem; font-weight: 400;
+  letter-spacing: -0.01em; padding: 0; margin: 0 0 0.3rem; color: var(--text);
+}
+.set-card-note { margin: 0 0 1.1rem; font-size: 0.88rem; color: var(--muted); line-height: 1.6; }
+.set-card-note a { color: var(--accent-text); }
+
+/* ---------- Editable details: one card, two sections, shared footer ---------- */
+/* The card's own padding is dropped so the divider lines and the footer can
+   run edge to edge; each part pads itself instead. */
+.set-form { padding: 0; overflow: hidden; }
+.set-form-head { padding: 1.4rem 1.5rem 0; }
+.set-form-head .set-card-note { margin-bottom: 0; }
+
+.set-section {
+  border: 0; margin: 0; min-width: 0;
+  padding: 1.3rem 1.5rem 1.5rem;
+}
+/* Divider between the two sections, not above the first one. */
+.set-section + .set-section { border-top: 1px solid var(--line, #e8e3de); }
+.set-section-title {
+  float: left; width: 100%; /* lets the legend sit inside the padding like a heading */
+  padding: 0; margin: 0 0 0.25rem;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--accent-text);
+}
+.set-section-title + * { clear: both; }
+.set-section .set-card-note { margin-bottom: 1rem; }
+.set-section > .set-grid { margin-top: 0.75rem; }
+.set-section .set-card-note + .set-grid { margin-top: 0; }
+.set-section[disabled] { opacity: 0.65; }
+
+/* ---------- Fields ---------- */
+.set-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.1rem; }
+.set-grid .set-span-full { grid-column: 1 / -1; }
+.set-grid label {
+  display: flex; flex-direction: column; gap: 0.35rem;
+  font-size: 0.86rem; font-weight: 600; color: var(--text); min-width: 0;
+}
+.set-grid input,
+.set-grid textarea {
+  width: 100%; font: inherit; font-size: 0.94rem; font-weight: 400;
+  padding: 0.7rem 0.85rem; background: #fff; color: var(--text);
+  border: 1px solid #d7d1cc; border-radius: 6px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.set-grid textarea { resize: vertical; min-height: 3.4rem; line-height: 1.5; }
+.set-grid input::placeholder,
+.set-grid textarea::placeholder { color: #8c8681; }
+.set-grid input:focus,
+.set-grid textarea:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(168, 63, 49, 0.12);
+}
+.set-grid .form-hint { font-size: 0.78rem; font-weight: 400; }
+.set-optional { display: inline; font-size: 0.74rem; font-weight: 400; color: var(--muted); }
+
+/* ---------- Save row ---------- */
+/* The card's footer: tinted and ruled off so it reads as belonging to the
+   whole card rather than to the emergency contact section above it. */
+.set-actions {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.9rem;
+  padding: 1rem 1.5rem; background: var(--surface, #f7f4f1);
+  border-top: 1px solid var(--line, #e8e3de);
+}
+.set-actions .btn { border-radius: 5px; padding: 0.72rem 1.3rem; text-transform: none; letter-spacing: 0; font-size: 0.9rem; }
+.set-actions .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.set-text-button {
+  background: transparent; border: 0; padding: 0.4rem 0; color: var(--accent);
+  font: inherit; font-size: 0.82rem; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.set-saved-at { margin-left: auto; font-size: 0.78rem; color: var(--muted); }
+
+/* ---------- Nearest dojo ---------- */
+.set-nearby { margin-top: 1.6rem; }
+
+/* The indicator. Given the accent border so it reads as the answer, with the
+   runners-up below it in plain grey. */
+.set-nearest {
+  border: 1px solid var(--accent); border-radius: 8px; background: #fbf6f4;
+  padding: 1.1rem 1.2rem; margin: 0 0 1.3rem;
+}
+.set-nearest-label {
+  margin: 0 0 0.35rem; font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-text);
+}
+.set-nearest-name {
+  margin: 0 0 0.3rem; font-family: var(--font-heading);
+  font-size: 1.3rem; font-weight: 400; letter-spacing: -0.015em;
+}
+.set-others-title { margin: 0 0 0.6rem; font-weight: 600; color: var(--text); }
+
+.set-dojo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.7rem; }
+.set-dojo-list li {
+  border: 1px solid var(--line); border-radius: 7px;
+  padding: 0.9rem 1rem; background: var(--surface);
+}
+.set-dojo-text { min-width: 0; }
+.set-dojo-text h3 {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+  margin: 0 0 0.15rem; font-family: var(--font-body);
+  font-size: 0.97rem; font-weight: 600;
+}
+.set-dojo-address { margin: 0; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+.set-dojo-distance { margin: 0.2rem 0 0; font-size: 0.8rem; font-weight: 600; color: var(--accent-text); }
+.set-dojo-area { font-weight: 400; color: var(--muted); }
+.set-empty {
+  margin: 0; padding: 0.85rem 1rem; border-radius: 6px;
+  background: var(--surface); color: var(--muted); font-size: 0.86rem;
+}
+.set-nearby .set-empty { margin-top: 0.9rem; }
+.set-fineprint { margin: 0.9rem 0 0; font-size: 0.78rem; }
+
+/* ---------- View-only belt and membership ---------- */
+.set-readonly { background: var(--surface); }
+.set-details { margin: 0; }
+.set-details div { padding: 0.5rem 0; }
+.set-details div:last-child { border-bottom: 0; }
+.set-details dt { min-width: 9rem; font-size: 0.88rem; }
+.set-details dd { font-weight: 600; font-size: 0.92rem; display: flex; align-items: center; }
+/* A long email must wrap rather than widen the card on a narrow screen. */
+.set-details .set-email { font-weight: 400; word-break: break-all; }
+/* Defined here too, so this page doesn't depend on belt.css being loaded. */
+.set-details .belt-swatch {
+  display: inline-block; width: 1.1rem; height: 1.1rem;
+  border: 1px solid var(--text); border-radius: 50%;
+  margin-right: 0.5rem; flex: 0 0 auto;
+}
+
+.set-page .button-row { margin-top: 1.8rem; }
+
+@media (max-width: 560px) {
+  .set-grid { grid-template-columns: 1fr; }
+  .set-card { padding: 1.2rem 1.1rem; }
+  .set-form { padding: 0; }
+  .set-form-head { padding: 1.2rem 1.1rem 0; }
+  .set-section { padding: 1.1rem 1.1rem 1.3rem; }
+  .set-actions { padding: 0.9rem 1.1rem; }
+  .set-details div { flex-direction: column; gap: 0.1rem; }
+  .set-details dt { min-width: 0; }
+  .set-saved-at { margin-left: 0; width: 100%; }
+  .set-nearest { padding: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .set-grid input, .set-grid textarea { transition: none; }
+}

@@ -15,6 +15,7 @@ const adminLinks = [
   { to: "/admin/schedule", label: "Timetable" },
   { to: "/admin/attendance", label: "Attendance" },
   { to: "/admin/students", label: "Students" },
+  { to: "/admin/applications", label: "Applications" },
   { to: "/admin/private-lessons", label: "Lessons" },
   { to: "/admin/dojos", label: "Dojos" },
 ];
@@ -25,8 +26,11 @@ const studentLinks = [
   { to: "/timetable", label: "My Timetable" },  // SD-5, TP-1
   { to: "/lessons", label: "Book Lessons" },    // BK-1 to BK-5
   { to: "/payments", label: "Payments" },       // PAY-1, PAY-6
-  { to: "/grading", label: "Grading" },         // GR-1 to GR-3 (teammate's part)
-  { to: "/belt-progress", label: "My Belt" },   // FSDP-9, FSDP-62
+];
+
+const studentMenuLinks = [
+  { to: "/grading", label: "Grading" },
+  { to: "/belt-progress", label: "My Belt" },
 ];
 
 export default function Navbar() {
@@ -37,28 +41,36 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef(null);
-  const close = () => { setOpen(false); setAccountOpen(false); };
+  const [studentsOpen, setStudentsOpen] = useState(false);
+  const studentsRef = useRef(null);
+  const close = () => { setOpen(false); setAccountOpen(false); setStudentsOpen(false); };
 
   // Close both menus whenever the page changes.
   useEffect(() => { close(); }, [pathname]);
 
   // Close the account menu on an outside click or Escape.
   useEffect(() => {
-    if (!accountOpen) return undefined;
-    const onClick = (e) => { if (!accountRef.current?.contains(e.target)) setAccountOpen(false); };
-    const onKey = (e) => { if (e.key === "Escape") setAccountOpen(false); };
+    if (!accountOpen && !studentsOpen) return undefined;
+    const onClick = (e) => {
+      if (!accountRef.current?.contains(e.target)) setAccountOpen(false);
+      if (!studentsRef.current?.contains(e.target)) setStudentsOpen(false);
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") { setAccountOpen(false); setStudentsOpen(false); }
+    };
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
     };
-  }, [accountOpen]);
+  }, [accountOpen, studentsOpen]);
 
   const isStudent = user?.role === "student";
   const isAdmin = user?.role === "admin";
   const navLinks = isStudent ? studentLinks : isAdmin ? adminLinks : links;
   const firstName = user?.fullName?.split(" ")[0] || "Account";
+  const studentsActive = studentMenuLinks.some((l) => pathname === l.to);
 
   function handleSignOut() {
     logout();
@@ -97,6 +109,26 @@ export default function Navbar() {
 
           {isStudent ? (
             <>
+              <div className="account nav-dropdown" ref={studentsRef}>
+                <button
+                  type="button"
+                  className={studentsActive ? "nav-link nav-dropdown-toggle active" : "nav-link nav-dropdown-toggle"}
+                  aria-expanded={studentsOpen}
+                  aria-controls="students-menu"
+                  onClick={() => setStudentsOpen(!studentsOpen)}
+                >
+                  Students <span aria-hidden="true">▾</span>
+                </button>
+                <div id="students-menu" className={studentsOpen ? "account-menu nav-dropdown-menu open" : "account-menu nav-dropdown-menu"}>
+                  {studentMenuLinks.map((l) => (
+                    <NavLink key={l.to} to={l.to} onClick={close}>{l.label}</NavLink>
+                  ))}
+                </div>
+              </div>
+              {studentMenuLinks.map((l) => (
+                <NavLink key={l.to} to={l.to} onClick={close} className="nav-link nav-mobile-only">{l.label}</NavLink>
+              ))}
+
               <Link to="/check-in" className="btn btn-primary btn-small nav-checkin nav-checkin-desktop">Check In</Link>
 
               {/* Desktop: name opens a small menu */}
@@ -111,12 +143,14 @@ export default function Navbar() {
                   {firstName} <span aria-hidden="true">▾</span>
                 </button>
                 <div id="account-menu" className={accountOpen ? "account-menu open" : "account-menu"}>
+                  <Link to="/profile" onClick={close}>My Profile</Link>
                   <Link to="/settings" onClick={close}>Settings</Link>
                   <button type="button" onClick={handleSignOut}>Sign Out</button>
                 </div>
               </div>
 
               {/* Phones: the same two items, listed in the menu */}
+              <NavLink to="/profile" onClick={close} className="nav-link nav-mobile-only">My Profile</NavLink>
               <NavLink to="/settings" onClick={close} className="nav-link nav-mobile-only">Settings</NavLink>
               <button type="button" className="btn btn-outline btn-small nav-mobile-only" onClick={handleSignOut}>
                 Sign Out

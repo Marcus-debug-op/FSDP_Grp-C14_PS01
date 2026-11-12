@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getAttendance, getCentres, getInstructors, getSessionAttendance } from "../../../js/services/adminService.js";
 import { formatDayHeading, formatTime, todayString } from "../../../js/utils/formatters.js";
+import PageHeader from "../../components/admin/PageHeader.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -145,9 +146,11 @@ export default function AdminAttendance() {
   return (
     <section className="section">
       <div className="container">
-        <p className="eyebrow">Attendance</p>
-        <h1>Attendance</h1>
-        <p className="lead">Who came to each class across all dojos. Open a class to see each student and how they checked in.</p>
+        <PageHeader
+          eyebrow="Records"
+          title="Attendance"
+          lead="Who came to each class across all dojos. Open a class to see each student and how they checked in."
+        />
 
         <div className="filters">
           <label>

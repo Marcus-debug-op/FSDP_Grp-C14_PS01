@@ -9,6 +9,10 @@ import { stripeWebhook } from "./controller/paymentController.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import beltRoutes from "./routes/beltRoutes.js";
 import instructorRoutes from "./routes/instructorRoutes.js";
+import publicClassRoutes from "./routes/publicClassRoutes.js";
+import registrationRoutes from "./routes/registrationRoutes.js";
+import gradingRoutes from "./routes/gradingRoutes.js"; 
+
 
 dotenv.config();
 
@@ -31,9 +35,12 @@ app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
 app.use("/api/student", studentRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/registration", registrationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/belts", beltRoutes);
 app.use("/api/instructor", instructorRoutes);
+app.use("/api/classes", publicClassRoutes);
+app.use("/api/grading", gradingRoutes);  
 
 // Unknown address
 app.use((req, res) => res.status(404).json({ message: "Not found" }));

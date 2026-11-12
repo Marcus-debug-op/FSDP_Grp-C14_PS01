@@ -172,3 +172,21 @@ export async function getOpenGrading(studentId, homeCentreId) {
   );
   return result.rows[0] || null;
 }
+
+// Read-only onboarding profile for the authenticated student; never expose photo bytes here.
+export async function getStudentProfile(userId) {
+  const result = await pool.query(
+    `SELECT u.id, u.full_name, u.email,
+            to_char(o.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+            o.gender, o.experience_level, o.previous_rank, o.experience_notes,
+            o.evidence_filename, o.membership_plan, o.membership_status,
+            o.phone, o.training_goal,
+            (o.photo_data IS NOT NULL) AS has_photo,
+            to_char(o.created_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS joined_on
+     FROM users u
+     LEFT JOIN student_onboarding o ON o.user_id = u.id
+     WHERE u.id = $1 AND u.role = 'student'`,
+    [userId]
+  );
+  return result.rows[0] || null;
+}
