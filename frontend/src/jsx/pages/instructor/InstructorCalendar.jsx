@@ -133,6 +133,9 @@ export default function InstructorCalendar() {
                     <dl className="details">
                       <div><dt>Dojo</dt><dd>{item.centre}</dd></div>
                     </dl>
+                    <Link to={`/instructor/gradings/${item.id}`} className="btn btn-outline btn-small">
+                      View Applicants
+                    </Link>
                   </article>
                 ))}
 

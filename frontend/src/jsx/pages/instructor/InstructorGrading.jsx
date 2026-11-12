@@ -1,33 +1,31 @@
 import { useEffect, useState } from "react";
-import { getGradingReadiness } from "../../../js/services/instructorService.js";
-import { REGIONS, dojos } from "../../../js/data/dojos.js";
+import { Link } from "react-router-dom";
+import { getGradingReadiness, getUpcomingGradings } from "../../../js/services/instructorService.js";
+import { REGIONS } from "../../../js/data/dojos.js";
+import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
+import ReadinessRow, { regionOf } from "../../components/ReadinessRow.jsx";
 import "../../../css/auth.css";
 import "../../../css/instructor.css";
 
-const STATUS_LABEL = {
-  ready: "Ready",
-  not_yet: "Not yet",
-  top_belt: "Highest belt",
-  no_profile: "No belt recorded",
+const toDate = (ymd) => {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d);
 };
+export const gradingDay = (ymd) => toDate(ymd).toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long" });
+export const shortDate = (ymd) => toDate(ymd).toLocaleDateString("en-SG", { day: "numeric", month: "short" });
 
-// Dojo names differ slightly between the database and the dojo directory
-// ("Our Tampines Hub Dojo" and "Our Tampines Hub"), so compare them without
-// the word "dojo", spaces or punctuation.
-const simplify = (name) => (name || "").toLowerCase().replace(/\bdojo\b/g, "").replace(/[^a-z0-9]/g, "");
-const REGION_OF = new Map(dojos.map((dojo) => [simplify(dojo.name), dojo.region]));
-const regionOf = (dojoName) => REGION_OF.get(simplify(dojoName)) || null;
-
-// Grading readiness (FSDP-72): the instructor's students, each checked
-// against the rules for their next belt.
+// Grading page: upcoming gradings with your applicants (FSDP-17), then your
+// students checked against the rules for their next belt (FSDP-72).
 export default function InstructorGrading() {
+  const [gradings, setGradings] = useState(null);
   const [students, setStudents] = useState(null);
   const [error, setError] = useState("");
   const [region, setRegion] = useState("All");
   const [dojoSearch, setDojoSearch] = useState("");
 
   useEffect(() => {
+    getUpcomingGradings().then(setGradings).catch((err) => setError(err.message));
     getGradingReadiness().then(setStudents).catch((err) => setError(err.message));
   }, []);
 
@@ -53,14 +51,40 @@ export default function InstructorGrading() {
       <section className="section instructor-kanji-section">
         <span className="instructor-kanji instructor-kanji-low" aria-hidden="true">合</span>
         <div className="container">
-          <p className="eyebrow">Grading readiness</p>
-          <h1 className="roster-title">Your Students</h1>
+          <p className="eyebrow">Assessment and progression</p>
+          <h1 className="roster-title">Grading</h1>
+          <p className="lead">Upcoming gradings, and how ready your students are for their next belt.</p>
+
+          {error && <p className="form-error" role="alert">{error}</p>}
+
+          <h2 className="calendar-list-title grading-section-title">Upcoming gradings</h2>
+          {gradings && gradings.length === 0 && <p className="notice">No gradings are scheduled.</p>}
+          {gradings && gradings.length > 0 && (
+            <div className="grid instructor-classes">
+              {gradings.map((grading) => (
+                <article className="card" key={grading.id}>
+                  <span className="tag">
+                    {grading.registrationOpen ? `Applications close ${shortDate(grading.closesOn)}` : "Applications closed"}
+                  </span>
+                  <h3 className="instructor-card-title">{gradingDay(grading.date)}</h3>
+                  <dl className="details">
+                    <div><dt>Time</dt><dd>{formatTime(grading.startTime)}</dd></div>
+                    <div><dt>Dojo</dt><dd>{grading.centre}</dd></div>
+                    <div><dt>Applied</dt><dd>{grading.myApplicants} of your students</dd></div>
+                  </dl>
+                  <Link to={`/instructor/gradings/${grading.id}`} className="btn btn-outline btn-small">
+                    View Applicants
+                  </Link>
+                </article>
+              ))}
+            </div>
+          )}
+
+          <h2 className="calendar-list-title grading-section-title">Your students</h2>
           <p className="lead">
             Everyone who trained in or booked your classes in the last 3 months, checked against the rules for
             their next belt.
           </p>
-
-          {error && <p className="form-error" role="alert">{error}</p>}
 
           {students && students.length === 0 && (
             <p className="notice">No students have trained in your classes in the last 3 months.</p>
@@ -98,41 +122,7 @@ export default function InstructorGrading() {
               )}
 
               <ul className="readiness-list">
-                {shown.map((student) => (
-                  <li className={`readiness-row readiness-row-${student.status}`} key={student.studentId}>
-                    <div className="readiness-student">
-                      <strong>{student.fullName}</strong>
-                      <span className="roster-belt">
-                        {student.nextBelt ? `${student.currentBelt} to ${student.nextBelt}` : student.currentBelt || "No belt recorded"}
-                      </span>
-                      <span className="roster-belt">
-                        {student.homeDojo
-                          ? `${student.homeDojo}${regionOf(student.homeDojo) ? `, ${regionOf(student.homeDojo)}` : ""}`
-                          : "No home dojo"}
-                      </span>
-                      <span className={`readiness-status readiness-status-${student.status}`}>
-                        {STATUS_LABEL[student.status]}
-                      </span>
-                    </div>
-
-                    {student.checks.length > 0 && (
-                      <dl className="readiness-checks">
-                        {student.checks.map((check) => (
-                          <div className={check.met ? "is-met" : "is-unmet"} key={check.key}>
-                            <dt>{check.label}</dt>
-                            <dd>
-                              <span className="readiness-mark">
-                                <span aria-hidden="true">{check.met ? "✓ " : "✗ "}</span>
-                                {check.met ? "Met" : "Not met"}
-                              </span>
-                              {check.value}
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                    )}
-                  </li>
-                ))}
+                {shown.map((student) => <ReadinessRow student={student} key={student.studentId} />)}
               </ul>
             </>
           )}
