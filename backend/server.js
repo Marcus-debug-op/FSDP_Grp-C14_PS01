@@ -12,6 +12,7 @@ import instructorRoutes from "./routes/instructorRoutes.js";
 import publicClassRoutes from "./routes/publicClassRoutes.js";
 import registrationRoutes from "./routes/registrationRoutes.js";
 import gradingRoutes from "./routes/gradingRoutes.js"; 
+import sessionRoutes from "./routes/sessionRoutes.js";
 
 
 dotenv.config();
@@ -41,6 +42,7 @@ app.use("/api/belts", beltRoutes);
 app.use("/api/instructor", instructorRoutes);
 app.use("/api/classes", publicClassRoutes);
 app.use("/api/grading", gradingRoutes);  
+app.use("/api/sessions", sessionRoutes);
 
 // Unknown address
 app.use((req, res) => res.status(404).json({ message: "Not found" }));

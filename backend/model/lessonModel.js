@@ -1,5 +1,8 @@
 // MODEL: SQL for browsing, booking and cancelling group lessons
 // (FSDP-50, FSDP-53, FSDP-55).
+// A session normally runs at its class's dojo, but can move for one day
+// (class_sessions.centre_id, migration 011). VENUE_JOIN always picks the dojo
+// the session is really at.
 // Tables come from database/migrations/001_shared_schema.sql (see database/DATABASE.md).
 import pool from "../db.js";
 
@@ -8,6 +11,9 @@ const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 
 // When a session starts, as a real point in time (the times are Singapore times).
 const SESSION_START = "((cs.session_date + cs.start_time) AT TIME ZONE 'Asia/Singapore')";
+
+// The dojo a session is really at: its own override if it moved, otherwise the class's dojo.
+export const VENUE_JOIN = "JOIN centres ce ON ce.id = COALESCE(cs.centre_id, cl.centre_id)";
 
 // How far ahead students can see and book lessons.
 export const DAYS_AHEAD = 14;
@@ -46,12 +52,14 @@ export async function getRankOrder(studentId) {
 }
 
 // Upcoming sessions for the next DAYS_AHEAD days, across every dojo.
-// filters = { centreId, dayOfWeek, instructorId, suitsBelt } (all optional)
+// filters = { centreId, dayOfWeek, date, instructorId, suitsBelt } (all optional)
 export async function listUpcoming(studentId, rankOrder, filters = {}) {
   const result = await pool.query(
     `SELECT * FROM (
        SELECT cs.id, cl.title, cl.credit_cost, cl.capacity,
               ce.id AS centre_id, ce.name AS centre,
+              (cs.centre_id IS NOT NULL AND cs.centre_id <> cl.centre_id) AS venue_changed,
+              cs.change_note,
               u.id AS instructor_id, u.full_name AS instructor,
               to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
               to_char(cs.start_time, 'HH24:MI') AS start_time,
@@ -73,7 +81,7 @@ export async function listUpcoming(studentId, rankOrder, filters = {}) {
               to_char(${cancelBy(8)}, 'HH24:MI') AS cancel_by_time
        FROM class_sessions cs
        JOIN classes cl ON cl.id = cs.class_id
-       JOIN centres ce ON ce.id = cl.centre_id
+       ${VENUE_JOIN}
        JOIN users u ON u.id = cs.instructor_id
        LEFT JOIN belt_ranks minb ON minb.id = cl.min_belt_id
        LEFT JOIN belt_ranks maxb ON maxb.id = cl.max_belt_id
@@ -83,6 +91,7 @@ export async function listUpcoming(studentId, rankOrder, filters = {}) {
          AND ($4::int IS NULL OR ce.id = $4)
          AND ($5::int IS NULL OR EXTRACT(DOW FROM cs.session_date) = $5)
          AND ($6::int IS NULL OR cs.instructor_id = $6)
+         AND ($9::date IS NULL OR cs.session_date = $9)
      ) lessons
      WHERE NOT $7::boolean OR suits_belt
      ORDER BY session_date, start_time, title`,
@@ -95,6 +104,7 @@ export async function listUpcoming(studentId, rankOrder, filters = {}) {
       filters.instructorId ?? null,
       Boolean(filters.suitsBelt),
       CANCEL_NOTICE_HOURS,
+      filters.date ?? null,
     ]
   );
   return result.rows;
@@ -111,7 +121,7 @@ export async function getFilterOptions() {
       `SELECT DISTINCT ce.id, ce.name
        FROM class_sessions cs
        JOIN classes cl ON cl.id = cs.class_id
-       JOIN centres ce ON ce.id = cl.centre_id
+       ${VENUE_JOIN}
        WHERE ${where}
        ORDER BY ce.name`,
       [DAYS_AHEAD]
@@ -120,14 +130,24 @@ export async function getFilterOptions() {
       `SELECT DISTINCT u.id, u.full_name AS name
        FROM class_sessions cs
        JOIN classes cl ON cl.id = cs.class_id
-       JOIN centres ce ON ce.id = cl.centre_id
+       ${VENUE_JOIN}
        JOIN users u ON u.id = cs.instructor_id
        WHERE ${where}
        ORDER BY name`,
       [DAYS_AHEAD]
     ),
   ]);
-  return { centres: centres.rows, instructors: instructors.rows };
+  return { centres: centres.rows, instructors: instructors.rows, dates: windowDates() };
+}
+
+// Every date in the booking window ("YYYY-MM-DD"), in Singapore time,
+// for the date filter.
+function windowDates() {
+  const todaySgt = new Date(Date.now() + 8 * 3600 * 1000);
+  return Array.from({ length: DAYS_AHEAD }, (_, i) =>
+    new Date(Date.UTC(todaySgt.getUTCFullYear(), todaySgt.getUTCMonth(), todaySgt.getUTCDate() + i))
+      .toISOString().slice(0, 10)
+  );
 }
 
 // Books one group lesson and takes its credits, as one transaction.
@@ -152,7 +172,7 @@ export async function bookSession(studentId, sessionId) {
               ${SESSION_START} <= NOW() AS has_started
        FROM class_sessions cs
        JOIN classes cl ON cl.id = cs.class_id
-       JOIN centres ce ON ce.id = cl.centre_id
+       ${VENUE_JOIN}
        WHERE cs.id = $1
        FOR UPDATE OF cs`,
       [sessionId]
@@ -215,7 +235,7 @@ export async function bookSession(studentId, sessionId) {
        VALUES ($1, $2, 'booked', NOW())
        ON CONFLICT (session_id, student_id)
        DO UPDATE SET status = 'booked', booked_at = NOW(), cancelled_at = NULL
-       RETURNING id`,
+       RETURNING id, (EXTRACT(EPOCH FROM booked_at) * 1000)::bigint AS booked_at_ms`,
       [sessionId, studentId]
     );
     const bookingId = booking.rows[0].id;
@@ -231,6 +251,8 @@ export async function bookSession(studentId, sessionId) {
     await client.query("COMMIT");
     return {
       bookingId,
+      bookedAtMs: Number(booking.rows[0].booked_at_ms),
+      creditUsed: cost,
       creditsLeft: balance - cost,
       lesson: {
         id: session.id,
@@ -273,7 +295,7 @@ export async function cancelBooking(studentId, sessionId, { acceptLostCredit = f
        FROM bookings b
        JOIN class_sessions cs ON cs.id = b.session_id
        JOIN classes cl ON cl.id = cs.class_id
-       JOIN centres ce ON ce.id = cl.centre_id
+       ${VENUE_JOIN}
        WHERE b.session_id = $1 AND b.student_id = $2
        FOR UPDATE OF b`,
       [sessionId, studentId, CANCEL_NOTICE_HOURS]

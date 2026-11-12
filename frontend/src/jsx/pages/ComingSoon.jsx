@@ -18,17 +18,8 @@ export const PLACEHOLDERS = {
       "Cancel a booking you can't make",
     ],
   },
-  timetable: {
-    kanji: "時間割",
-    eyebrow: "My timetable",
-    title: "Your timetable is on its way.",
-    lead: "Soon you'll see your booked lessons in a weekly calendar, along with your past lessons.",
-    planned: [
-      "Weekly calendar of your booked lessons",
-      "Cancelled or moved lessons labelled straight away",
-      "Past lessons marked Attended, Missed or Cancelled",
-    ],
-  },
+  // "timetable" used to live here. It is a real page now:
+  // pages/student/MyTimetable.jsx, routed at /timetable.   FSDP-41, FSDP-59
   // "grading" used to live here. It is a real page now:
   // pages/student/Grading.jsx, routed at /grading.   FSDP-61, FSDP-63
   checkIn: {

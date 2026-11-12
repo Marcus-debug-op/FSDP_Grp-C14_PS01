@@ -74,6 +74,31 @@ Instructor-side attendance (roster) also writes to `attendance`. Use `method = '
   | `booking` | qj, when a class is booked | − `credit_cost` |
   | `booking_refund` | qj, when a booking is cancelled | + |
 
+**Cancelled or moved lessons (migration 011)**
+- A single session can move to another dojo for one day: `class_sessions.centre_id`.
+  NULL means it's at the class's usual dojo (`classes.centre_id`). Any query that shows
+  where a lesson is should use `COALESCE(cs.centre_id, cl.centre_id)`.
+- `class_sessions.change_note` is the reason students see; `changed_at` is when it changed.
+- Cancel or move a session only through `POST /api/sessions/:id/cancel` or `/move`
+  (admins: any session, instructors: their own). That returns booked students' credits
+  and sends their notices. Don't set `class_sessions.status = 'cancelled'` directly.
+- When the dojo cancels a session, bookings stay `booked` (so students still see it marked
+  "Cancelled") and the credits come back as `booking_refund` rows.
+
+**Notices and emails (`notifications`)**
+- Write notices through `model/notificationModel.js` → `notify(...)`, or the ready-made ones in
+  `utils/notices.js`. It saves the website notice and sends the email in one go.
+- `dedupe_key` is unique, so the same event never sends two emails. Pick a key that names the
+  event, for example `payment:42` or `session-cancelled:<sessionId>:<studentId>`.
+- Email settings go in `backend/.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`,
+  `MAIL_FROM`). Without them, emails are printed in the backend terminal instead.
+
+**1-on-1 sessions (`private_lessons`)**
+- Students request one (`status = 'requested'`); an admin schedules it, which takes
+  `credit_cost` credits as a `booking` row with `private_lesson_id`.
+- A student withdrawing a request sets `status = 'declined'` with
+  `admin_note = 'Withdrawn by the student.'` (no credits were taken).
+
 **Progress notes → lessons**
 - `progress_notes.session_id` points at qj's `class_sessions`. Use it to say which lesson the note is for.
 
@@ -99,6 +124,9 @@ Instructor-side attendance (roster) also writes to `attendance`. Use `method = '
 | `credit_transactions.reason` | topup, membership_grant, booking, booking_refund, adjustment |
 | `grading_sessions.status` | scheduled, completed, cancelled |
 | `grading_applications.status` | pending, approved, rejected, withdrawn, passed, failed |
+| `private_lessons.status` | requested, scheduled, completed, no_show, cancelled, declined |
+| `notifications.type` | welcome, booking_confirmed, payment_received, grading_eligible, grading_update, attendance_follow_up, lesson_cancelled, lesson_moved, private_lesson |
+| `notifications.email_status` | none, pending, sent, failed |
 
 Adding a new value means a new migration that replaces the CHECK constraint, so tell the team first.
 
