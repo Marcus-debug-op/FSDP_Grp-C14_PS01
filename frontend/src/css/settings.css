@@ -2,9 +2,18 @@
    Reuses the signup wizard's card-and-field look so the portal stays
    consistent, but scoped under .set-* so nothing else is affected. */
 
-.set-page { max-width: 680px; }
 .set-page h1 { margin-bottom: 0.4rem; }
-.set-page .lead { margin-bottom: 1.6rem; }
+.set-page .lead { margin-bottom: 1.6rem; max-width: 62ch; }
+
+/* ---------- Two-column layout ---------- */
+/* Editable details on the left, what follows from them on the right, in two
+   equal columns so the page uses the full container width. */
+.set-layout {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.6rem; align-items: start;
+}
+.set-col { min-width: 0; display: flex; flex-direction: column; gap: 1.6rem; }
+.set-col > .set-card { margin: 0; }
 
 /* Reserves a line for the save confirmation so the form doesn't jump when
    one appears. */
@@ -98,7 +107,6 @@
 .set-saved-at { margin-left: auto; font-size: 0.78rem; color: var(--muted); }
 
 /* ---------- Nearest dojo ---------- */
-.set-nearby { margin-top: 1.6rem; }
 
 /* The indicator. Given the accent border so it reads as the answer, with the
    runners-up below it in plain grey. */
@@ -153,7 +161,13 @@
   margin-right: 0.5rem; flex: 0 0 auto;
 }
 
-.set-page .button-row { margin-top: 1.8rem; }
+/* The back button lives in the right column; the column's own gap spaces it. */
+.set-page .set-back { margin-top: 0; }
+
+@media (max-width: 900px) {
+  .set-layout { grid-template-columns: 1fr; }
+  .set-page .lead { max-width: none; }
+}
 
 @media (max-width: 560px) {
   .set-grid { grid-template-columns: 1fr; }

@@ -88,3 +88,7 @@ export const advanceMembershipBook = (id, status) =>
 
 export const listHQAlerts = () => request('/applications/hq-alerts').then(d=>d.alerts);
 export const acknowledgeHQAlert = (id) => request(`/applications/hq-alerts/${id}/ack`, {method:'PATCH'});
+export const getGradingSessions = () => request("/grading-sessions");
+export const createGradingSession = (session) =>
+  request("/grading-sessions", { method: "POST", body: session }).then((d) => d.session);
+export const getGradingApplications = (id) => request(`/grading-sessions/${id}/applications`);

@@ -7,6 +7,7 @@
 import { getStripe } from "../stripe.js";
 import * as Payment from "../model/paymentModel.js";
 import { activateApplicationAfterPayment } from "../model/registrationActivationModel.js";
+import { paymentReceived } from "../utils/notices.js";
 
 const FRONTEND_URL = () => (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 
@@ -171,15 +172,21 @@ export async function stripeWebhook(req, res) {
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded":
       if (paymentId && obj.payment_status === "paid") {
-        await Payment.markSucceeded({
+        const item = {
+          kind: obj.metadata.kind,
+          itemId: Number(obj.metadata.itemId),
+        };
+        const outcome = await Payment.markSucceeded({
           paymentId,
           paymentIntentId: obj.payment_intent,
           customerId: obj.customer,
-          item: {
-            kind: obj.metadata.kind,
-            itemId: Number(obj.metadata.itemId),
-          },
+          item,
         });
+
+        // FSDP-47: one confirmation email per payment, sent only the first
+        // time this payment succeeds (Stripe can send the same event twice).
+        // Not awaited, so Stripe gets its answer straight away.
+        if (!outcome.alreadyDone) paymentReceived(paymentId, obj.payment_intent, item);
 
         if (obj.metadata.kind === "membership") {
           const outcome =

@@ -23,13 +23,18 @@ import AdminStudents from "./pages/admin/AdminStudents.jsx";
 import AdminMembershipApplications from "./pages/admin/AdminMembershipApplications.jsx";
 import AdminStudentProfile from "./pages/admin/AdminStudentProfile.jsx";
 import AdminPrivateLessons from "./pages/admin/AdminPrivateLessons.jsx";
+import AdminGrading from "./pages/admin/AdminGrading.jsx";
+import AdminGradingApplications from "./pages/admin/AdminGradingApplications.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
+import BookLessons from "./pages/student/BookLessons.jsx";
+import MyTimetable from "./pages/student/MyTimetable.jsx";
 import Grading from "./pages/student/Grading.jsx";
 import StudentProfile from "./pages/student/StudentProfile.jsx";
 import PersonalSettings from "./pages/student/PersonalSettings.jsx";
 import ClassRoster from "./pages/instructor/ClassRoster.jsx";
 import InstructorCalendar from "./pages/instructor/InstructorCalendar.jsx";
 import InstructorGrading from "./pages/instructor/InstructorGrading.jsx";
+import InstructorGradingSession from "./pages/instructor/InstructorGradingSession.jsx";
 
 // AuthProvider makes the signed-in user available to every page below it.
 export default function App() {
@@ -58,6 +63,10 @@ export default function App() {
           <Route path="/registration/checkout" element={<ProtectedRoute role="student"><RegistrationCheckout /></ProtectedRoute>} />
           <Route path="/payments" element={<ProtectedRoute activeMembership><Payments /></ProtectedRoute>} />
           <Route path="/payments/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+          {/* Browse and book group lessons */}
+          <Route path="/lessons" element={<ProtectedRoute><BookLessons /></ProtectedRoute>} />
+          {/* Weekly timetable and past lessons. FSDP-41, FSDP-59 */}
+          <Route path="/timetable" element={<ProtectedRoute role="student"><MyTimetable /></ProtectedRoute>} />
           {/* Student pages not built yet: placeholders until the real pages are ready */}
           <Route path="/lessons" element={<ProtectedRoute activeMembership><ComingSoon page="lessons" /></ProtectedRoute>} />
           <Route path="/timetable" element={<ProtectedRoute activeMembership><ComingSoon page="timetable" /></ProtectedRoute>} />
@@ -73,10 +82,13 @@ export default function App() {
           <Route path="/admin/students" element={<ProtectedRoute role="admin"><AdminStudents /></ProtectedRoute>} />
           <Route path="/admin/students/:id" element={<ProtectedRoute role="admin"><AdminStudentProfile /></ProtectedRoute>} />
           <Route path="/admin/private-lessons" element={<ProtectedRoute role="admin"><AdminPrivateLessons /></ProtectedRoute>} />
+          <Route path="/admin/grading" element={<ProtectedRoute role="admin"><AdminGrading /></ProtectedRoute>} />
+          <Route path="/admin/grading/:id" element={<ProtectedRoute role="admin"><AdminGradingApplications /></ProtectedRoute>} />
           <Route path="/belt-progress" element={<ProtectedRoute activeMembership><BeltProgress /></ProtectedRoute>} />
           <Route path="/instructor/classes/:id" element={<ProtectedRoute role="instructor"><ClassRoster /></ProtectedRoute>} />
           <Route path="/instructor/calendar" element={<ProtectedRoute role="instructor"><InstructorCalendar /></ProtectedRoute>} />
           <Route path="/instructor/grading" element={<ProtectedRoute role="instructor"><InstructorGrading /></ProtectedRoute>} />
+          <Route path="/instructor/gradings/:id" element={<ProtectedRoute role="instructor"><InstructorGradingSession /></ProtectedRoute>} />
           {/* Any unknown address falls back to the homepage */}
           <Route path="*" element={<Home />} />
         </Routes>

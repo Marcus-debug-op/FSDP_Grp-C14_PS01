@@ -72,6 +72,30 @@
 .coming-soon-list li { padding: 0.6rem 0 0.6rem 1.4rem; border-bottom: 1px solid var(--line); position: relative; }
 .coming-soon-list li::before { content: ""; position: absolute; left: 0; top: 1.25rem; width: 0.55rem; height: 2px; background: var(--accent); }
 
+/* ---------- Cancel from "Next class" (FSDP-55) ---------- */
+.dash-cancel-note { max-width: 720px; margin: 1.5rem auto 0; color: var(--text); }
+.dash-glance .cb { margin-top: 0.9rem; }
 /* Short notices (e.g. "record your belt") hug their text instead of
    stretching the grey box across the whole container. */
 .notice-fit { width: fit-content; max-width: 100%; margin-left: auto; margin-right: auto; }
+
+/* ---------- Updates: booking, payment, lesson change and 1-on-1 notices ---------- */
+.dash-notices { list-style: none; margin: 2rem 0 0; padding: 0; display: grid; gap: 0.8rem; }
+.dash-notice {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1.2rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+}
+.dash-notice.is-unread { border-left-color: var(--accent); }
+.dash-notice-lesson_cancelled.is-unread { background: #fbefec; }
+.dash-notice-lesson_moved.is-unread { border-left-color: #8a5a00; background: #fbf4e6; }
+.dash-notice-kanji { font-family: var(--font-kanji); font-size: 1.6rem; line-height: 1; color: var(--accent-text); min-width: 2rem; }
+.dash-notice-title { margin: 0; font-weight: 600; }
+.dash-notice-body { margin: 0.2rem 0 0; color: var(--text); }
+.dash-notice-when { margin: 0.3rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.dash-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.dash-notices-more { margin-top: 1rem; }

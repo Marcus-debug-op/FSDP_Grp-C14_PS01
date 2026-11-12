@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getDashboard } from "../../js/services/studentService.js";
+import { getDashboard, getNotices, markNoticesRead } from "../../js/services/studentService.js";
 import ScrollReveal from "../components/ScrollReveal.jsx";
+import CancelBooking from "../components/student/CancelBooking.jsx";
 import useHeroScrollFade from "../../js/hooks/useHeroScrollFade.js";
 import "../../css/dashboard.css";
 
@@ -129,15 +130,27 @@ function RankSection({ rank }) {
 }
 
 // Same grey band and column layout as the homepage's "Getting started".
-function GlanceSection({ nextClass, attendance, membership, credits }) {
+function GlanceSection({ nextClass, attendance, membership, credits, noticeHours, cancelNote, onBookingCancelled }) {
+  // FSDP-6: status, the dojos it covers, expiry date, and a renew prompt.
+  const covers = membership?.centresCovered
+    ? ` Valid at all ${membership.centresCovered} dojos${membership.homeCentre ? ` (home: ${membership.homeCentre})` : ""}.`
+    : "";
   const membershipItem = !membership
-    ? { value: "None", sub: "Choose a plan to start training." }
+    ? { value: "None", sub: "Choose a plan to start training.", link: { to: "/payments", label: "Get a membership" } }
     : membership.state === "expired"
-      ? { value: "Expired", sub: `Ended ${fmtDate(membership.endDate)}.` }
+      ? {
+          value: "Expired",
+          sub: `Ended ${fmtDate(membership.endDate)}. Renew to book lessons again.`,
+          tag: "Renew now",
+          link: { to: "/payments", label: "Renew membership" },
+        }
       : {
-          value: "Active",
-          sub: `${membership.plan} · renews ${fmtDate(membership.endDate)}.`,
-          tag: membership.state === "expiring" ? `Expires in ${plural(membership.daysLeft, "day")}` : null,
+          value: membership.state === "expiring" ? "Expiring soon" : "Active",
+          sub: `${membership.plan} · until ${fmtDate(membership.endDate)}.${covers}`,
+          tag: membership.state === "expiring"
+            ? (membership.daysLeft === 0 ? "Expires today" : `Expires in ${plural(membership.daysLeft, "day")}`)
+            : null,
+          link: membership.state === "expiring" ? { to: "/payments", label: "Renew membership" } : null,
         };
 
   const items = [
@@ -146,6 +159,15 @@ function GlanceSection({ nextClass, attendance, membership, credits }) {
       label: "Next class",
       value: nextClass ? `${fmtDay(nextClass.date)}, ${fmtTime(nextClass.startTime)}` : "Nothing booked",
       sub: nextClass ? `${nextClass.title} · ${nextClass.centre}` : "Book a class to see it here.",
+      // FSDP-55: cancel straight from the dashboard.
+      extra: nextClass && (
+        <CancelBooking
+          key={nextClass.sessionId}
+          lesson={{ ...nextClass, id: nextClass.sessionId }}
+          noticeHours={noticeHours}
+          onCancelled={onBookingCancelled}
+        />
+      ),
     },
     {
       kanji: "出",
@@ -171,6 +193,7 @@ function GlanceSection({ nextClass, attendance, membership, credits }) {
           <p className="eyebrow center">At a glance</p>
           <h2 className="center" id="glance-title">Your training this month</h2>
         </ScrollReveal>
+        {cancelNote && <p className="notice dash-cancel-note" role="status">{cancelNote}</p>}
         <ul className="dash-glance">
           {items.map((item, i) => (
             <ScrollReveal key={item.label} as="li" className="step" delay={i * 110}>
@@ -179,6 +202,7 @@ function GlanceSection({ nextClass, attendance, membership, credits }) {
               <h3>{item.value}</h3>
               <p>{item.sub}</p>
               {item.tag && <span className="tag dash-tag">{item.tag}</span>}
+              {item.extra}
               {item.link && <Link to={item.link.to} className="dash-link">{item.link.label}</Link>}
             </ScrollReveal>
           ))}
@@ -217,6 +241,68 @@ function RecommendedSection({ recommended }) {
             ))}
           </div>
         )}
+      </div>
+    </section>
+  );
+}
+
+// Notices about bookings, payments, cancelled or moved lessons and 1-on-1s
+// (FSDP-47, 53, 54, 56). The same notices are also sent by email.
+const NOTICE_KANJI = {
+  booking_confirmed: "予",
+  payment_received: "払",
+  lesson_cancelled: "休",
+  lesson_moved: "移",
+  private_lesson: "個",
+};
+
+function fmtWhen(isoLocal) {
+  const [date, time] = isoLocal.split("T");
+  return `${fmtShortDate(date)}, ${fmtTime(time)}`;
+}
+
+const NOTICES_SHOWN = 5;
+
+function NoticesSection({ notices, unread, onReadAll }) {
+  const [showAll, setShowAll] = useState(false);
+  if (notices.length === 0) return null;
+  const shown = showAll ? notices : notices.slice(0, NOTICES_SHOWN);
+  return (
+    <section className="section" aria-labelledby="notice-title">
+      <div className="container">
+        <ScrollReveal className="dash-head">
+          <div>
+            <p className="eyebrow">Updates</p>
+            <h2 id="notice-title">
+              {unread > 0 ? `${plural(unread, "new update")}` : "Recent updates"}
+            </h2>
+          </div>
+          {unread > 0 && (
+            <button type="button" className="btn btn-outline btn-small" onClick={onReadAll}>Mark all as read</button>
+          )}
+        </ScrollReveal>
+        <ScrollReveal delay={120}>
+          <ul className="dash-notices">
+            {shown.map((n) => (
+              <li key={n.id} className={`dash-notice dash-notice-${n.type}${n.read ? "" : " is-unread"}`}>
+                <span className="dash-notice-kanji" aria-hidden="true">{NOTICE_KANJI[n.type] || "知"}</span>
+                <div>
+                  <p className="dash-notice-title">
+                    {!n.read && <span className="dash-sr">New: </span>}
+                    {n.title}
+                  </p>
+                  {n.body && <p className="dash-notice-body">{n.body}</p>}
+                  <p className="dash-notice-when">{fmtWhen(n.createdAt)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {notices.length > NOTICES_SHOWN && (
+            <button type="button" className="btn btn-outline btn-small dash-notices-more" onClick={() => setShowAll(!showAll)}>
+              {showAll ? "Show fewer" : `Show all ${notices.length}`}
+            </button>
+          )}
+        </ScrollReveal>
       </div>
     </section>
   );
@@ -271,10 +357,36 @@ export default function StudentDashboard() {
   useHeroScrollFade(heroRef);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [cancelNote, setCancelNote] = useState("");
+  const [notices, setNotices] = useState({ notices: [], unread: 0 });
 
-  useEffect(() => {
+  const load = () => {
     getDashboard().then(setData).catch((err) => setError(err.message));
+    // Notices are extra: if they fail to load, the rest of the dashboard still shows.
+    getNotices().then(setNotices).catch(() => {});
+  };
+  useEffect(() => {
+    load();
   }, []);
+
+  function readAll() {
+    markNoticesRead()
+      .then(() => setNotices((n) => ({ unread: 0, notices: n.notices.map((x) => ({ ...x, read: true })) })))
+      .catch(() => {});
+  }
+
+  // After a cancel, say what happened and reload so "Next class" and the
+  // credit count show the new state.
+  function bookingCancelled(result) {
+    const { title, date, startTime } = result.lesson;
+    const when = `${title} on ${fmtShortDate(date)} at ${fmtTime(startTime)}`;
+    setCancelNote(
+      result.refunded > 0
+        ? `Cancelled ${when}. ${plural(result.refunded, "credit")} returned, so you have ${plural(result.creditsLeft, "credit")}.`
+        : `Cancelled ${when}. Your credit wasn't returned because it was less than ${data.cancelNoticeHours} hours before the lesson.`
+    );
+    load();
+  }
 
   const ready = data && data.profileReady;
   let body = "Loading your progress...";
@@ -320,12 +432,16 @@ export default function StudentDashboard() {
 
       {ready && (
         <>
+          <NoticesSection notices={notices.notices} unread={notices.unread} onReadAll={readAll} />
           <RankSection rank={data.rank} />
           <GlanceSection
             nextClass={data.nextClass}
             attendance={data.attendance}
             membership={data.membership}
             credits={data.credits}
+            noticeHours={data.cancelNoticeHours}
+            cancelNote={cancelNote}
+            onBookingCancelled={bookingCancelled}
           />
           <RecommendedSection recommended={data.recommended} />
           <PaymentsSection payments={data.payments} />

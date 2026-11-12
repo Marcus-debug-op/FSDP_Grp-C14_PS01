@@ -1,0 +1,113 @@
+/* My Timetable and Past lessons (FSDP-41, FSDP-59).
+   Built on index.css (section, btn, notice, stats, filters)
+   and content.css (result-count). */
+
+/* ---------- Tabs ---------- */
+.mt-tabs { display: flex; align-items: center; gap: 0.4rem; margin-top: 2rem; border-bottom: 1px solid var(--line); }
+.mt-tabs button {
+  padding: 0.7rem 1.1rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.mt-tabs button.is-active { color: var(--accent-text); border-bottom-color: var(--accent); }
+.mt-tabs .mt-book { margin: 0 0 0.5rem auto; }
+
+/* ---------- Week navigation ---------- */
+.mt-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.8rem; margin: 1.5rem 0; }
+.mt-nav .btn { margin-top: 0; }
+.mt-nav-right { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.mt-range { margin: 0; font-family: var(--font-heading); font-size: 1.3rem; }
+.mt-this-week, .mt-today {
+  margin-left: 0.6rem;
+  padding: 0.1rem 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+.mt-changes { border-left: 4px solid #8a5a00; background: #fbf4e6; }
+.mt-flash { border-left: 4px solid #2f6b45; }
+.mt-empty { color: var(--muted); }
+.mt-empty a { font-weight: 600; }
+
+/* ---------- Calendar: 7 columns on wide screens ---------- */
+.mt-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--line); background: #fff; }
+.mt-day { min-height: 220px; padding: 0.6rem; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 0.6rem; }
+.mt-day:first-child { border-left: 0; }
+.mt-day.is-today { background: #fbf8f6; }
+.mt-day-head { margin: 0 0 0.2rem; font-family: var(--font-body); font-size: 0.9rem; font-weight: 400; color: var(--muted); }
+.mt-day-head span:first-child { display: block; font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.8rem; }
+.mt-today { margin-left: 0.3rem; }
+.mt-none { margin: 0; font-size: 0.85rem; color: #8a847c; }
+
+.mt-item { padding: 0.6rem 0.7rem; background: var(--surface); border-left: 4px solid var(--accent); font-size: 0.92rem; line-height: 1.45; }
+.mt-item.mt-private { border-left-color: #4a3f8a; }
+.mt-item.mt-moved { border-left-color: #8a5a00; background: #fbf4e6; }
+.mt-item.mt-cancelled { border-left-color: #8a847c; background: #f1efec; }
+.mt-item.mt-cancelled .mt-title { text-decoration: line-through; color: var(--muted); }
+.mt-item.mt-attended, .mt-item.mt-missed, .mt-item.mt-awaiting { opacity: 0.85; }
+.mt-time { margin: 0; font-weight: 600; }
+.mt-title { margin: 0.1rem 0 0.2rem; font-family: var(--font-body); font-size: 1rem; font-weight: 600; }
+.mt-where, .mt-sub, .mt-note { margin: 0; }
+.mt-sub { color: var(--muted); font-size: 0.85rem; }
+.mt-note { margin-top: 0.3rem; font-size: 0.85rem; font-style: italic; }
+.mt-item .cb { margin-top: 0.5rem; }
+.mt-item .cb .btn { padding: 0.35rem 0.7rem; font-size: 0.75rem; }
+
+.mt-label {
+  display: inline-block;
+  margin: 0.15rem 0 0.25rem;
+  padding: 0.05rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.mt-label-cancelled { background: var(--accent); color: #fff; }
+.mt-label-moved { background: #8a5a00; color: #fff; }
+.mt-label-ok { background: #e3efe7; color: #2f6b45; }
+.mt-label-muted { background: #ebe8e4; color: var(--muted); }
+
+/* ---------- Past lessons ---------- */
+.mt-stats { margin-top: 1.5rem; }
+.mt-filters { align-items: flex-end; }
+.mt-reset { align-self: flex-end; }
+.mt-history-box { background: #fff; border: 1px solid var(--line); overflow-x: auto; }
+.mt-history { width: 100%; border-collapse: collapse; }
+.mt-history th, .mt-history td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+.mt-history th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; }
+.mt-history tr:last-child td { border-bottom: 0; }
+.mt-cell-sub { display: block; color: var(--muted); font-size: 0.85rem; }
+
+.mt-page button:focus-visible, .mt-page select:focus-visible, .mt-page a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Smaller screens: one day under another ---------- */
+@media (max-width: 900px) {
+  .mt-week { grid-template-columns: 1fr; }
+  .mt-day { min-height: 0; border-left: 0; border-top: 1px solid var(--line); }
+  .mt-day:first-child { border-top: 0; }
+  .mt-day.is-empty { flex-direction: row; align-items: baseline; gap: 0.8rem; }
+  .mt-day.is-empty .mt-day-head span:first-child { display: inline; margin-right: 0.3rem; }
+}
+@media (max-width: 700px) {
+  .mt-tabs .mt-book { display: none; }
+  .mt-filters label, .mt-filters select { width: 100%; min-width: 0; }
+  .mt-history thead { display: none; }
+  .mt-history tr { display: block; padding: 0.6rem 0; border-bottom: 1px solid var(--line); }
+  .mt-history td { display: flex; gap: 0.8rem; border: 0; padding: 0.25rem 1rem; }
+  .mt-history td::before { content: attr(data-label); min-width: 4.5rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .mt-history td > .mt-cell-sub { display: inline; margin-left: 0.4rem; }
+}

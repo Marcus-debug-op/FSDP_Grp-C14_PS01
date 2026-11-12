@@ -259,3 +259,27 @@
   .adm-toolbar .auth-toggle button { padding: 0.7rem 0.9rem; letter-spacing: 0.08em; }
   .lesson-actions { white-space: normal; text-align: left; }
 }
+
+.grd-hint { margin-top: -0.6rem; }
+.grd-belts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.grd-belts > * { min-width: 0; }
+.grd-tag {
+  display: inline-block; padding: 0.15rem 0.7rem; border: 1px solid var(--accent); border-radius: 999px;
+  font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap;
+}
+.grd-eligible { background: var(--accent); color: #fff; }
+.grd-not { background: transparent; color: var(--accent-text); }
+.grd-reasons { margin: 0.5rem 0 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.88rem; }
+.grd-reasons li + li { margin-top: 0.2rem; }
+
+@media (max-width: 800px) {
+  .grd-belts { grid-template-columns: 1fr; }
+}
+
+.tt-card.tt-private { border-left-color: var(--text); background: var(--surface); }
+.tt-private-row > td:first-child { box-shadow: inset 3px 0 0 var(--text); }
+.tt-private-tag {
+  display: inline-block; padding: 0.05rem 0.55rem; border: 1px solid var(--text); border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.adm-main .filters .check-row input { width: 1.1rem; min-width: 0; flex: 0 0 auto; }

@@ -33,6 +33,12 @@ const PATHS = {
       <path d="M8 8h8M8 12h8M8 16h5" />
     </>
   ),
+  grading: (
+    <>
+      <circle cx="12" cy="9" r="6" />
+      <path d="M8.5 13.9L7 22l5-3 5 3-1.5-8.1" />
+    </>
+  ),
   attendance: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="2" />

@@ -1,6 +1,7 @@
 // MODEL: SQL for the student dashboard. Tables come from
 // database/migrations/001_shared_schema.sql (see database/DATABASE.md).
 import pool from "../db.js";
+import { CANCEL_NOTICE_HOURS, VENUE_JOIN } from "./lessonModel.js";
 
 // "Today" in Singapore, not in the database server's UTC.
 const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
@@ -39,28 +40,35 @@ export async function countClassesSince(studentId, sinceDate) {
   return result.rows[0].count;
 }
 
-// The next lesson the student has booked.
+// The next lesson the student has booked that hasn't started yet, plus
+// whether cancelling it now would give the credit back (FSDP-55).
 export async function getNextBookedClass(studentId) {
   const result = await pool.query(
-    `SELECT cl.title, ce.name AS centre, u.full_name AS instructor,
+    `SELECT cs.id AS session_id, cl.title, ce.name AS centre, u.full_name AS instructor,
             to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
-            to_char(cs.start_time, 'HH24:MI') AS start_time
+            to_char(cs.start_time, 'HH24:MI') AS start_time,
+            ((cs.session_date + cs.start_time - make_interval(hours => $2::int))
+              AT TIME ZONE 'Asia/Singapore' > NOW()) AS free_cancel,
+            to_char(cs.session_date + cs.start_time - make_interval(hours => $2::int), 'YYYY-MM-DD') AS cancel_by_date,
+            to_char(cs.session_date + cs.start_time - make_interval(hours => $2::int), 'HH24:MI') AS cancel_by_time
      FROM bookings b
      JOIN class_sessions cs ON cs.id = b.session_id
      JOIN classes cl ON cl.id = cs.class_id
-     JOIN centres ce ON ce.id = cl.centre_id
+     ${VENUE_JOIN}
      JOIN users u ON u.id = cs.instructor_id
      WHERE b.student_id = $1 AND b.status = 'booked'
        AND cs.status = 'scheduled' AND cs.session_date >= ${TODAY}
+       AND ((cs.session_date + cs.start_time) AT TIME ZONE 'Asia/Singapore') > NOW()
      ORDER BY cs.session_date, cs.start_time
      LIMIT 1`,
-    [studentId]
+    [studentId, CANCEL_NOTICE_HOURS]
   );
   return result.rows[0] || null;
 }
 
 // Sessions attended this month, plus the overall rate:
 // attended / booked lessons that have already happened.
+// Lessons the dojo cancelled don't count against the student.
 export async function getAttendanceSummary(studentId) {
   const result = await pool.query(
     `SELECT
@@ -72,7 +80,7 @@ export async function getAttendanceSummary(studentId) {
          WHERE a.student_id = $1 AND a.status IN ('present', 'late')) AS attended,
        (SELECT COUNT(*)::int FROM bookings b
           JOIN class_sessions cs ON cs.id = b.session_id
-         WHERE b.student_id = $1 AND b.status = 'booked'
+         WHERE b.student_id = $1 AND b.status = 'booked' AND cs.status <> 'cancelled'
            AND cs.session_date < ${TODAY}) AS past_booked`,
     [studentId]
   );
@@ -93,6 +101,12 @@ export async function getMembership(studentId) {
     [studentId]
   );
   return result.rows[0] || null;
+}
+
+// A membership lets the student train at every open dojo (FSDP-6).
+export async function countOpenCentres() {
+  const result = await pool.query("SELECT COUNT(*)::int AS count FROM centres WHERE is_active");
+  return result.rows[0].count;
 }
 
 // Credit balance = sum of the ledger.
@@ -126,6 +140,8 @@ export async function getRecommendedClasses(studentId, rankOrder, limit = 3) {
      WHERE cl.is_active
        AND (minb.rank_order IS NULL OR minb.rank_order <= $2)
        AND (maxb.rank_order IS NULL OR maxb.rank_order >= $2)
+       AND (minb.id IS NULL OR minb.ladder = (SELECT ladder FROM belt_ranks WHERE rank_order = $2))
+       AND (maxb.id IS NULL OR maxb.ladder = (SELECT ladder FROM belt_ranks WHERE rank_order = $2))
      ORDER BY open_to_all, ns.session_date, cl.start_time
      LIMIT $3`,
     [studentId, rankOrder, limit]

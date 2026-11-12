@@ -156,6 +156,57 @@ export async function getGradingReadiness(req, res, next) {
   }
 }
 
+function publicGrading(row) {
+  return {
+    id: row.id,
+    centre: row.centre,
+    date: row.grading_date,
+    startTime: row.start_time,
+    closesOn: row.closes_on,
+    registrationOpen: row.registration_open,
+  };
+}
+
+// GET /api/instructor/gradings  (upcoming only)
+export async function listUpcomingGradings(req, res, next) {
+  try {
+    const rows = await Instructor.listUpcomingGradings(req.user.id);
+    res.json({ gradings: rows.map((row) => ({ ...publicGrading(row), myApplicants: row.my_applicants })) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/instructor/gradings/:id/applicants
+// Only the instructor's own students, each with the same readiness checks as
+// the grading readiness page.
+export async function getGradingApplicants(req, res, next) {
+  try {
+    const gradingId = parseId(req.params.id);
+    const grading = gradingId && (await Instructor.findGrading(gradingId));
+    if (!grading) return res.status(404).json({ message: "Grading not found." });
+
+    const [applications, progressRows] = await Promise.all([
+      Instructor.listMyApplicants(req.user.id, grading.id),
+      Instructor.listGradingProgress(req.user.id),
+    ]);
+    const progressById = new Map(progressRows.map((row) => [row.id, gradingProgress(row)]));
+
+    const applicants = applications
+      .filter((application) => progressById.has(application.student_id))
+      .map((application) => ({
+        ...progressById.get(application.student_id),
+        applicationStatus: application.status,
+        targetBelt: application.target_belt,
+        appliedOn: application.applied_on,
+      }));
+
+    res.json({ grading: publicGrading(grading), applicants });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/instructor/sessions/:id/roster
 export async function getRoster(req, res, next) {
   try {
@@ -171,6 +222,7 @@ export async function getRoster(req, res, next) {
 
 // PUT /api/instructor/sessions/:id/attendance
 // Body: { records: [{ studentId, status }] }
+// A status of null clears that student's mark, for an instructor who tapped by mistake.
 export async function saveAttendance(req, res, next) {
   try {
     const session = await findOwnSession(req, res);
@@ -190,7 +242,7 @@ export async function saveAttendance(req, res, next) {
     if (!Array.isArray(records) || records.length === 0) {
       return res.status(400).json({ message: "Please mark at least one student." });
     }
-    if (records.some((r) => !parseId(r?.studentId) || !ATTENDANCE_STATUSES.includes(r?.status))) {
+    if (records.some((r) => !parseId(r?.studentId) || !(r.status === null || ATTENDANCE_STATUSES.includes(r.status)))) {
       return res.status(400).json({ message: "Each student needs a valid attendance status." });
     }
     if (new Set(records.map((r) => r.studentId)).size !== records.length) {

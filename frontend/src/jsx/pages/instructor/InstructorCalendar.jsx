@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCalendar } from "../../../js/services/instructorService.js";
 import { addDays, formatTime, todayString } from "../../../js/utils/formatters.js";
@@ -41,6 +41,14 @@ export default function InstructorCalendar() {
   const [selected, setSelected] = useState(today);
   const [calendar, setCalendar] = useState(null);
   const [error, setError] = useState("");
+  const listRef = useRef(null);
+
+  // Picking a day scrolls down to its classes, which sit below the calendar.
+  function pickDay(date) {
+    setSelected(date);
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    listRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+  }
 
   useEffect(() => {
     let current = true;
@@ -103,7 +111,7 @@ export default function InstructorCalendar() {
                   className={`calendar-day${date === today ? " is-today" : ""}${date === selected ? " is-selected" : ""}`}
                   aria-pressed={date === selected}
                   aria-label={label}
-                  onClick={() => setSelected(date)}
+                  onClick={() => pickDay(date)}
                 >
                   <span className="calendar-date">{Number(date.slice(8))}</span>
                   {gradings.map((item) => <span className="calendar-chip calendar-chip-grading" key={item.id}>Grading</span>)}
@@ -117,7 +125,9 @@ export default function InstructorCalendar() {
             })}
           </div>
 
-          <div className="calendar-list">
+          <p className="calendar-hint">Pick a day to see its classes below.</p>
+
+          <div className="calendar-list" ref={listRef}>
             <h2 className="calendar-list-title">{dayTitle(selected)}</h2>
 
             {calendar && selectedClasses.length === 0 && selectedGradings.length === 0 && (
@@ -133,6 +143,9 @@ export default function InstructorCalendar() {
                     <dl className="details">
                       <div><dt>Dojo</dt><dd>{item.centre}</dd></div>
                     </dl>
+                    <Link to={`/instructor/gradings/${item.id}`} className="btn btn-outline btn-small">
+                      View Applicants
+                    </Link>
                   </article>
                 ))}
 

@@ -1,0 +1,153 @@
+/* Book Lessons page (FSDP-50, FSDP-53). Built on index.css
+   (section, filters, grid, card, tag, details, stats, notice, btn)
+   and content.css (day-group, day-heading, result-count). */
+
+/* ---------- Credits and membership ---------- */
+.bk-stats { align-items: flex-end; margin-top: 1.5rem; }
+.bk-stats li { list-style: none; }
+.bk-stats-link { margin-left: auto; }
+
+/* ---------- Notices ---------- */
+.bk-notice { margin: 1.5rem 0 0; }
+.bk-message { margin: 1.5rem 0 0; }
+.bk-message.is-error { color: var(--accent-text); }
+.bk-notice a { color: var(--accent-text); font-weight: 600; }
+
+/* ---------- Booking result (pops up at the bottom) ---------- */
+.bk-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  z-index: 60;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 2rem));
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 4px solid #2f6b45;
+  box-shadow: 0 14px 34px rgba(45, 35, 26, 0.18);
+  animation: bk-toast-in 260ms ease-out both;
+}
+.bk-toast.is-error { border-left-color: var(--accent); }
+.bk-toast p { margin: 0; flex: 1; }
+.bk-toast a { color: var(--accent-text); font-weight: 600; white-space: nowrap; }
+.bk-toast-close {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  background: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+.bk-toast-close:hover { color: var(--text); }
+@keyframes bk-toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bk-toast { animation: none; }
+}
+
+/* ---------- Filters ---------- */
+.bk-filters { align-items: flex-end; }
+.bk-filters label.bk-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.9rem;
+  cursor: pointer;
+}
+.bk-check input { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
+.bk-reset { align-self: flex-end; }
+
+/* ---------- Lesson cards ---------- */
+.bk-card.is-booked { border-color: var(--accent); }
+.bk-level {
+  margin: 0 0 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.bk-level.is-match { color: #2f6b45; }
+.bk-level.is-other { color: var(--muted); }
+.bk-low { color: var(--accent-text); font-weight: 600; }
+.bk-card .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.bk-card .btn:disabled:hover { background: transparent; color: var(--accent-text); }
+
+.bk-booked {
+  margin: auto 0 0;
+  padding: 0.55rem 1.2rem;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* Confirm step inside the card */
+.bk-confirm { margin-top: auto; width: 100%; padding-top: 0.8rem; border-top: 1px solid var(--line); }
+.bk-confirm p { margin: 0 0 0.8rem; font-size: 0.95rem; }
+.bk-confirm-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.bk-confirm .btn { margin-top: 0; }
+
+.bk-empty { color: var(--muted); }
+
+/* Keyboard focus */
+.bk-page button:focus-visible,
+.bk-page select:focus-visible,
+.bk-page input:focus-visible,
+.bk-page a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Smaller screens ---------- */
+@media (max-width: 700px) {
+  .bk-stats-link { margin-left: 0; width: 100%; }
+  .bk-filters label, .bk-filters select { width: 100%; min-width: 0; }
+}
+
+/* ---------- Cancelling a booking (FSDP-55) ---------- */
+.bk-policy { max-width: 620px; margin: 0.6rem 0 0; font-size: 0.95rem; color: var(--muted); }
+.bk-booked-box { margin-top: auto; width: 100%; }
+.bk-booked-box .bk-booked { margin: 0; }
+
+/* ---------- Lesson type, venue changes, 1-on-1 (FSDP-50, FSDP-54, FSDP-56) ---------- */
+.bk-type {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.bk-card.is-private .bk-type { color: var(--accent-text); }
+.bk-card.is-private .bk-booked { margin-top: auto; }
+.bk-moved {
+  margin: 0 0 0.8rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #8a5a00;
+  background: #fbf4e6;
+  font-size: 0.9rem;
+}
+.bk-private-cta { margin: 1.2rem 0 0; color: var(--muted); }
+.bk-linkbutton {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.bk-sub { margin-top: 2.5rem; font-size: 1.4rem; }
+/* Keep the "Suits my belt" tick box next to its text, whatever other
+   pages' form styles are loaded. */
+.bk-filters label.bk-check input[type="checkbox"] { width: 1.1rem; min-width: 0; flex: 0 0 auto; margin: 0; padding: 0; }
+.bk-private-cta { margin-bottom: 1rem; }

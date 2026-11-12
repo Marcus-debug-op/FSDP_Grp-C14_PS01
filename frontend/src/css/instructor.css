@@ -34,13 +34,18 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
 
 .instructor-classes { margin-top: 1.5rem; }
 .instructor-card-title { margin-top: 0.8rem; }
-.instructor-back { display: inline-block; margin-bottom: 2rem; }
+.back-button { margin-bottom: 2rem; }
+.back-button span { margin-right: 0.3rem; letter-spacing: 0; }
 
 /* ---------- Roster ---------- */
 .roster-title { font-size: clamp(1.9rem, 4vw, 2.8rem); }
 .roster-panel { max-width: 46rem; }
 .roster-stats { margin-top: 1rem; padding-top: 1rem; }
 .roster { list-style: none; padding: 0; margin: 2rem 0 0; border-top: 1px solid var(--line); }
+.roster-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.2rem; margin-top: 1.5rem; }
+.roster-tools p { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.roster-tools .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.roster-tools + .roster { margin-top: 1rem; }
 .roster-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.6rem 1.5rem; padding: 1rem 0; border-bottom: 1px solid var(--line); }
 .roster-belt { display: block; font-size: 0.9rem; color: var(--muted); }
 
@@ -81,7 +86,9 @@ button.calendar-day:hover { background: var(--surface); }
 .calendar-more { font-size: 0.75rem; color: var(--muted); }
 .calendar-count { display: none; }
 
-.calendar-list { position: relative; margin-top: 2.5rem; }
+.calendar-hint { margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--muted); }
+/* scroll-margin keeps the day's heading clear of the sticky navbar */
+.calendar-list { position: relative; margin-top: 2rem; scroll-margin-top: 6rem; }
 .calendar-list-title { font-size: 1.6rem; }
 .calendar-upcoming { margin: 0; font-size: 0.9rem; color: var(--muted); }
 
@@ -120,6 +127,7 @@ button.calendar-day:hover { background: var(--surface); }
 
 .filters input { font: inherit; text-transform: none; letter-spacing: normal; padding: 0.65rem 0.9rem; min-width: 260px; background: #fff; color: var(--text); border: 1px solid #8a847c; }
 .readiness-empty { margin-top: 1.5rem; }
+.grading-section-title { margin-top: 3rem; }
 .roster-stats .stat-ready strong { color: var(--ok); }
 .roster-stats .stat-not-yet strong { color: var(--accent-text); }
 

@@ -1,5 +1,6 @@
 // CONTROLLER: builds the student dashboard from the model's queries.
 import * as Student from "../model/studentModel.js";
+import { CANCEL_NOTICE_HOURS } from "../model/lessonModel.js";
 
 // GET /api/student/dashboard  (students only)
 export async function getDashboard(req, res, next) {
@@ -10,7 +11,7 @@ export async function getDashboard(req, res, next) {
     // Signed up, but no student_profiles row yet (no belt or centre recorded).
     if (!rank) return res.json({ profileReady: false });
 
-    const [classesAtRank, nextClass, attendance, membership, credits, recommended, payments, grading] =
+    const [classesAtRank, nextClass, attendance, membership, credits, recommended, payments, grading, openCentres] =
       await Promise.all([
         Student.countClassesSince(studentId, rank.belt_awarded_on),
         Student.getNextBookedClass(studentId),
@@ -20,6 +21,7 @@ export async function getDashboard(req, res, next) {
         Student.getRecommendedClasses(studentId, rank.rank_order),
         Student.getRecentPayments(studentId),
         Student.getOpenGrading(studentId, rank.home_centre_id),
+        Student.countOpenCentres(),
       ]);
 
     const hasNext = Boolean(rank.next_belt);
@@ -48,12 +50,16 @@ export async function getDashboard(req, res, next) {
         applicationStatus: grading.application_status,
       },
       nextClass: nextClass && {
+        sessionId: nextClass.session_id,
         title: nextClass.title,
         centre: nextClass.centre,
         instructor: nextClass.instructor,
         date: nextClass.session_date,
         startTime: nextClass.start_time,
+        freeCancel: nextClass.free_cancel,
+        cancelBy: { date: nextClass.cancel_by_date, time: nextClass.cancel_by_time },
       },
+      cancelNoticeHours: CANCEL_NOTICE_HOURS,
       attendance: {
         thisMonth: attendance.this_month,
         attended: attendance.attended,
@@ -67,6 +73,9 @@ export async function getDashboard(req, res, next) {
         state: membership.status !== "active" || membership.days_left < 0
           ? "expired"
           : membership.days_left <= 7 ? "expiring" : "active",
+        // FSDP-6: a membership covers every open dojo, not just the home one.
+        centresCovered: openCentres,
+        homeCentre: rank.home_centre,
       },
       credits,
       recommended: recommended.map((c) => ({
