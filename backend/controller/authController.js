@@ -56,6 +56,24 @@ function parseEvidence(input) {
   return { fileName, fileMime, fileBuffer };
 }
 
+// Used by signup Step 1 before collecting the rest of the student's details.
+// Do not disclose a student's membership/application status on a public endpoint.
+export async function checkEmail(req, res, next) {
+  try {
+    const email = typeof req.body?.email === "string"
+      ? req.body.email.trim().toLowerCase()
+      : "";
+    if (!EMAIL_PATTERN.test(email) || email.length > 255) {
+      return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+    const existing = await User.findByEmail(email);
+    res.set("Cache-Control", "no-store");
+    return res.json({ exists: Boolean(existing) });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function signup(req, res, next) {
   try {
     const fullName = String(req.body.fullName || "").trim();

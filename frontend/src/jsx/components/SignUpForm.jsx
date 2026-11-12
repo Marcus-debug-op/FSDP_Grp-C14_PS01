@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { checkSignupEmail } from "../../js/services/authService.js";
 import { getRegistrationPlans, getRegistrationCentres } from "../../js/services/registrationService.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -73,6 +75,45 @@ export default function SignUpForm() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailExists, setEmailExists] = useState(false);
+  const [emailCheckedValue, setEmailCheckedValue] = useState("");
+  const [emailCheckError, setEmailCheckError] = useState("");
+  const checkGeneration = useRef(0);
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  async function verifyEmail(emailValue = details.email) {
+    const email = emailValue.trim().toLowerCase();
+    if (!emailPattern.test(email)) return false;
+    if (emailCheckedValue === email && !emailCheckError) return !emailExists;
+    const generation = ++checkGeneration.current;
+    setCheckingEmail(true);
+    setEmailCheckError("");
+    try {
+      const result = await checkSignupEmail(email);
+      if (generation !== checkGeneration.current) return false;
+      setEmailExists(Boolean(result.exists));
+      setEmailCheckedValue(email);
+      return !result.exists;
+    } catch (err) {
+      if (generation === checkGeneration.current) {
+        setEmailCheckError("Unable to check this email right now. Please try again.");
+        setEmailCheckedValue("");
+      }
+      return false; // fail closed: user can retry; no duplicate signup on uncertain check
+    } finally {
+      if (generation === checkGeneration.current) setCheckingEmail(false);
+    }
+  }
+
+  function changeEmail(value) {
+    checkGeneration.current += 1;
+    setEmailCheckedValue("");
+    setEmailExists(false);
+    setEmailCheckError("");
+    setCheckingEmail(false);
+    update("email", value);
+  }
   const update = (name, value) => setDetails((prev) => ({ ...prev, [name]: value }));
   const goTo = (target) => {
     if (Date.now() - lastStepChangeAt.current < TRANSITION_GUARD_MS) return;
@@ -82,16 +123,18 @@ export default function SignUpForm() {
     setStep(target);
   };
 
-  function next() {
+  async function next() {
     if (Date.now() - lastStepChangeAt.current < TRANSITION_GUARD_MS) return;
     setError("");
     if (step === 0) {
       if (details.fullName.trim().length < 2 || details.fullName.trim().length > 100) return setError("Enter your full name (2–100 characters).");
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email.trim())) return setError("Enter a valid email address.");
+      if (!emailPattern.test(details.email.trim())) return setError("Enter a valid email address.");
       if (!dateIsValid(details.dateOfBirth)) return setError("Enter a valid date of birth (not a future date).");
       if (!["male", "female", "other", "prefer_not_to_say"].includes(details.gender)) return setError("Please select a gender option.");
       if (details.password.length < 8 || details.password.length > 72) return setError("Password must be between 8 and 72 characters.");
       if (details.password !== details.confirm) return setError("Passwords do not match.");
+      const available = await verifyEmail();
+      if (!available) return; // display the inline account notice below
     }
     if (step === 2 && (!selectedPlanId || !plans.some(p => p.id === selectedPlanId))) return setError("Choose a registration plan before continuing.");
     if (step === 1 && details.experienceNotes.length > 1000) return setError("Training notes must be under 1,000 characters.");
@@ -217,7 +260,16 @@ export default function SignUpForm() {
           <p className="signup-subtitle">Create your account to begin your Aikido journey.</p>
           <div className="signup-field-grid">
             <label className="signup-span-full">Full name <input autoComplete="name" placeholder="Enter your full name" value={details.fullName} onChange={e => update("fullName", e.target.value)} maxLength={100} required /></label>
-            <label className="signup-span-full">Email address <input type="email" autoComplete="email" placeholder="you@example.com" value={details.email} onChange={e => update("email", e.target.value)} required /></label>
+            <label className="signup-span-full">Email address <input type="email" autoComplete="email" placeholder="you@example.com" value={details.email} onChange={e => changeEmail(e.target.value)} onBlur={() => { if (emailPattern.test(details.email.trim())) void verifyEmail(); }} aria-describedby="signup-email-notice" required /></label>
+            {(checkingEmail || emailExists || emailCheckError) && (
+              <div id="signup-email-notice" className={`signup-span-full signup-email-notice ${checkingEmail ? "signup-email-checking" : "form-error"}`} role={emailExists || emailCheckError ? "alert" : "status"}>
+                {checkingEmail ? <p>Checking email address…</p> : emailExists ? <>
+                  <strong>Email already registered</strong>
+                  <p>An account with this email already exists. Sign in to view your application or request reconsideration.</p>
+                  <Link className="signup-email-signin" to="/signin">Go to Sign In</Link>
+                </> : <p>{emailCheckError}</p>}
+              </div>
+            )}
             <label className="signup-span-full">Date of birth <input type="date" autoComplete="bday" min="1900-01-01" max={maxDate} value={details.dateOfBirth} onChange={e => update("dateOfBirth", e.target.value)} required /></label>
             <label className="signup-span-full">Gender
               <select value={details.gender} onChange={e => update("gender", e.target.value)} required>
@@ -277,10 +329,10 @@ export default function SignUpForm() {
                   aria-label={`Select ${plan.name}`}
                 />
               </div>
-              <p style={{ marginTop: ".75rem" }}><strong>SGD {(plan.priceCents / 100).toFixed(2)}</strong> one-time registration charge</p>
+              <p style={{ marginTop: ".75rem" }}><strong>SGD {(plan.priceCents / 100).toFixed(2)}</strong> one-time registration fee (includes current-year membership, handbook and membership book)</p>
               <div className="signup-plan-note">
-                <strong>Payment required to activate membership</strong>
-                <span>Complete your profile next, then proceed to Stripe Checkout. Training credits and top-ups are separate.</span>
+                <strong>Payment and Shihan approval required for membership activation</strong>
+                <span>Complete your profile next, then proceed to Stripe Checkout. Annual renewal is S$48 in subsequent years; not charged again at signup. Training passes and attire are separate.</span>
               </div>
             </label>
           ))}
@@ -315,6 +367,8 @@ export default function SignUpForm() {
                 <option value="">{centreLoading ? "Loading dojos…" : "Select your preferred dojo"}</option>
                 {centres.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
               </select>
+              {centres.some(c=>String(c.id)===String(preferredCentreId) && c.name === 'ASK Headquarters Dojo') &&
+                <p role="status" className="form-hint">ASK HQ selected: our admin team will receive an in-app coordination alert for your first class, HQ session pass and training attire.</p>}
               {centreError && <small role="alert">Could not load dojos: {centreError}</small>}
               {!centreLoading && !centreError && centres.length === 0 && <small role="alert">No active dojos available.</small>}
             </label>
@@ -344,7 +398,7 @@ export default function SignUpForm() {
         {step > 0 && <button type="button" className="btn btn-outline" disabled={submitting} onClick={() => goTo(step - 1)}>Back</button>}
 
         {step < 3
-          ? <button type="button" className="btn btn-primary signup-next" disabled={step === 2 && (planLoading || !!planError || !selectedPlanId)} onClick={next}>Continue <span aria-hidden="true">→</span></button>
+          ? <button type="button" className="btn btn-primary signup-next" disabled={checkingEmail || emailExists || (step === 2 && (planLoading || !!planError || !selectedPlanId))} onClick={next}>Continue <span aria-hidden="true">→</span></button>
           : <button type="submit" className="btn btn-primary signup-next" disabled={submitting}>{submitting ? "Creating account…" : "Create account →"}</button>}
       </div>
     </form>

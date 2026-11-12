@@ -46,6 +46,17 @@ export async function resubmitApplicationPhoto(file) {
 // Read-only, authenticated membership application progress.
 export const getApplicationStatus = () => request("/api/student/application/status");
 
+// Resubmit the same rejected application; never creates another account or charges a card.
+export async function reapplyForMembership(note) {
+  if (!API_URL) throw new Error('Backend address not set.');
+  const res = await fetch(`${API_URL}/api/student/application/reapply`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json',Authorization:`Bearer ${localStorage.getItem(TOKEN_KEY)||''}`},
+    body: JSON.stringify({note})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Reconsideration could not be submitted.');
+  return data;
 // Notices about bookings, payments, lesson changes and 1-on-1s
 // (FSDP-47, 53, 54, 56). { unread, notices: [{ id, type, title, body, read, createdAt }] }
 export const getNotices = () => request("/api/student/notices");
