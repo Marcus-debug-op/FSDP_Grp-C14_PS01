@@ -109,13 +109,20 @@ export const getSchedule = handle(async (req, res) => {
   if (!isValidDate(requested)) throw badRequest("Week must be a valid date.");
   const weekStart = mondayOf(requested);
   const weekEnd = addDays(weekStart, 6);
-  const items = await Admin.listSchedule({
+  const filters = {
     from: weekStart,
     to: weekEnd,
     centreId: optionalId(req.query.centreId, "Dojo ID"),
     instructorId: optionalId(req.query.instructorId, "Instructor ID"),
     includeCancelled: req.query.includeCancelled === "true",
-  });
+  };
+  const [classes, privateLessons] = await Promise.all([
+    Admin.listSchedule(filters),
+    Admin.listScheduledPrivateLessons(filters),
+  ]);
+  const items = [...classes.map((item) => ({ ...item, kind: "class" })), ...privateLessons].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.centreName.localeCompare(b.centreName)
+  );
   res.json({ weekStart, weekEnd, items });
 });
 

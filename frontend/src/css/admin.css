@@ -275,3 +275,11 @@
 @media (max-width: 800px) {
   .grd-belts { grid-template-columns: 1fr; }
 }
+
+.tt-card.tt-private { border-left-color: var(--text); background: var(--surface); }
+.tt-private-row > td:first-child { box-shadow: inset 3px 0 0 var(--text); }
+.tt-private-tag {
+  display: inline-block; padding: 0.05rem 0.55rem; border: 1px solid var(--text); border-radius: 999px;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.adm-main .filters .check-row input { width: 1.1rem; min-width: 0; flex: 0 0 auto; }
