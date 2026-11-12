@@ -120,6 +120,7 @@ button.calendar-day:hover { background: var(--surface); }
 
 .filters input { font: inherit; text-transform: none; letter-spacing: normal; padding: 0.65rem 0.9rem; min-width: 260px; background: #fff; color: var(--text); border: 1px solid #8a847c; }
 .readiness-empty { margin-top: 1.5rem; }
+.grading-section-title { margin-top: 3rem; }
 .roster-stats .stat-ready strong { color: var(--ok); }
 .roster-stats .stat-not-yet strong { color: var(--accent-text); }
 
