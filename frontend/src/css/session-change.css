@@ -1,0 +1,16 @@
+/* Cancel or move a lesson (FSDP-56). Built on index.css (btn). */
+.sc { margin: 1.2rem 0; }
+.sc-buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.sc-buttons .btn { margin-top: 0; }
+.sc-danger { border-color: var(--accent); }
+.sc-state, .sc-done { margin: 0 0 0.8rem; padding: 0.6rem 0.8rem; border-left: 4px solid; }
+.sc-state.is-cancelled { border-color: var(--accent); background: #fbefec; }
+.sc-state.is-moved { border-color: #8a5a00; background: #fbf4e6; }
+.sc-done { border-color: #2f6b45; background: #eef5f0; }
+.sc-form { max-width: 560px; padding: 1.2rem; border: 1px solid var(--line); background: #fff; display: grid; gap: 0.8rem; }
+.sc-title { margin: 0; font-size: 1.3rem; }
+.sc-help { margin: 0; color: var(--muted); }
+.sc-form label { display: flex; flex-direction: column; gap: 0.3rem; font-weight: 600; font-size: 0.95rem; }
+.sc-form select, .sc-form input { font: inherit; font-weight: 400; padding: 0.6rem 0.75rem; border: 1px solid #b9b3ab; background: #fff; }
+.sc-error { margin: 0; color: var(--accent-text); }
+.sc button:focus-visible, .sc select:focus-visible, .sc input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }

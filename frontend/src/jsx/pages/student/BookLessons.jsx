@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import ScrollReveal from "../../components/ScrollReveal.jsx";
 import CancelBooking from "../../components/student/CancelBooking.jsx";
+import PrivateLessons from "../../components/student/PrivateLessons.jsx";
 import { getLessons, bookLesson } from "../../../js/services/lessonService.js";
 import { formatTime, formatDayHeading, formatShortDate } from "../../../js/utils/formatters.js";
 import "../../../css/content.css";
 import "../../../css/book-lessons.css";
 
 // FSDP-50 Browse available lessons + FSDP-53 Book a group lesson
-// + FSDP-55 Cancel a booking.
+// + FSDP-55 Cancel a booking + FSDP-54 Request a 1-on-1 session.
 // Lessons for the next two weeks at every dojo. Booking uses credits and
 // needs an active membership; the server checks every rule again.
 
@@ -24,7 +25,14 @@ const DAYS = [
   { value: 0, label: "Sunday" },
 ];
 
-const NO_FILTERS = { centreId: "", day: "", instructorId: "", suitsBelt: false };
+const NO_FILTERS = { type: "", centreId: "", date: "", day: "", instructorId: "", suitsBelt: false };
+
+// Lesson types. "private" is a 1-on-1 session.
+const TYPES = [
+  { value: "", label: "All lessons" },
+  { value: "group", label: "Group lessons" },
+  { value: "private", label: "1-on-1 sessions" },
+];
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -89,7 +97,11 @@ function LessonCard({ lesson, credits, noticeHours, confirming, busy, onAsk, onC
   return (
     <article className={`card bk-card${lesson.bookedByMe ? " is-booked" : ""}`}>
       <span className="tag">{formatTime(lesson.startTime)}</span>
+      <p className="bk-type">Group lesson</p>
       <h3>{lesson.title}</h3>
+      {lesson.venueChanged && (
+        <p className="bk-moved">Venue changed for this day{lesson.changeNote ? `: ${lesson.changeNote}` : ""}</p>
+      )}
       {!lesson.openToAll && (
         <p className={`bk-level ${lesson.suitsBelt ? "is-match" : "is-other"}`}>
           {lesson.suitsBelt ? "Recommended for your level" : "Not your level"}
@@ -110,8 +122,35 @@ function LessonCard({ lesson, credits, noticeHours, confirming, busy, onAsk, onC
   );
 }
 
+// One of the student's own 1-on-1 sessions. These are booked by the dojo,
+// so there's nothing to book here.
+function PrivateCard({ lesson }) {
+  return (
+    <article className="card bk-card is-booked is-private">
+      <span className="tag">{formatTime(lesson.startTime)}</span>
+      <p className="bk-type">1-on-1 session</p>
+      <h3>Your 1-on-1 session</h3>
+      <dl className="details">
+        <div><dt>Time</dt><dd>{formatTime(lesson.startTime)} – {formatTime(lesson.endTime)}</dd></div>
+        <div><dt>Dojo</dt><dd>{lesson.centre}</dd></div>
+        <div><dt>With</dt><dd>{lesson.instructor}</dd></div>
+        <div><dt>Credits</dt><dd>{lesson.creditCost}, already paid</dd></div>
+      </dl>
+      <p className="bk-booked">Booked ✓</p>
+    </article>
+  );
+}
+
+function dateOption(ymd) {
+  const { weekday, day } = formatDayHeading(ymd);
+  return `${weekday} ${day}`;
+}
+
 export default function BookLessons() {
-  const [filters, setFilters] = useState(NO_FILTERS);
+  // ?type=private opens the 1-on-1 view (used by links in emails).
+  const [searchParams] = useSearchParams();
+  const startType = TYPES.some((t) => t.value === searchParams.get("type")) ? searchParams.get("type") : "";
+  const [filters, setFilters] = useState({ ...NO_FILTERS, type: startType || "" });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -142,7 +181,12 @@ export default function BookLessons() {
 
   function changeFilter(name, value) {
     setConfirmId(null);
-    setFilters((current) => ({ ...current, [name]: value }));
+    setFilters((current) => {
+      const next = { ...current, [name]: value };
+      // Instructor and belt filters don't apply to 1-on-1 sessions.
+      if (name === "type" && value === "private") Object.assign(next, { instructorId: "", suitsBelt: false });
+      return next;
+    });
   }
 
   function clearFilters() {
@@ -200,14 +244,18 @@ export default function BookLessons() {
     });
   }
 
-  const lessons = data?.lessons || [];
+  // Group lessons and the student's own 1-on-1s, in time order.
+  const lessons = [...(data?.lessons || []), ...(data?.privateLessons || [])].sort((a, b) =>
+    `${a.date} ${a.startTime}`.localeCompare(`${b.date} ${b.startTime}`)
+  );
   const groups = [];
   for (const lesson of lessons) {
     const last = groups[groups.length - 1];
     if (last && last.date === lesson.date) last.items.push(lesson);
     else groups.push({ date: lesson.date, items: [lesson] });
   }
-  const filtered = filters.centreId || filters.day !== "" || filters.instructorId || filters.suitsBelt;
+  const filtered = filters.type || filters.centreId || filters.date || filters.day !== "" || filters.instructorId || filters.suitsBelt;
+  const showPrivate = filters.type === "private";
   const membershipActive = data?.membership?.active;
 
   return (
@@ -259,10 +307,23 @@ export default function BookLessons() {
 
         <div className="filters bk-filters">
           <label>
+            Lesson type
+            <select value={filters.type} onChange={(e) => changeFilter("type", e.target.value)}>
+              {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </label>
+          <label>
             Dojo
             <select value={filters.centreId} onChange={(e) => changeFilter("centreId", e.target.value)}>
               <option value="">All dojos</option>
               {data?.filters.centres.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+          <label>
+            Date
+            <select value={filters.date} onChange={(e) => changeFilter("date", e.target.value)}>
+              <option value="">Any date</option>
+              {data?.filters.dates?.map((d) => <option key={d} value={d}>{dateOption(d)}</option>)}
             </select>
           </label>
           <label>
@@ -272,21 +333,26 @@ export default function BookLessons() {
               {DAYS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
             </select>
           </label>
-          <label>
-            Instructor
-            <select value={filters.instructorId} onChange={(e) => changeFilter("instructorId", e.target.value)}>
-              <option value="">Any instructor</option>
-              {data?.filters.instructors.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-            </select>
-          </label>
-          <label className="bk-check">
-            <input
-              type="checkbox"
-              checked={filters.suitsBelt}
-              onChange={(e) => changeFilter("suitsBelt", e.target.checked)}
-            />
-            Suits my belt
-          </label>
+          {/* 1-on-1 sessions are arranged by the dojo, so these two filters only apply to group lessons. */}
+          {!showPrivate && (
+            <>
+              <label>
+                Instructor
+                <select value={filters.instructorId} onChange={(e) => changeFilter("instructorId", e.target.value)}>
+                  <option value="">Any instructor</option>
+                  {data?.filters.instructors.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+              </label>
+              <label className="bk-check">
+                <input
+                  type="checkbox"
+                  checked={filters.suitsBelt}
+                  onChange={(e) => changeFilter("suitsBelt", e.target.checked)}
+                />
+                Suits my belt
+              </label>
+            </>
+          )}
           {filtered && (
             <button type="button" className="btn btn-outline btn-small bk-reset" onClick={clearFilters}>
               Clear filters
@@ -294,27 +360,45 @@ export default function BookLessons() {
           )}
         </div>
 
+        {!showPrivate && (
+          <p className="bk-private-cta">
+            Want personal training?{" "}
+            <button type="button" className="bk-linkbutton" onClick={() => changeFilter("type", "private")}>
+              Request a 1-on-1 session
+            </button>
+          </p>
+        )}
+
+        {showPrivate && data && (
+          <PrivateLessons membershipActive={membershipActive} onChanged={() => setReloadCount((n) => n + 1)} />
+        )}
+
         {loadError && <p className="notice bk-message is-error" role="alert">{loadError}</p>}
 
         {!data && loading && <p>Loading lessons...</p>}
 
         {data && (
           <div aria-live="polite" aria-busy={loading}>
+            {showPrivate && <h2 className="bk-sub">Your booked 1-on-1 sessions, next two weeks</h2>}
             <p className="result-count">
               {loading ? "Updating..." : `Showing ${plural(lessons.length, "lesson")}`}
             </p>
             {lessons.length === 0 && !loading && (
               <p className="bk-empty">
-                {filtered
-                  ? "No lessons match your filters. Try clearing them."
-                  : "There are no lessons to book in the next two weeks."}
+                {showPrivate
+                  ? "You have no 1-on-1 sessions booked in the next two weeks."
+                  : filtered
+                    ? "No lessons match your filters. Try clearing them."
+                    : "There are no lessons to book in the next two weeks."}
               </p>
             )}
             {groups.map((g) => (
               <section key={g.date} className="day-group" aria-labelledby={`day-${g.date}`}>
                 <h2 id={`day-${g.date}`} className="day-heading">{dateHeading(g.date)}</h2>
                 <div className="grid">
-                  {g.items.map((lesson) => (
+                  {g.items.map((lesson) => lesson.type === "private" ? (
+                    <PrivateCard key={`p${lesson.id}`} lesson={lesson} />
+                  ) : (
                     <LessonCard
                       key={lesson.id}
                       lesson={lesson}

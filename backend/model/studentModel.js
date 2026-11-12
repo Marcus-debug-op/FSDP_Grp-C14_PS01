@@ -1,7 +1,7 @@
 // MODEL: SQL for the student dashboard. Tables come from
 // database/migrations/001_shared_schema.sql (see database/DATABASE.md).
 import pool from "../db.js";
-import { CANCEL_NOTICE_HOURS } from "./lessonModel.js";
+import { CANCEL_NOTICE_HOURS, VENUE_JOIN } from "./lessonModel.js";
 
 // "Today" in Singapore, not in the database server's UTC.
 const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
@@ -54,7 +54,7 @@ export async function getNextBookedClass(studentId) {
      FROM bookings b
      JOIN class_sessions cs ON cs.id = b.session_id
      JOIN classes cl ON cl.id = cs.class_id
-     JOIN centres ce ON ce.id = cl.centre_id
+     ${VENUE_JOIN}
      JOIN users u ON u.id = cs.instructor_id
      WHERE b.student_id = $1 AND b.status = 'booked'
        AND cs.status = 'scheduled' AND cs.session_date >= ${TODAY}
@@ -68,6 +68,7 @@ export async function getNextBookedClass(studentId) {
 
 // Sessions attended this month, plus the overall rate:
 // attended / booked lessons that have already happened.
+// Lessons the dojo cancelled don't count against the student.
 export async function getAttendanceSummary(studentId) {
   const result = await pool.query(
     `SELECT
@@ -79,7 +80,7 @@ export async function getAttendanceSummary(studentId) {
          WHERE a.student_id = $1 AND a.status IN ('present', 'late')) AS attended,
        (SELECT COUNT(*)::int FROM bookings b
           JOIN class_sessions cs ON cs.id = b.session_id
-         WHERE b.student_id = $1 AND b.status = 'booked'
+         WHERE b.student_id = $1 AND b.status = 'booked' AND cs.status <> 'cancelled'
            AND cs.session_date < ${TODAY}) AS past_booked`,
     [studentId]
   );
@@ -100,6 +101,12 @@ export async function getMembership(studentId) {
     [studentId]
   );
   return result.rows[0] || null;
+}
+
+// A membership lets the student train at every open dojo (FSDP-6).
+export async function countOpenCentres() {
+  const result = await pool.query("SELECT COUNT(*)::int AS count FROM centres WHERE is_active");
+  return result.rows[0].count;
 }
 
 // Credit balance = sum of the ledger.

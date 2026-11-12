@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getDashboard } from "../../js/services/studentService.js";
+import { getDashboard, getNotices, markNoticesRead } from "../../js/services/studentService.js";
 import ScrollReveal from "../components/ScrollReveal.jsx";
 import CancelBooking from "../components/student/CancelBooking.jsx";
 import useHeroScrollFade from "../../js/hooks/useHeroScrollFade.js";
@@ -131,14 +131,26 @@ function RankSection({ rank }) {
 
 // Same grey band and column layout as the homepage's "Getting started".
 function GlanceSection({ nextClass, attendance, membership, credits, noticeHours, cancelNote, onBookingCancelled }) {
+  // FSDP-6: status, the dojos it covers, expiry date, and a renew prompt.
+  const covers = membership?.centresCovered
+    ? ` Valid at all ${membership.centresCovered} dojos${membership.homeCentre ? ` (home: ${membership.homeCentre})` : ""}.`
+    : "";
   const membershipItem = !membership
-    ? { value: "None", sub: "Choose a plan to start training." }
+    ? { value: "None", sub: "Choose a plan to start training.", link: { to: "/payments", label: "Get a membership" } }
     : membership.state === "expired"
-      ? { value: "Expired", sub: `Ended ${fmtDate(membership.endDate)}.` }
+      ? {
+          value: "Expired",
+          sub: `Ended ${fmtDate(membership.endDate)}. Renew to book lessons again.`,
+          tag: "Renew now",
+          link: { to: "/payments", label: "Renew membership" },
+        }
       : {
-          value: "Active",
-          sub: `${membership.plan} · renews ${fmtDate(membership.endDate)}.`,
-          tag: membership.state === "expiring" ? `Expires in ${plural(membership.daysLeft, "day")}` : null,
+          value: membership.state === "expiring" ? "Expiring soon" : "Active",
+          sub: `${membership.plan} · until ${fmtDate(membership.endDate)}.${covers}`,
+          tag: membership.state === "expiring"
+            ? (membership.daysLeft === 0 ? "Expires today" : `Expires in ${plural(membership.daysLeft, "day")}`)
+            : null,
+          link: membership.state === "expiring" ? { to: "/payments", label: "Renew membership" } : null,
         };
 
   const items = [
@@ -234,6 +246,68 @@ function RecommendedSection({ recommended }) {
   );
 }
 
+// Notices about bookings, payments, cancelled or moved lessons and 1-on-1s
+// (FSDP-47, 53, 54, 56). The same notices are also sent by email.
+const NOTICE_KANJI = {
+  booking_confirmed: "予",
+  payment_received: "払",
+  lesson_cancelled: "休",
+  lesson_moved: "移",
+  private_lesson: "個",
+};
+
+function fmtWhen(isoLocal) {
+  const [date, time] = isoLocal.split("T");
+  return `${fmtShortDate(date)}, ${fmtTime(time)}`;
+}
+
+const NOTICES_SHOWN = 5;
+
+function NoticesSection({ notices, unread, onReadAll }) {
+  const [showAll, setShowAll] = useState(false);
+  if (notices.length === 0) return null;
+  const shown = showAll ? notices : notices.slice(0, NOTICES_SHOWN);
+  return (
+    <section className="section" aria-labelledby="notice-title">
+      <div className="container">
+        <ScrollReveal className="dash-head">
+          <div>
+            <p className="eyebrow">Updates</p>
+            <h2 id="notice-title">
+              {unread > 0 ? `${plural(unread, "new update")}` : "Recent updates"}
+            </h2>
+          </div>
+          {unread > 0 && (
+            <button type="button" className="btn btn-outline btn-small" onClick={onReadAll}>Mark all as read</button>
+          )}
+        </ScrollReveal>
+        <ScrollReveal delay={120}>
+          <ul className="dash-notices">
+            {shown.map((n) => (
+              <li key={n.id} className={`dash-notice dash-notice-${n.type}${n.read ? "" : " is-unread"}`}>
+                <span className="dash-notice-kanji" aria-hidden="true">{NOTICE_KANJI[n.type] || "知"}</span>
+                <div>
+                  <p className="dash-notice-title">
+                    {!n.read && <span className="dash-sr">New: </span>}
+                    {n.title}
+                  </p>
+                  {n.body && <p className="dash-notice-body">{n.body}</p>}
+                  <p className="dash-notice-when">{fmtWhen(n.createdAt)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {notices.length > NOTICES_SHOWN && (
+            <button type="button" className="btn btn-outline btn-small dash-notices-more" onClick={() => setShowAll(!showAll)}>
+              {showAll ? "Show fewer" : `Show all ${notices.length}`}
+            </button>
+          )}
+        </ScrollReveal>
+      </div>
+    </section>
+  );
+}
+
 function PaymentsSection({ payments }) {
   return (
     <section className="section section-alt" id="payments" aria-labelledby="pay-title">
@@ -284,11 +358,22 @@ export default function StudentDashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [cancelNote, setCancelNote] = useState("");
+  const [notices, setNotices] = useState({ notices: [], unread: 0 });
 
-  const load = () => getDashboard().then(setData).catch((err) => setError(err.message));
+  const load = () => {
+    getDashboard().then(setData).catch((err) => setError(err.message));
+    // Notices are extra: if they fail to load, the rest of the dashboard still shows.
+    getNotices().then(setNotices).catch(() => {});
+  };
   useEffect(() => {
     load();
   }, []);
+
+  function readAll() {
+    markNoticesRead()
+      .then(() => setNotices((n) => ({ unread: 0, notices: n.notices.map((x) => ({ ...x, read: true })) })))
+      .catch(() => {});
+  }
 
   // After a cancel, say what happened and reload so "Next class" and the
   // credit count show the new state.
@@ -347,6 +432,7 @@ export default function StudentDashboard() {
 
       {ready && (
         <>
+          <NoticesSection notices={notices.notices} unread={notices.unread} onReadAll={readAll} />
           <RankSection rank={data.rank} />
           <GlanceSection
             nextClass={data.nextClass}
