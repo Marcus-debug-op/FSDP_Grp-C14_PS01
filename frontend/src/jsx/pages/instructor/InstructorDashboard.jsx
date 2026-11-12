@@ -57,7 +57,9 @@ export default function InstructorDashboard() {
         <span className="instructor-kanji" aria-hidden="true">合</span>
         <div className="container">
           <ScrollReveal>
-            <p className="eyebrow">Today</p>
+            <p className="eyebrow">
+              {new Date().toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long" })}
+            </p>
             <h2>Today's classes</h2>
 
             {error && <p className="form-error" role="alert">{error}</p>}
