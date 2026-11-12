@@ -322,8 +322,11 @@ function plural(n, one, many) {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+const CHILDREN_GRADING_AGE_LIMIT = 13;
+
 function checkEligibility(row, session) {
   const reasons = [];
+  const age = row.age_on_grading_date;
   const classes = { have: row.classes_since_belt ?? 0, need: row.min_classes_at_rank ?? 0 };
   const months = { have: row.months_at_belt ?? 0, need: row.min_months_at_rank ?? 0 };
 
@@ -349,11 +352,22 @@ function checkEligibility(row, session) {
   if (belowRange || aboveRange) {
     reasons.push(`This grading is for ${minBelt ? minBelt.name : "any belt"} to ${maxBelt ? maxBelt.name : "any belt"} only`);
   }
+  if (row.target_ladder === "children" && age !== null && age >= CHILDREN_GRADING_AGE_LIMIT) {
+    reasons.push(`Will be ${age} on the grading date. Children's grading stops at ${CHILDREN_GRADING_AGE_LIMIT}, so they need an adult belt`);
+  }
   if (!row.member_on_grading_date) {
     reasons.push("No active membership on the grading date");
   }
 
-  return { eligible: reasons.length === 0, reasons, classes, months, membershipActive: row.member_on_grading_date };
+  return {
+    eligible: reasons.length === 0,
+    reasons,
+    classes,
+    months,
+    membershipActive: row.member_on_grading_date,
+    ageOnGradingDate: age,
+    ladder: row.target_ladder,
+  };
 }
 
 function toApplication(row, session) {
@@ -402,6 +416,7 @@ export const createGradingSession = handle(async (req, res) => {
   ]);
   if (!centre) throw badRequest("Please choose an open dojo.");
   if (!minBelt || !maxBelt) throw badRequest("Please choose the belts being graded.");
+  if (minBelt.ladder !== maxBelt.ladder) throw badRequest("Choose belts from the same ladder: both adult or both children's.");
   if (minBelt.rank_order > maxBelt.rank_order) throw badRequest("The lowest belt graded must come before the highest.");
   if (examinerId && !examiner) throw badRequest("The examiner must be an instructor.");
 

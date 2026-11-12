@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getBelts, getCentres, searchStudents } from "../../../js/services/adminService.js";
 import { formatShortDate } from "../../../js/utils/formatters.js";
 import PageHeader from "../../components/admin/PageHeader.jsx";
+import BeltOptions from "../../components/admin/BeltOptions.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -82,7 +83,7 @@ export default function AdminStudents() {
             Belt
             <select value={beltId} onChange={(e) => setParam("belt", e.target.value)}>
               <option value="">All belts</option>
-              {belts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              <BeltOptions belts={belts} />
             </select>
           </label>
         </div>

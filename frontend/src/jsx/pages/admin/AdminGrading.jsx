@@ -9,6 +9,7 @@ import {
 } from "../../../js/services/adminService.js";
 import { addDays, formatShortDate, formatTime, todayString } from "../../../js/utils/formatters.js";
 import PageHeader from "../../components/admin/PageHeader.jsx";
+import BeltOptions from "../../components/admin/BeltOptions.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -126,18 +127,18 @@ function GradingForm({ centres, belts, instructors, onSaved, onCancel }) {
             Lowest belt graded
             <select value={minBeltId} onChange={(e) => setMinBeltId(e.target.value)} required>
               <option value="">Choose a belt</option>
-              {belts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              <BeltOptions belts={belts} />
             </select>
           </label>
           <label>
             Highest belt graded
             <select value={maxBeltId} onChange={(e) => setMaxBeltId(e.target.value)} required>
               <option value="">Choose a belt</option>
-              {belts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              <BeltOptions belts={belts} />
             </select>
           </label>
         </div>
-        <span className="form-hint grd-hint">The belts students are grading for. For example, 6th Kyu to 3rd Kyu.</span>
+        <span className="form-hint grd-hint">The belts students are grading for, from one ladder. For example, 6th Kyu to 3rd Kyu, or Children Kyu 12 Red to Junior Dan.</span>
 
         <label>
           Examiner

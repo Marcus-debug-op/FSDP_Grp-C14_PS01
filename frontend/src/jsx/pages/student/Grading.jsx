@@ -201,7 +201,11 @@ function NextGrading({ session, application }) {
         <div className="grad-event-info">
           <p className="grad-event-title">{formatDate(session.gradingDate)}</p>
           <p className="prog-muted">
-            {[session.startTime, session.centreName].filter(Boolean).join(" · ")}
+            {[
+              session.ladder === "children" ? "Children's grading" : session.ladder === "adult" ? "Adult grading" : null,
+              session.startTime,
+              session.centreName,
+            ].filter(Boolean).join(" · ")}
           </p>
           <span className={session.registrationOpen ? "prog-pill is-accent" : "prog-pill is-closed"}>
             {deadline}

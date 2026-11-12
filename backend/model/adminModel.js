@@ -371,15 +371,16 @@ export async function searchStudents({ query, centreId, beltId, limit }) {
 }
 
 export async function listBelts() {
-  const result = await pool.query("SELECT id, name, colour, rank_order FROM belt_ranks ORDER BY rank_order");
-  return result.rows.map((row) => ({ id: row.id, name: row.name, colour: row.colour, rankOrder: row.rank_order }));
+  const result = await pool.query("SELECT id, name, colour, rank_order, ladder FROM belt_ranks ORDER BY rank_order");
+  return result.rows.map((row) => ({ id: row.id, name: row.name, colour: row.colour, rankOrder: row.rank_order, ladder: row.ladder }));
 }
 
 export async function findStudentProfile(id) {
   const result = await pool.query(
     `SELECT u.id, u.full_name, u.email, to_char(u.created_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS joined_on,
             sp.phone, ce.id AS centre_id, ce.name AS centre_name,
-            br.id AS belt_id, br.name AS belt_name, br.colour AS belt_colour, br.rank_order,
+            br.id AS belt_id, br.name AS belt_name, br.colour AS belt_colour, br.rank_order, br.ladder AS belt_ladder,
+            EXTRACT(YEAR FROM age(${SGT_TODAY}, so.date_of_birth))::int AS age,
             to_char(sp.belt_awarded_on, 'YYYY-MM-DD') AS belt_awarded_on,
             (EXTRACT(YEAR FROM age(${SGT_TODAY}, sp.belt_awarded_on)) * 12
               + EXTRACT(MONTH FROM age(${SGT_TODAY}, sp.belt_awarded_on)))::int AS months_at_belt,
@@ -390,6 +391,7 @@ export async function findStudentProfile(id) {
             (SELECT COALESCE(SUM(ct.change), 0)::int FROM credit_transactions ct WHERE ct.student_id = u.id) AS credits
      FROM users u
      LEFT JOIN student_profiles sp ON sp.user_id = u.id
+     LEFT JOIN student_onboarding so ON so.user_id = u.id
      LEFT JOIN centres ce ON ce.id = sp.home_centre_id
      LEFT JOIN belt_ranks br ON br.id = sp.current_belt_id
      LEFT JOIN belt_ranks nb ON nb.rank_order = br.rank_order + 1
@@ -404,6 +406,7 @@ export async function findStudentProfile(id) {
     email: row.email,
     phone: row.phone,
     joinedOn: row.joined_on,
+    age: row.age,
     centreId: row.centre_id,
     centreName: row.centre_name,
     credits: row.credits,
@@ -412,6 +415,7 @@ export async function findStudentProfile(id) {
           id: row.belt_id,
           name: row.belt_name,
           colour: row.belt_colour,
+          ladder: row.belt_ladder,
           awardedOn: row.belt_awarded_on,
           monthsAtBelt: row.months_at_belt,
           classesAtBelt: row.classes_at_belt,
