@@ -24,7 +24,7 @@ function ApprovalBox({ applicant, canChange, busy, onChange }) {
     return (
       <div className="approval approval-done">
         <p><span aria-hidden="true">✓ </span>Approved by {approval.byYou ? "you" : approval.by} on {shortDate(approval.on)}</p>
-        {approval.byYou && canChange && (
+        {approval.byYou && canChange && applicant.applicationStatus === "pending" && (
           <button type="button" className="approval-undo" disabled={busy} onClick={() => onChange(false)}>
             Undo approval
           </button>

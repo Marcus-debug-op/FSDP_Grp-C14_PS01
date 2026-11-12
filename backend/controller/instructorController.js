@@ -221,7 +221,8 @@ export async function getGradingApplicants(req, res, next) {
 
 // PUT /api/instructor/gradings/:id/applicants/:studentId/approval
 // Body: { approved: true | false }. Approving sends the application on to the
-// admin. Only Ready students can be approved, and only before the grading day.
+// admin. Only Ready students can be approved, only before the grading day, and
+// only while the application is still pending (the admin hasn't reviewed it).
 export async function setApplicantApproval(req, res, next) {
   try {
     const gradingId = parseId(req.params.id);
@@ -237,6 +238,11 @@ export async function setApplicantApproval(req, res, next) {
 
     const applicant = (await loadApplicants(req.user.id, grading.id)).find((a) => a.studentId === studentId);
     if (!applicant) return res.status(404).json({ message: "Application not found." });
+    // Once the admin has decided, the approval is locked so the application
+    // doesn't disappear from the admin's grading page.
+    if (applicant.applicationStatus !== "pending") {
+      return res.status(409).json({ message: "The admin has already reviewed this application, so it can't be changed." });
+    }
 
     if (req.body.approved) {
       if (applicant.status !== "ready") {
