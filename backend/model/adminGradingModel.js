@@ -63,7 +63,7 @@ export async function findInstructor(id) {
 }
 
 export async function findBelt(id) {
-  const result = await pool.query("SELECT id, name, rank_order FROM belt_ranks WHERE id = $1", [id]);
+  const result = await pool.query("SELECT id, name, rank_order, ladder FROM belt_ranks WHERE id = $1", [id]);
   return result.rows[0] || null;
 }
 
@@ -98,7 +98,8 @@ export async function listApprovedApplications(sessionId) {
             cb.id AS current_belt_id, cb.name AS current_belt_name,
             nb.id AS next_belt_id, nb.name AS next_belt_name,
             nb.min_months_at_rank, nb.min_classes_at_rank,
-            tb.id AS target_belt_id, tb.name AS target_belt_name, tb.rank_order AS target_belt_rank,
+            tb.id AS target_belt_id, tb.name AS target_belt_name, tb.rank_order AS target_belt_rank, tb.ladder AS target_ladder,
+            EXTRACT(YEAR FROM age(gs.grading_date, so.date_of_birth))::int AS age_on_grading_date,
             (EXTRACT(YEAR FROM age(${SGT_TODAY}, sp.belt_awarded_on)) * 12
               + EXTRACT(MONTH FROM age(${SGT_TODAY}, sp.belt_awarded_on)))::int AS months_at_belt,
             (SELECT COUNT(*)::int
@@ -120,6 +121,7 @@ export async function listApprovedApplications(sessionId) {
      JOIN belt_ranks tb ON tb.id = ga.target_belt_id
      LEFT JOIN users ap ON ap.id = ga.instructor_approved_by
      LEFT JOIN student_profiles sp ON sp.user_id = u.id
+     LEFT JOIN student_onboarding so ON so.user_id = u.id
      LEFT JOIN belt_ranks cb ON cb.id = sp.current_belt_id
      LEFT JOIN belt_ranks nb ON nb.rank_order = cb.rank_order + 1
      WHERE ga.grading_session_id = $1

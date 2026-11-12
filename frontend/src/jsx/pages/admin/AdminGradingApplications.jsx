@@ -146,12 +146,21 @@ export default function AdminGradingApplications() {
                   <td data-label="Student">
                     <Link to={`/admin/students/${a.student.id}`} className="adm-link att-name">{a.student.name}</Link>
                     <span className="att-sub">Applied {formatShortDate(a.appliedOn)} · {STATUS_LABEL[a.status] || a.status}</span>
+                    {a.ladder === "children" && (
+                      <span className="att-sub">
+                        {a.ageOnGradingDate === null ? "Age not recorded" : `Age ${a.ageOnGradingDate} on grading day`}
+                      </span>
+                    )}
                   </td>
                   <td data-label="Grading for">
                     {a.targetBelt}
                     <span className="att-sub">From {a.currentBelt || "no belt"}</span>
                   </td>
-                  <td data-label="Classes">{a.classes.have} of {a.classes.need}</td>
+                  <td data-label="Classes">
+                    {a.classes.need === 0
+                      ? `${plural(a.classes.have, "class", "classes")}, no minimum`
+                      : `${a.classes.have} of ${a.classes.need}`}
+                  </td>
                   <td data-label="Time at belt">
                     {a.months.need === 0
                       ? `${plural(a.months.have, "month", "months")}, no minimum`

@@ -39,6 +39,13 @@ function Progress({ label, value, target, unit }) {
 
 function NextBelt({ student }) {
   if (!student.belt) return <p className="adm-muted">No belt has been set for this student yet.</p>;
+  if (student.belt.ladder === "children" && student.age !== null && student.age >= 13) {
+    return (
+      <p className="notice admin-notice">
+        {student.fullName} is {student.age}. Children's grading stops at 13, so record their adult belt before they grade again.
+      </p>
+    );
+  }
   if (!student.nextBelt) return <p className="adm-muted">{student.belt.name} is the highest belt on record.</p>;
   const { belt, nextBelt } = student;
   const ready = belt.monthsAtBelt >= nextBelt.minMonths && belt.classesAtBelt >= nextBelt.minClasses;
@@ -128,7 +135,7 @@ export default function AdminStudentProfile() {
             <>
               {contact}
               <br />
-              {student.centreName ? `Home dojo: ${student.centreName}` : "No home dojo set"} · Joined {formatShortDate(student.joinedOn)}
+              {student.age !== null && `Age ${student.age} · `}{student.centreName ? `Home dojo: ${student.centreName}` : "No home dojo set"} · Joined {formatShortDate(student.joinedOn)}
             </>
           }
         />
