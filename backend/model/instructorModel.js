@@ -140,7 +140,11 @@ export async function listUpcomingGradings(instructorId) {
             gs.registration_closes_on >= ${TODAY} AS registration_open,
             (SELECT COUNT(*)::int FROM grading_applications ga
              WHERE ga.grading_session_id = gs.id AND ${LIVE_APPLICATION}
-               AND ga.student_id IN (SELECT student_id FROM my_students)) AS my_applicants
+               AND ga.student_id IN (SELECT student_id FROM my_students)) AS my_applicants,
+            (SELECT COUNT(*)::int FROM grading_applications ga
+             WHERE ga.grading_session_id = gs.id AND ${LIVE_APPLICATION}
+               AND ga.instructor_approved_at IS NULL
+               AND ga.student_id IN (SELECT student_id FROM my_students)) AS my_awaiting
      FROM grading_sessions gs
      JOIN centres ce ON ce.id = gs.centre_id
      WHERE gs.status = 'scheduled' AND gs.grading_date >= ${TODAY}
@@ -157,7 +161,8 @@ export async function findGrading(gradingId) {
             to_char(gs.grading_date, 'YYYY-MM-DD') AS grading_date,
             to_char(gs.start_time, 'HH24:MI') AS start_time,
             to_char(gs.registration_closes_on, 'YYYY-MM-DD') AS closes_on,
-            gs.registration_closes_on >= ${TODAY} AS registration_open
+            gs.registration_closes_on >= ${TODAY} AS registration_open,
+            (gs.status = 'scheduled' AND gs.grading_date >= ${TODAY}) AS is_upcoming
      FROM grading_sessions gs
      JOIN centres ce ON ce.id = gs.centre_id
      WHERE gs.id = $1`,
@@ -170,16 +175,31 @@ export async function findGrading(gradingId) {
 export async function listMyApplicants(instructorId, gradingId) {
   const result = await pool.query(
     `WITH my_students AS (${MY_STUDENTS})
-     SELECT ga.student_id, ga.status, tb.name AS target_belt,
-            to_char(ga.applied_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS applied_on
+     SELECT ga.id, ga.student_id, ga.status, tb.name AS target_belt,
+            to_char(ga.applied_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS applied_on,
+            ga.instructor_approved_by AS approved_by_id, ap.full_name AS approved_by,
+            to_char(ga.instructor_approved_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS approved_on
      FROM grading_applications ga
      JOIN belt_ranks tb ON tb.id = ga.target_belt_id
+     LEFT JOIN users ap ON ap.id = ga.instructor_approved_by
      WHERE ga.grading_session_id = $2 AND ${LIVE_APPLICATION}
        AND ga.student_id IN (SELECT student_id FROM my_students)
      ORDER BY ga.applied_at`,
     [instructorId, gradingId]
   );
   return result.rows;
+}
+
+// Records or clears the instructor's approval on one application. The admin's
+// grading page (adminGradingModel) only lists applications once approved.
+export async function setApplicationApproval(applicationId, instructorId) {
+  await pool.query(
+    `UPDATE grading_applications
+     SET instructor_approved_by = $2::int,
+         instructor_approved_at = CASE WHEN $2::int IS NULL THEN NULL ELSE NOW() END
+     WHERE id = $1`,
+    [applicationId, instructorId]
+  );
 }
 
 // One session, only if this instructor teaches it.

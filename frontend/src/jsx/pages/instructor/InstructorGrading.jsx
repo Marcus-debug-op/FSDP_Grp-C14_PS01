@@ -71,6 +71,10 @@ export default function InstructorGrading() {
                     <div><dt>Time</dt><dd>{formatTime(grading.startTime)}</dd></div>
                     <div><dt>Dojo</dt><dd>{grading.centre}</dd></div>
                     <div><dt>Applied</dt><dd>{grading.myApplicants} of your students</dd></div>
+                    <div>
+                      <dt>To approve</dt>
+                      <dd className={grading.myAwaiting > 0 ? "awaiting-count" : undefined}>{grading.myAwaiting}</dd>
+                    </div>
                   </dl>
                   <Link to={`/instructor/gradings/${grading.id}`} className="btn btn-outline btn-small">
                     View Applicants
