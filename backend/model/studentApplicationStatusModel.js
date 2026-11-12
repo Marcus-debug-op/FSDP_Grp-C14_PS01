@@ -6,6 +6,7 @@ export async function findStudentApplicationStatus(studentId) {
   const result = await pool.query(
     `SELECT a.id AS application_id,
             a.approval_status,
+            a.plan_id,
             a.photo_review_status,
             a.photo_review_note,
             a.rejection_reason,

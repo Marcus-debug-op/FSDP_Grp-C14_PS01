@@ -277,10 +277,10 @@ export default function SignUpForm() {
                   aria-label={`Select ${plan.name}`}
                 />
               </div>
-              <p style={{ marginTop: ".75rem" }}><strong>SGD {(plan.priceCents / 100).toFixed(2)}</strong> one-time registration charge</p>
+              <p style={{ marginTop: ".75rem" }}><strong>SGD {(plan.priceCents / 100).toFixed(2)}</strong> one-time registration fee (includes current-year membership, handbook and membership book)</p>
               <div className="signup-plan-note">
-                <strong>Payment required to activate membership</strong>
-                <span>Complete your profile next, then proceed to Stripe Checkout. Training credits and top-ups are separate.</span>
+                <strong>Payment and Shihan approval required for membership activation</strong>
+                <span>Complete your profile next, then proceed to Stripe Checkout. Annual renewal is S$48 in subsequent years; not charged again at signup. Training passes and attire are separate.</span>
               </div>
             </label>
           ))}
@@ -315,6 +315,8 @@ export default function SignUpForm() {
                 <option value="">{centreLoading ? "Loading dojos…" : "Select your preferred dojo"}</option>
                 {centres.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
               </select>
+              {centres.some(c=>String(c.id)===String(preferredCentreId) && c.name === 'ASK Headquarters Dojo') &&
+                <p role="status" className="form-hint">ASK HQ selected: our admin team will receive an in-app coordination alert for your first class, HQ session pass and training attire.</p>}
               {centreError && <small role="alert">Could not load dojos: {centreError}</small>}
               {!centreLoading && !centreError && centres.length === 0 && <small role="alert">No active dojos available.</small>}
             </label>

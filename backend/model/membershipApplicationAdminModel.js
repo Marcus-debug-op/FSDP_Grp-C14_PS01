@@ -22,6 +22,8 @@ const selectFields = `
         a.approval_status, a.book_status, a.approved_by AS reviewed_by, a.reviewed_at,
         a.photo_review_status, a.photo_review_note, a.photo_requested_at, a.photo_resubmitted_at, a.photo_accepted_at,
         a.rejection_reason, a.created_at,
+        (SELECT h.reapply_note FROM membership_reapplication_history h
+         WHERE h.application_id=a.id ORDER BY h.reapply_at DESC LIMIT 1) AS last_reapply_note,
         u.full_name, u.email,
         mp.name AS plan_name, mp.price_cents,
         ce.name AS centre_name,

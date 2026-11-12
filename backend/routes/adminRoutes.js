@@ -3,12 +3,15 @@ import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import * as admin from "../controller/adminController.js";
 import * as applications from "../controller/membershipApplicationAdminController.js";
 import * as membershipBook from "../controller/membershipBookController.js";
+import * as hqAlerts from "../controller/hqAlertsController.js";
 
 const router = Router();
 
 router.use(requireAuth, requireRole("admin"));
 
 router.get("/applications", applications.list);
+router.get("/applications/hq-alerts", hqAlerts.list);
+router.patch("/applications/hq-alerts/:alertId/ack", hqAlerts.acknowledge);
 router.get("/applications/:id", applications.detail);
 router.get("/applications/:id/photo", applications.photo);
 router.patch("/applications/:id/decision", applications.decide);

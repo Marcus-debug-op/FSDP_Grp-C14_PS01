@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { decideMembershipApplication, getMembershipApplication, getMembershipApplicationPhoto, listMembershipApplications, requestMembershipPhotoResubmission, acceptMembershipApplicationPhoto, advanceMembershipBook } from "../../../js/services/adminService.js";
+import { decideMembershipApplication, getMembershipApplication, getMembershipApplicationPhoto, listMembershipApplications, requestMembershipPhotoResubmission, acceptMembershipApplicationPhoto, advanceMembershipBook, listHQAlerts, acknowledgeHQAlert } from "../../../js/services/adminService.js";
 import "../../../css/admin-applications.css";
 
 const fmt = (date) => date ? new Date(date).toLocaleString('en-SG') : '—';
@@ -7,6 +7,16 @@ const money = (cents) => `S$${(Number(cents || 0)/100).toFixed(2)}`;
 const nice = (value) => value === null || value === undefined || value === '' ? 'Not provided' : value;
 export default function AdminMembershipApplications() {
   const [status, setStatus] = useState('pending');
+  const [hqAlerts,setHQAlerts] = useState([]);
+  const [hqError,setHQError] = useState('');
+  async function refreshHQAlerts() {
+    try { setHQAlerts(await listHQAlerts());setHQError(''); }
+    catch(e) {setHQError(e.message);}
+  }
+  async function acknowledgeHQ(id) {
+    try { await acknowledgeHQAlert(id);await refreshHQAlerts(); }
+    catch(e) {setHQError(e.message);}
+  }
   const [items, setItems] = useState([]);
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,11 +56,12 @@ export default function AdminMembershipApplications() {
 
   async function refresh() {
     setError(''); setLoading(true);
-    try { setItems(await listMembershipApplications(status)); }
+    try { setItems(await listMembershipApplications(status)); await refreshHQAlerts(); }
     catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }
   useEffect(() => { refresh(); setDetail(null); setConfirmDecision(null); }, [status]);
+  useEffect(() => { refreshHQAlerts(); }, []);
 
   async function openDetail(id) {
     setError('');setDetail(null);setReason('');setConfirmDecision(null);
@@ -96,6 +107,18 @@ export default function AdminMembershipApplications() {
   return <section className="section"><div className="container adm-app">
     <p className="eyebrow">Administration</p><h1>Membership Applications</h1>
     <p className="lead">Review registration applications and record the Shihan's decision. Membership activation requires verified payment, approval and an accepted photo.</p>
+    <section className="adm-app-panel" aria-label="Headquarters admin notifications">
+      <h2>ASK HQ coordination alerts ({hqAlerts.length})</h2>
+      <p>Arrange a first HQ class, check the HQ session pass and coordinate training attire. These are in-app notifications, not emails.</p>
+      {hqError && <p role="alert" className="form-error">{hqError}</p>}
+      {hqAlerts.length===0 ? <p>No outstanding HQ notifications.</p> :
+        <ul>{hqAlerts.map(alert=><li key={alert.id} style={{marginBottom:'1rem'}}>
+          <strong>{alert.full_name}</strong> ({alert.email}) · {alert.phone || 'Phone not provided'}
+          <p>Application #{alert.application_id} · {alert.event_type === 'reapplication' ? 'Reapplication' : 'New HQ signup'} · {alert.experience_level || 'Experience unavailable'}</p>
+          <button type="button" className="btn btn-outline" onClick={()=>openDetail(alert.application_id)}>Review application</button>{' '}
+          <button type="button" className="btn btn-outline" onClick={()=>acknowledgeHQ(alert.id)}>Mark coordinated</button>
+        </li>)}</ul>}
+    </section>
     <div className="adm-app-toolbar">
       <label>Application status <select value={status} onChange={e=>setStatus(e.target.value)}>
         <option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All</option>
@@ -105,7 +128,7 @@ export default function AdminMembershipApplications() {
     {loading ? <p role="status">Loading applications…</p> : items.length === 0 ? <p>No applications in this category.</p> :
       <div className="adm-app-tablewrap"><table className="adm-app-table"><thead><tr><th>Applicant</th><th>Dojo</th><th>Registration</th><th>Payment</th><th>Approval</th><th>Action</th></tr></thead><tbody>
         {items.map(a=><tr key={a.id}><td><strong>{a.full_name}</strong><small>{a.email}</small></td>
-        <td>{a.centre_name}</td><td>{a.plan_name}<small>{money(a.price_cents)}</small></td>
+        <td>{a.centre_name}{a.centre_name === "ASK Headquarters Dojo" && <small>HQ · coordinate session pass/attire</small>}</td><td>{a.plan_name}<small>{money(a.price_cents)}</small></td>
         <td>{paymentLabel(a)}</td><td><span className="adm-app-status">{a.approval_status}</span></td>
         <td><button className="btn btn-outline" type="button" onClick={()=>openDetail(a.id)}>Review</button></td></tr>)}
       </tbody></table></div>}
@@ -138,6 +161,7 @@ export default function AdminMembershipApplications() {
         </>}
         {detail.photo_review_status === 'resubmission_requested' && <p>Waiting for the student to upload a replacement photo.</p>}
       </div>}
+      {detail.last_reapply_note && <p className="adm-app-note"><strong>Latest reconsideration request:</strong> {detail.last_reapply_note}</p>}
       <div className="adm-app-fields">
         <div><b>Student</b><span>{detail.full_name}</span></div>
         <div><b>Email</b><span>{detail.email}</span></div>

@@ -85,3 +85,6 @@ export const acceptMembershipApplicationPhoto = (id) =>
 // Admin-only membership book tracking.
 export const advanceMembershipBook = (id, status) =>
   request(`/applications/${id}/book`, { method: "PATCH", body: { status } }).then((r) => r.book);
+
+export const listHQAlerts = () => request('/applications/hq-alerts').then(d=>d.alerts);
+export const acknowledgeHQAlert = (id) => request(`/applications/hq-alerts/${id}/ack`, {method:'PATCH'});

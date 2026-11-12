@@ -1,26 +1,65 @@
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getApplicationStatus } from "../../js/services/studentService.js";
 import SignInForm from "../components/SignInForm.jsx";
 import SignUpForm from "../components/SignUpForm.jsx";
 import "../../css/auth.css";
 
-// One page for both Sign In and Sign Up.
-// The address decides which form shows (/signin or /signup), so links such as
-// "Get Started" can open the right one, and the toggle just switches the address.
+// The signup-only sessionStorage value is NOT proof that registration payment is outstanding.
+// Always check the authenticated student's application before redirecting them to checkout.
 export default function AuthPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const [resolvingStudent, setResolvingStudent] = useState(false);
 
-  // Already signed in? Go straight to the dashboard.
-  if (user) {
-    const pendingPlanId = sessionStorage.getItem("pending_registration_plan_id");
-    if (user.role === "student" && pendingPlanId) return <Navigate to="/registration/checkout" replace />;
-    return <Navigate to="/dashboard" replace />;
+  useEffect(() => {
+    if (loading || !user) return undefined;
+    if (user.role !== "student") {
+      navigate("/dashboard", { replace: true });
+      return undefined;
+    }
+
+    let cancelled = false;
+    setResolvingStudent(true);
+    async function resolveDestination() {
+      try {
+        const { application } = await getApplicationStatus();
+        if (cancelled) return;
+        if (!application) {
+          sessionStorage.removeItem("pending_registration_plan_id");
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+        // A completed payment must never be followed by another registration charge.
+        if (application.paymentStatus === "succeeded" || application.status === "active_member") {
+          sessionStorage.removeItem("pending_registration_plan_id");
+          navigate("/dashboard", { replace: true });
+          return;
+        }
+        // Only an unpaid application from THIS logged-in student may resume registration checkout.
+        if (application.status === "pending_payment" && sessionStorage.getItem("pending_registration_plan_id")) {
+          navigate("/registration/checkout", { replace: true });
+          return;
+        }
+        navigate("/dashboard", { replace: true });
+      } catch (error) {
+        // Fail closed: if status can't be verified, never redirect to a payment page.
+        if (!cancelled) navigate("/dashboard", { replace: true });
+      } finally {
+        if (!cancelled) setResolvingStudent(false);
+      }
+    }
+    resolveDestination();
+    return () => { cancelled = true; };
+  }, [user, loading, navigate]);
+
+  if (loading || (user && resolvingStudent) || user) {
+    return <section className="section"><div className="container narrow"><p>Checking your account...</p></div></section>;
   }
 
   const isSignUp = pathname === "/signup";
-
   return (
     <section className="section">
       <div className="container narrow">
@@ -31,8 +70,6 @@ export default function AuthPage() {
             ? "Create your student account to book classes and track your training."
             : "Students, instructors and administrators sign in here."}
         </p>
-
-        {/* The toggle button */}
         <div className="auth-toggle" role="group" aria-label="Choose sign in or sign up">
           <button type="button" aria-pressed={!isSignUp} onClick={() => navigate("/signin", { replace: true })}>
             Sign In
@@ -41,8 +78,6 @@ export default function AuthPage() {
             Sign Up
           </button>
         </div>
-
-        {/* key makes React start with a clean form when you switch */}
         {isSignUp ? <SignUpForm key="up" /> : <SignInForm key="in" />}
       </div>
     </section>

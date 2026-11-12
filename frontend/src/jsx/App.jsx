@@ -1,5 +1,6 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
+import { MembershipAccessProvider } from "./context/MembershipAccessContext.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Navbar from "./components/Navbar.jsx";
 import Footer from "./components/Footer.jsx";
@@ -40,6 +41,7 @@ export default function App() {
   ].includes(pathname);
   return (
     <AuthProvider>
+      <MembershipAccessProvider>
       <ScrollToTop />
       <SiteFrame isPublicPage={isPublicPage} pathname={pathname}>
         <Routes>
@@ -54,15 +56,15 @@ export default function App() {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           {/* Student payments (Stripe Checkout, test mode) */}
           <Route path="/registration/checkout" element={<ProtectedRoute role="student"><RegistrationCheckout /></ProtectedRoute>} />
-          <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
+          <Route path="/payments" element={<ProtectedRoute activeMembership><Payments /></ProtectedRoute>} />
           <Route path="/payments/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
           {/* Student pages not built yet: placeholders until the real pages are ready */}
-          <Route path="/lessons" element={<ProtectedRoute><ComingSoon page="lessons" /></ProtectedRoute>} />
-          <Route path="/timetable" element={<ProtectedRoute><ComingSoon page="timetable" /></ProtectedRoute>} />
-          <Route path="/check-in" element={<ProtectedRoute><ComingSoon page="checkIn" /></ProtectedRoute>} />
+          <Route path="/lessons" element={<ProtectedRoute activeMembership><ComingSoon page="lessons" /></ProtectedRoute>} />
+          <Route path="/timetable" element={<ProtectedRoute activeMembership><ComingSoon page="timetable" /></ProtectedRoute>} />
+          <Route path="/check-in" element={<ProtectedRoute activeMembership><ComingSoon page="checkIn" /></ProtectedRoute>} />
           {/* Personal settings is built: contact details editable, belt and membership view-only. FSDP-42 */}
           <Route path="/settings" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
-          <Route path="/grading" element={<ProtectedRoute role="student"><Grading /></ProtectedRoute>} />
+          <Route path="/grading" element={<ProtectedRoute activeMembership role="student"><Grading /></ProtectedRoute>} />
           <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
           <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
           <Route path="/admin/attendance" element={<ProtectedRoute role="admin"><AdminAttendance /></ProtectedRoute>} />
@@ -71,7 +73,7 @@ export default function App() {
           <Route path="/admin/students" element={<ProtectedRoute role="admin"><AdminStudents /></ProtectedRoute>} />
           <Route path="/admin/students/:id" element={<ProtectedRoute role="admin"><AdminStudentProfile /></ProtectedRoute>} />
           <Route path="/admin/private-lessons" element={<ProtectedRoute role="admin"><AdminPrivateLessons /></ProtectedRoute>} />
-          <Route path="/belt-progress" element={<ProtectedRoute><BeltProgress /></ProtectedRoute>} />
+          <Route path="/belt-progress" element={<ProtectedRoute activeMembership><BeltProgress /></ProtectedRoute>} />
           <Route path="/instructor/classes/:id" element={<ProtectedRoute role="instructor"><ClassRoster /></ProtectedRoute>} />
           <Route path="/instructor/calendar" element={<ProtectedRoute role="instructor"><InstructorCalendar /></ProtectedRoute>} />
           <Route path="/instructor/grading" element={<ProtectedRoute role="instructor"><InstructorGrading /></ProtectedRoute>} />
@@ -79,6 +81,7 @@ export default function App() {
           <Route path="*" element={<Home />} />
         </Routes>
       </SiteFrame>
+      </MembershipAccessProvider>
     </AuthProvider>
   );
 }

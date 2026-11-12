@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { getProfile, getPhotoReviewStatus, getApplicationStatus, resubmitApplicationPhoto } from "../../../js/services/studentService.js";
+import { getProfile, getPhotoReviewStatus, getApplicationStatus, reapplyForMembership, resubmitApplicationPhoto } from "../../../js/services/studentService.js";
 import "../../../css/student-profile.css";
 
 const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
@@ -21,6 +21,20 @@ const APPLICATION_STATES = {
 };
 
 function ApplicationStatusCard({ application, busy, error, onRefresh }) {
+  const [reapplyNote,setReapplyNote]=useState('');
+  const [reapplyBusy,setReapplyBusy]=useState(false);
+  const [reapplyError,setReapplyError]=useState('');
+  const [reapplyMessage,setReapplyMessage]=useState('');
+  async function submitReapplication(e) {
+    e.preventDefault();setReapplyBusy(true);setReapplyError('');
+    try {
+      const result=await reapplyForMembership(reapplyNote);
+      setReapplyMessage(result.message);
+      setReapplyNote('');
+      await onRefresh();
+    } catch(err){setReapplyError(err.message||'Unable to submit request.');}
+    finally{setReapplyBusy(false);}
+  }
   const state = application ? (APPLICATION_STATES[application.status] || {
     label: "Status unavailable", description: "Please contact an administrator if this persists.", tone: "pending"
   }) : null;
@@ -48,6 +62,16 @@ function ApplicationStatusCard({ application, busy, error, onRefresh }) {
         </dl>
         {application.status === "rejected" && application.rejectionReason &&
           <p className="stprofile-application-note"><strong>Reason:</strong> {application.rejectionReason}</p>}
+        {application.status === "rejected" && <form onSubmit={submitReapplication} className="stprofile-application-note">
+          <h3>Request reconsideration</h3>
+          <p>Use your existing account. Your original application details will be submitted again for admin review. Do not make another payment unless the system requests one.</p>
+          <label>Reason for reconsideration
+            <textarea rows={3} maxLength={500} required value={reapplyNote} onChange={e=>setReapplyNote(e.target.value)} placeholder="Explain why you wish to reapply (10–500 characters)." />
+          </label>
+          <button type="submit" className="stprofile-action" disabled={reapplyBusy || reapplyNote.trim().length < 10}>{reapplyBusy ? 'Submitting…' : 'Request reconsideration'}</button>
+          {reapplyError && <p role="alert">{reapplyError}</p>}
+          {reapplyMessage && <p role="status">{reapplyMessage}</p>}
+        </form>}
         {application.status === "photo_resubmission_required" && application.photoReviewNote &&
           <p className="stprofile-application-note"><strong>Photo update requested:</strong> {application.photoReviewNote}</p>}
       </>}
