@@ -22,6 +22,8 @@ import AdminStudents from "./pages/admin/AdminStudents.jsx";
 import AdminMembershipApplications from "./pages/admin/AdminMembershipApplications.jsx";
 import AdminStudentProfile from "./pages/admin/AdminStudentProfile.jsx";
 import AdminPrivateLessons from "./pages/admin/AdminPrivateLessons.jsx";
+import AdminGrading from "./pages/admin/AdminGrading.jsx";
+import AdminGradingApplications from "./pages/admin/AdminGradingApplications.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
 import Grading from "./pages/student/Grading.jsx";
 import StudentProfile from "./pages/student/StudentProfile.jsx";
@@ -71,6 +73,8 @@ export default function App() {
           <Route path="/admin/students" element={<ProtectedRoute role="admin"><AdminStudents /></ProtectedRoute>} />
           <Route path="/admin/students/:id" element={<ProtectedRoute role="admin"><AdminStudentProfile /></ProtectedRoute>} />
           <Route path="/admin/private-lessons" element={<ProtectedRoute role="admin"><AdminPrivateLessons /></ProtectedRoute>} />
+          <Route path="/admin/grading" element={<ProtectedRoute role="admin"><AdminGrading /></ProtectedRoute>} />
+          <Route path="/admin/grading/:id" element={<ProtectedRoute role="admin"><AdminGradingApplications /></ProtectedRoute>} />
           <Route path="/belt-progress" element={<ProtectedRoute><BeltProgress /></ProtectedRoute>} />
           <Route path="/instructor/classes/:id" element={<ProtectedRoute role="instructor"><ClassRoster /></ProtectedRoute>} />
           <Route path="/instructor/calendar" element={<ProtectedRoute role="instructor"><InstructorCalendar /></ProtectedRoute>} />
