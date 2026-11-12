@@ -7,7 +7,6 @@ import { getApplicationStatus } from "../controller/studentApplicationStatusCont
 import { getSettings, updateSettings } from "../controller/settingsController.js";
 import { photoStatus, resubmitPhoto } from "../controller/photoResubmissionController.js";
 import express from "express";
-https://github.com/Marcus-debug-op/FSDP_Grp-C14_PS01/pull/38/conflict?name=frontend%252Fsrc%252Fcss%252Fdashboard.css&ancestor_oid=82c046bffccd0aeabff92dcbd2033c9420d86195&base_oid=e934d5a6cc5816389f82bdb29496ea44d679e75a&head_oid=5b8e4be71d062109b7439848d2a30a68906e82a4
 
 const router = Router();
 
