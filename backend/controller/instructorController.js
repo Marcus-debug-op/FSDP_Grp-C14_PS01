@@ -116,7 +116,9 @@ function gradingProgress(row) {
     {
       key: "classes",
       label: "Classes since last grading",
-      value: `${row.classes_since_belt} of ${row.min_classes_at_rank}`,
+      value: row.min_classes_at_rank > 0
+        ? `${row.classes_since_belt} of ${row.min_classes_at_rank}`
+        : `${row.classes_since_belt} classes, no minimum`,
       met: row.classes_since_belt >= row.min_classes_at_rank,
     },
     {
