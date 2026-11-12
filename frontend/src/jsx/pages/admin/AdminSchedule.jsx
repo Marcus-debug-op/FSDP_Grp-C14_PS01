@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { getCentres, getInstructors, getSchedule } from "../../../js/services/adminService.js";
 import { addDays, formatDayHeading, formatTime, formatWeekRange, todayString } from "../../../js/utils/formatters.js";
 import PageHeader from "../../components/admin/PageHeader.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
+
+const TYPES = [
+  { key: "", label: "All classes" },
+  { key: "class", label: "Group classes" },
+  { key: "private", label: "Private lessons" },
+];
 
 const VIEWS = [
   { key: "day", label: "Day" },
@@ -29,8 +35,33 @@ function classCount(n) {
   return `${n} class${n === 1 ? "" : "es"}`;
 }
 
+function sessionSummary(items) {
+  const running = items.filter((i) => i.status !== "cancelled");
+  const privates = running.filter((i) => i.kind === "private").length;
+  const classes = running.length - privates;
+  if (running.length === 0) return "";
+  const parts = [];
+  if (classes > 0) parts.push(classCount(classes));
+  if (privates > 0) parts.push(`${privates} private`);
+  return parts.join(" · ");
+}
+
+const PRIVATE_STATUS = { completed: "Completed", no_show: "No-show", cancelled: "Cancelled" };
+
 function WeekCard({ item, showCentre }) {
   const cancelled = item.status === "cancelled";
+  if (item.kind === "private") {
+    return (
+      <li className={cancelled ? "tt-card tt-private tt-cancelled" : "tt-card tt-private"}>
+        <span className="tt-time">{timeRange(item.startTime, item.endTime)}</span>
+        <strong className="tt-title">Private lesson</strong>
+        <span className="tt-meta">{item.studentName}</span>
+        {showCentre && <span className="tt-meta">{item.centreName}</span>}
+        <span className="tt-meta">{item.instructorName}</span>
+        {PRIVATE_STATUS[item.status] && <span className="tt-belts">{PRIVATE_STATUS[item.status]}</span>}
+      </li>
+    );
+  }
   const belts = beltRange(item);
   return (
     <li className={cancelled ? "tt-card tt-cancelled" : "tt-card"}>
@@ -45,7 +76,7 @@ function WeekCard({ item, showCentre }) {
 }
 
 function DayTable({ items, showCentre, heading }) {
-  if (items.length === 0) return <p className="adm-empty">No classes on this day.</p>;
+  if (items.length === 0) return <p className="adm-empty">No classes or private lessons on this day.</p>;
   return (
     <table className="att-table adm-table tt-table">
       <caption className="visually-hidden">Classes on {heading}</caption>
@@ -61,6 +92,23 @@ function DayTable({ items, showCentre, heading }) {
       <tbody>
         {items.map((item) => {
           const cancelled = item.status === "cancelled";
+          if (item.kind === "private") {
+            return (
+              <tr key={item.id} className={cancelled ? "att-row-cancelled tt-private-row" : "tt-private-row"}>
+                <td data-label="Time" className="tt-nowrap">{timeRange(item.startTime, item.endTime)}</td>
+                <td data-label="Class">
+                  <span className={cancelled ? "tt-struck" : undefined}>Private lesson</span>
+                  <span className="att-sub">
+                    with <Link to={`/admin/students/${item.studentId}`} className="adm-link">{item.studentName}</Link>
+                    {PRIVATE_STATUS[item.status] ? ` · ${PRIVATE_STATUS[item.status]}` : ""}
+                  </span>
+                </td>
+                {showCentre && <td data-label="Dojo">{item.centreName}</td>}
+                <td data-label="Instructor">{item.instructorName}</td>
+                <td data-label="Belts"><span className="tt-private-tag">1-to-1</span></td>
+              </tr>
+            );
+          }
           return (
             <tr key={item.id} className={cancelled ? "att-row-cancelled" : undefined}>
               <td data-label="Time" className="tt-nowrap">{timeRange(item.startTime, item.endTime)}</td>
@@ -84,6 +132,7 @@ export default function AdminSchedule() {
   const [searchParams, setSearchParams] = useSearchParams();
   const centreId = searchParams.get("dojo") || "";
   const view = searchParams.get("view") === "week" ? "week" : "day";
+  const type = TYPES.some((t) => t.key === searchParams.get("type")) ? searchParams.get("type") : "";
   const [dayIndex, setDayIndex] = useState(null);
   const [instructorId, setInstructorId] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
@@ -114,20 +163,24 @@ export default function AdminSchedule() {
 
   const today = todayString();
 
+  const shownItems = useMemo(
+    () => (schedule ? schedule.items.filter((item) => !type || item.kind === type) : []),
+    [schedule, type]
+  );
+
   const days = useMemo(() => {
     if (!schedule) return [];
     return Array.from({ length: 7 }, (_, index) => {
       const date = addDays(schedule.weekStart, index);
-      const items = schedule.items.filter((item) => item.date === date);
-      return { date, items, running: items.filter((i) => i.status !== "cancelled").length, heading: formatDayHeading(date) };
+      const items = shownItems.filter((item) => item.date === date);
+      return { date, items, summary: sessionSummary(items), heading: formatDayHeading(date) };
     });
-  }, [schedule]);
+  }, [schedule, shownItems]);
 
   const todayIndex = days.findIndex((d) => d.date === today);
   const selectedIndex = dayIndex ?? (todayIndex >= 0 ? todayIndex : 0);
   const selectedDay = days[selectedIndex];
 
-  const running = schedule ? schedule.items.filter((i) => i.status !== "cancelled") : [];
   const isThisWeek = todayIndex >= 0;
   const selectedCentre = centres.find((c) => String(c.id) === centreId);
   const showCentre = !centreId;
@@ -176,6 +229,12 @@ export default function AdminSchedule() {
               {instructors.map((i) => <option key={i.id} value={i.id}>{i.fullName}</option>)}
             </select>
           </label>
+          <label>
+            Show
+            <select value={type} onChange={(e) => setParam("type", e.target.value)}>
+              {TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+            </select>
+          </label>
           <label className="check-row">
             <input type="checkbox" checked={showCancelled} onChange={(e) => setShowCancelled(e.target.checked)} />
             Show cancelled
@@ -202,7 +261,7 @@ export default function AdminSchedule() {
 
         {schedule && (
           <p className="schedule-count" role="status">
-            {classCount(running.length)} this week{selectedCentre ? ` at ${selectedCentre.name}` : " across all dojos"}
+            {sessionSummary(shownItems) || (type === "private" ? "No private lessons" : "Nothing scheduled")} this week{selectedCentre ? ` at ${selectedCentre.name}` : " across all dojos"}
           </p>
         )}
 
@@ -222,7 +281,7 @@ export default function AdminSchedule() {
                 >
                   <span className="tt-day-name">{d.heading.weekday}</span>
                   <span className="tt-day-date">{d.heading.day}</span>
-                  <span className="tt-day-count">{d.running === 0 ? "No classes" : classCount(d.running)}</span>
+                  <span className="tt-day-count">{d.summary || (type === "private" ? "None" : "No classes")}</span>
                 </button>
               ))}
             </div>
