@@ -11,7 +11,7 @@ export async function getDashboard(req, res, next) {
     // Signed up, but no student_profiles row yet (no belt or centre recorded).
     if (!rank) return res.json({ profileReady: false });
 
-    const [classesAtRank, nextClass, attendance, membership, credits, recommended, payments, grading] =
+    const [classesAtRank, nextClass, attendance, membership, credits, recommended, payments, grading, openCentres] =
       await Promise.all([
         Student.countClassesSince(studentId, rank.belt_awarded_on),
         Student.getNextBookedClass(studentId),
@@ -21,6 +21,7 @@ export async function getDashboard(req, res, next) {
         Student.getRecommendedClasses(studentId, rank.rank_order),
         Student.getRecentPayments(studentId),
         Student.getOpenGrading(studentId, rank.home_centre_id),
+        Student.countOpenCentres(),
       ]);
 
     const hasNext = Boolean(rank.next_belt);
@@ -72,6 +73,9 @@ export async function getDashboard(req, res, next) {
         state: membership.status !== "active" || membership.days_left < 0
           ? "expired"
           : membership.days_left <= 7 ? "expiring" : "active",
+        // FSDP-6: a membership covers every open dojo, not just the home one.
+        centresCovered: openCentres,
+        homeCentre: rank.home_centre,
       },
       credits,
       recommended: recommended.map((c) => ({

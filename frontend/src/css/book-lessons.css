@@ -116,3 +116,38 @@
 .bk-policy { max-width: 620px; margin: 0.6rem 0 0; font-size: 0.95rem; color: var(--muted); }
 .bk-booked-box { margin-top: auto; width: 100%; }
 .bk-booked-box .bk-booked { margin: 0; }
+
+/* ---------- Lesson type, venue changes, 1-on-1 (FSDP-50, FSDP-54, FSDP-56) ---------- */
+.bk-type {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.bk-card.is-private .bk-type { color: var(--accent-text); }
+.bk-card.is-private .bk-booked { margin-top: auto; }
+.bk-moved {
+  margin: 0 0 0.8rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 3px solid #8a5a00;
+  background: #fbf4e6;
+  font-size: 0.9rem;
+}
+.bk-private-cta { margin: 1.2rem 0 0; color: var(--muted); }
+.bk-linkbutton {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.bk-sub { margin-top: 2.5rem; font-size: 1.4rem; }
+/* Keep the "Suits my belt" tick box next to its text, whatever other
+   pages' form styles are loaded. */
+.bk-filters label.bk-check input[type="checkbox"] { width: 1.1rem; min-width: 0; flex: 0 0 auto; margin: 0; padding: 0; }
+.bk-private-cta { margin-bottom: 1rem; }

@@ -45,3 +45,18 @@ export async function resubmitApplicationPhoto(file) {
 
 // Read-only, authenticated membership application progress.
 export const getApplicationStatus = () => request("/api/student/application/status");
+
+// Notices about bookings, payments, lesson changes and 1-on-1s
+// (FSDP-47, 53, 54, 56). { unread, notices: [{ id, type, title, body, read, createdAt }] }
+export const getNotices = () => request("/api/student/notices");
+
+export async function markNoticesRead() {
+  if (!API_URL) throw new Error("Backend address not set. Add VITE_API_URL to frontend/.env and restart.");
+  const res = await fetch(`${API_URL}/api/student/notices/read`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) || ""}` },
+  }).catch(() => {
+    throw new Error("Cannot reach the server. Is the backend running?");
+  });
+  if (!res.ok) throw new Error("Couldn't mark your notices as read.");
+}

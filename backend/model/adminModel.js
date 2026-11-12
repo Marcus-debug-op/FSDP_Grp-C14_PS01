@@ -109,6 +109,45 @@ export async function listSchedule({ from, to, centreId, instructorId, includeCa
   }));
 }
 
+export async function listScheduledPrivateLessons({ from, to, centreId, instructorId, includeCancelled }) {
+  const result = await pool.query(
+    `SELECT pl.id, pl.status,
+            to_char(pl.lesson_date, 'YYYY-MM-DD') AS date,
+            to_char(pl.start_time, 'HH24:MI') AS start_time,
+            to_char(pl.end_time, 'HH24:MI') AS end_time,
+            ce.id AS centre_id, ce.name AS centre_name,
+            i.id AS instructor_id, i.full_name AS instructor_name,
+            s.id AS student_id, s.full_name AS student_name
+     FROM private_lessons pl
+     JOIN centres ce ON ce.id = pl.centre_id
+     JOIN users s ON s.id = pl.student_id
+     LEFT JOIN users i ON i.id = pl.instructor_id
+     WHERE pl.lesson_date BETWEEN $1::date AND $2::date
+       AND pl.status IN ('scheduled', 'completed', 'no_show', 'cancelled')
+       AND ($3::int IS NULL OR pl.centre_id = $3::int)
+       AND ($4::int IS NULL OR pl.instructor_id = $4::int)
+       AND ($5::boolean OR pl.status <> 'cancelled')
+     ORDER BY pl.lesson_date, pl.start_time`,
+    [from, to, centreId ?? null, instructorId ?? null, Boolean(includeCancelled)]
+  );
+  return result.rows.map((row) => ({
+    id: `private-${row.id}`,
+    kind: "private",
+    lessonId: row.id,
+    title: "Private lesson",
+    status: row.status,
+    date: row.date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    centreId: row.centre_id,
+    centreName: row.centre_name,
+    instructorId: row.instructor_id,
+    instructorName: row.instructor_name,
+    studentId: row.student_id,
+    studentName: row.student_name,
+  }));
+}
+
 export async function getOverview({ from, to }) {
   const [schedule, counts] = await Promise.all([
     listSchedule({ from, to }),

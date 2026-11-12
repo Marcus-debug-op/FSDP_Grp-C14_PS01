@@ -1,6 +1,7 @@
 import * as Admin from "../model/adminModel.js";
 import * as Lessons from "../model/privateLessonModel.js";
 import * as Grading from "../model/adminGradingModel.js";
+import { privateLessonScheduled, privateLessonClosed } from "../utils/notices.js";
 import { addDays, dateFromToday, isValidDate, isValidTime, mondayOf } from "../utils/schedule.js";
 
 class HttpError extends Error {
@@ -108,13 +109,20 @@ export const getSchedule = handle(async (req, res) => {
   if (!isValidDate(requested)) throw badRequest("Week must be a valid date.");
   const weekStart = mondayOf(requested);
   const weekEnd = addDays(weekStart, 6);
-  const items = await Admin.listSchedule({
+  const filters = {
     from: weekStart,
     to: weekEnd,
     centreId: optionalId(req.query.centreId, "Dojo ID"),
     instructorId: optionalId(req.query.instructorId, "Instructor ID"),
     includeCancelled: req.query.includeCancelled === "true",
-  });
+  };
+  const [classes, privateLessons] = await Promise.all([
+    Admin.listSchedule(filters),
+    Admin.listScheduledPrivateLessons(filters),
+  ]);
+  const items = [...classes.map((item) => ({ ...item, kind: "class" })), ...privateLessons].sort(
+    (a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime) || a.centreName.localeCompare(b.centreName)
+  );
   res.json({ weekStart, weekEnd, items });
 });
 
@@ -286,6 +294,7 @@ export const createPrivateLesson = handle(async (req, res) => {
     adminNote: text(body.adminNote, "Note", { required: false, max: 500 }) || null,
     adminId: req.user.id,
   });
+  privateLessonScheduled(lesson); // FSDP-54: tell the student (website + email)
   res.status(201).json({ lesson });
 });
 
@@ -299,6 +308,7 @@ export const schedulePrivateLesson = handle(async (req, res) => {
     adminNote: text(body.adminNote, "Note", { required: false, max: 500 }) || null,
     adminId: req.user.id,
   });
+  privateLessonScheduled(lesson); // FSDP-54: tell the student (website + email)
   res.json({ lesson });
 });
 
@@ -308,6 +318,7 @@ export const cancelPrivateLesson = handle(async (req, res) => {
     lessonId: parseId(req.params.id, "Lesson ID"),
     adminNote: text(body.adminNote, "Reason", { required: false, max: 500 }) || null,
   });
+  privateLessonClosed(result.lesson, result.refunded); // FSDP-54: tell the student (website + email)
   res.json(result);
 });
 
@@ -439,7 +450,6 @@ export const getGradingApplications = handle(async (req, res) => {
     counts: {
       total: applications.length,
       eligible: applications.filter((a) => a.eligible).length,
-      awaitingInstructor: session.awaitingCount,
     },
   });
 });

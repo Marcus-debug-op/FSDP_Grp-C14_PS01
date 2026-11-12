@@ -26,6 +26,7 @@ import AdminGrading from "./pages/admin/AdminGrading.jsx";
 import AdminGradingApplications from "./pages/admin/AdminGradingApplications.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
 import BookLessons from "./pages/student/BookLessons.jsx";
+import MyTimetable from "./pages/student/MyTimetable.jsx";
 import Grading from "./pages/student/Grading.jsx";
 import StudentProfile from "./pages/student/StudentProfile.jsx";
 import PersonalSettings from "./pages/student/PersonalSettings.jsx";
@@ -62,8 +63,9 @@ export default function App() {
           <Route path="/payments/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
           {/* Browse and book group lessons */}
           <Route path="/lessons" element={<ProtectedRoute><BookLessons /></ProtectedRoute>} />
+          {/* Weekly timetable and past lessons. FSDP-41, FSDP-59 */}
+          <Route path="/timetable" element={<ProtectedRoute role="student"><MyTimetable /></ProtectedRoute>} />
           {/* Student pages not built yet: placeholders until the real pages are ready */}
-          <Route path="/timetable" element={<ProtectedRoute><ComingSoon page="timetable" /></ProtectedRoute>} />
           <Route path="/check-in" element={<ProtectedRoute><ComingSoon page="checkIn" /></ProtectedRoute>} />
           {/* Personal settings is built: contact details editable, belt and membership view-only. FSDP-42 */}
           <Route path="/settings" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
