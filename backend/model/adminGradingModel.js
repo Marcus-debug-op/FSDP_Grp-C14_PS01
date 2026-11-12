@@ -13,8 +13,7 @@ const SESSION_SELECT = `
          ex.id AS examiner_id, ex.full_name AS examiner_name,
          minb.id AS min_belt_id, minb.name AS min_belt_name, minb.rank_order AS min_belt_rank,
          maxb.id AS max_belt_id, maxb.name AS max_belt_name, maxb.rank_order AS max_belt_rank,
-         COUNT(ga.id) FILTER (WHERE ga.instructor_approved_at IS NOT NULL AND ga.status <> 'withdrawn')::int AS approved_count,
-         COUNT(ga.id) FILTER (WHERE ga.instructor_approved_at IS NULL AND ga.status <> 'withdrawn')::int AS awaiting_count
+         COUNT(ga.id) FILTER (WHERE ga.instructor_approved_at IS NOT NULL AND ga.status <> 'withdrawn')::int AS application_count
   FROM grading_sessions gs
   JOIN centres ce ON ce.id = gs.centre_id
   LEFT JOIN users ex ON ex.id = gs.examiner_id
@@ -37,8 +36,7 @@ function toSession(row) {
     examiner: row.examiner_id ? { id: row.examiner_id, name: row.examiner_name } : null,
     minBelt: row.min_belt_id ? { id: row.min_belt_id, name: row.min_belt_name, rankOrder: row.min_belt_rank } : null,
     maxBelt: row.max_belt_id ? { id: row.max_belt_id, name: row.max_belt_name, rankOrder: row.max_belt_rank } : null,
-    approvedCount: row.approved_count,
-    awaitingCount: row.awaiting_count,
+    applicationCount: row.application_count,
   };
 }
 

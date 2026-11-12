@@ -188,8 +188,7 @@ function SessionsTable({ sessions, view }) {
             <td data-label="Belts graded">{beltRange(s) === "Not set" ? <span className="adm-muted">Not set</span> : beltRange(s)}</td>
             <td data-label="Examiner">{s.examiner ? s.examiner.name : <span className="adm-muted">Not decided</span>}</td>
             <td data-label="Applications">
-              {s.approvedCount} approved by instructor
-              {s.awaitingCount > 0 && <span className="att-sub">{s.awaitingCount} waiting for instructor</span>}
+              {s.applicationCount} {s.applicationCount === 1 ? "application" : "applications"}
             </td>
             <td data-label="Status">{statusText(s)}</td>
             <td className="lesson-actions">

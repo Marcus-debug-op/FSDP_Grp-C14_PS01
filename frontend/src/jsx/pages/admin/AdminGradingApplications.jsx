@@ -106,13 +106,6 @@ export default function AdminGradingApplications() {
           </li>
         </ul>
 
-        {counts.awaitingInstructor > 0 && (
-          <p className="notice admin-notice">
-            {plural(counts.awaitingInstructor, "more application is", "more applications are")} waiting for an instructor to
-            approve. They will show here once approved.
-          </p>
-        )}
-
         <div className="adm-toolbar">
           <div className="auth-toggle" role="group" aria-label="Applications to show">
             {FILTERS.map((f) => (
@@ -124,7 +117,7 @@ export default function AdminGradingApplications() {
         </div>
 
         {applications.length === 0 ? (
-          <p className="adm-empty">No instructor-approved applications for this grading yet.</p>
+          <p className="adm-empty">No applications for this grading yet. Students apply once their instructor has approved them.</p>
         ) : shown.length === 0 ? (
           <p className="adm-empty">{filter === "eligible" ? "No eligible applications." : "Every application is eligible."}</p>
         ) : (

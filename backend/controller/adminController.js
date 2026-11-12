@@ -439,7 +439,6 @@ export const getGradingApplications = handle(async (req, res) => {
     counts: {
       total: applications.length,
       eligible: applications.filter((a) => a.eligible).length,
-      awaitingInstructor: session.awaitingCount,
     },
   });
 });
