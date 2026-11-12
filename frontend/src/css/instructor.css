@@ -128,6 +128,17 @@ button.calendar-day:hover { background: var(--surface); }
 .filters input { font: inherit; text-transform: none; letter-spacing: normal; padding: 0.65rem 0.9rem; min-width: 260px; background: #fff; color: var(--text); border: 1px solid #8a847c; }
 .readiness-empty { margin-top: 1.5rem; }
 .grading-section-title { margin-top: 3rem; }
+
+/* Instructor approval of a grading application */
+.approval { margin: 0.6rem 0 0; font-size: 0.9rem; }
+.approval p { margin: 0; }
+.approval-done { padding: 0.4rem 0.7rem; border: 1px solid var(--ok-line); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+.approval-blocked { color: var(--muted); }
+.approval-button { margin-top: 0.7rem; }
+.approval-button:disabled { opacity: 0.6; cursor: not-allowed; }
+.approval-undo { padding: 0.2rem 0; border: 0; background: none; font: inherit; font-size: 0.85rem; color: var(--accent-text); text-decoration: underline; cursor: pointer; }
+.approval-undo:disabled { color: var(--muted); cursor: not-allowed; }
+.awaiting-count { color: var(--accent-text); font-weight: 700; }
 .roster-stats .stat-ready strong { color: var(--ok); }
 .roster-stats .stat-not-yet strong { color: var(--accent-text); }
 

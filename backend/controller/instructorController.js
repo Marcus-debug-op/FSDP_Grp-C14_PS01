@@ -166,6 +166,7 @@ function publicGrading(row) {
     startTime: row.start_time,
     closesOn: row.closes_on,
     registrationOpen: row.registration_open,
+    isUpcoming: row.is_upcoming,
   };
 }
 
@@ -173,37 +174,87 @@ function publicGrading(row) {
 export async function listUpcomingGradings(req, res, next) {
   try {
     const rows = await Instructor.listUpcomingGradings(req.user.id);
-    res.json({ gradings: rows.map((row) => ({ ...publicGrading(row), myApplicants: row.my_applicants })) });
+    res.json({
+      gradings: rows.map((row) => ({ ...publicGrading(row), myApplicants: row.my_applicants, myAwaiting: row.my_awaiting })),
+    });
   } catch (err) {
     next(err);
   }
 }
 
+// The instructor's own students who applied for a grading, each with the same
+// readiness checks as the grading readiness page and their approval.
+async function loadApplicants(instructorId, gradingId) {
+  const [applications, progressRows] = await Promise.all([
+    Instructor.listMyApplicants(instructorId, gradingId),
+    Instructor.listGradingProgress(instructorId),
+  ]);
+  const progressById = new Map(progressRows.map((row) => [row.id, gradingProgress(row)]));
+
+  return applications
+    .filter((application) => progressById.has(application.student_id))
+    .map((application) => ({
+      ...progressById.get(application.student_id),
+      applicationId: application.id,
+      applicationStatus: application.status,
+      targetBelt: application.target_belt,
+      appliedOn: application.applied_on,
+      approval: application.approved_on
+        ? { by: application.approved_by, byYou: application.approved_by_id === instructorId, on: application.approved_on }
+        : null,
+    }));
+}
+
 // GET /api/instructor/gradings/:id/applicants
-// Only the instructor's own students, each with the same readiness checks as
-// the grading readiness page.
 export async function getGradingApplicants(req, res, next) {
   try {
     const gradingId = parseId(req.params.id);
     const grading = gradingId && (await Instructor.findGrading(gradingId));
     if (!grading) return res.status(404).json({ message: "Grading not found." });
 
-    const [applications, progressRows] = await Promise.all([
-      Instructor.listMyApplicants(req.user.id, grading.id),
-      Instructor.listGradingProgress(req.user.id),
-    ]);
-    const progressById = new Map(progressRows.map((row) => [row.id, gradingProgress(row)]));
-
-    const applicants = applications
-      .filter((application) => progressById.has(application.student_id))
-      .map((application) => ({
-        ...progressById.get(application.student_id),
-        applicationStatus: application.status,
-        targetBelt: application.target_belt,
-        appliedOn: application.applied_on,
-      }));
-
+    const applicants = await loadApplicants(req.user.id, grading.id);
     res.json({ grading: publicGrading(grading), applicants });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/instructor/gradings/:id/applicants/:studentId/approval
+// Body: { approved: true | false }. Approving sends the application on to the
+// admin. Only Ready students can be approved, and only before the grading day.
+export async function setApplicantApproval(req, res, next) {
+  try {
+    const gradingId = parseId(req.params.id);
+    const studentId = parseId(req.params.studentId);
+    const grading = gradingId && (await Instructor.findGrading(gradingId));
+    if (!grading) return res.status(404).json({ message: "Grading not found." });
+    if (typeof req.body?.approved !== "boolean") {
+      return res.status(400).json({ message: "Say whether to approve or undo the approval." });
+    }
+    if (!grading.is_upcoming) {
+      return res.status(400).json({ message: "This grading has already taken place." });
+    }
+
+    const applicant = (await loadApplicants(req.user.id, grading.id)).find((a) => a.studentId === studentId);
+    if (!applicant) return res.status(404).json({ message: "Application not found." });
+
+    if (req.body.approved) {
+      if (applicant.status !== "ready") {
+        return res.status(400).json({ message: "This student doesn't meet every requirement yet." });
+      }
+      if (applicant.approval && !applicant.approval.byYou) {
+        return res.status(409).json({ message: `${applicant.approval.by} has already approved this application.` });
+      }
+      await Instructor.setApplicationApproval(applicant.applicationId, req.user.id);
+    } else {
+      if (applicant.approval && !applicant.approval.byYou) {
+        return res.status(403).json({ message: "Only the instructor who approved this can undo it." });
+      }
+      await Instructor.setApplicationApproval(applicant.applicationId, null);
+    }
+
+    const updated = (await loadApplicants(req.user.id, grading.id)).find((a) => a.studentId === studentId);
+    res.json({ applicant: updated });
   } catch (err) {
     next(err);
   }

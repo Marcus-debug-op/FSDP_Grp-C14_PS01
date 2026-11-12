@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getGradingApplicants } from "../../../js/services/instructorService.js";
+import { getGradingApplicants, setApplicantApproval } from "../../../js/services/instructorService.js";
 import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
 import ReadinessRow from "../../components/ReadinessRow.jsx";
@@ -16,20 +16,65 @@ const APPLICATION_LABEL = {
   failed: "Not passed",
 };
 
+// Approval for one applicant: approved (with undo), approvable, or why not.
+function ApprovalBox({ applicant, canChange, busy, onChange }) {
+  const { approval } = applicant;
+
+  if (approval) {
+    return (
+      <div className="approval approval-done">
+        <p><span aria-hidden="true">✓ </span>Approved by {approval.byYou ? "you" : approval.by} on {shortDate(approval.on)}</p>
+        {approval.byYou && canChange && (
+          <button type="button" className="approval-undo" disabled={busy} onClick={() => onChange(false)}>
+            Undo approval
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!canChange) return <p className="approval approval-blocked">Not approved. This grading has taken place.</p>;
+
+  if (applicant.status !== "ready") {
+    return <p className="approval approval-blocked">Can't be approved until every requirement is met.</p>;
+  }
+
+  return (
+    <button type="button" className="btn btn-primary btn-small approval-button" disabled={busy} onClick={() => onChange(true)}>
+      {busy ? "Approving..." : "Approve for Grading"}
+    </button>
+  );
+}
+
 // One grading session and the instructor's own students who applied for it
-// (FSDP-17). View only: approving and recording results is done by the admin.
+// (FSDP-17). The instructor approves Ready students here, which sends the
+// application on to the admin's grading page. Results are recorded by the admin.
 export default function InstructorGradingSession() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  const [busyId, setBusyId] = useState(null);
 
   useEffect(() => {
     getGradingApplicants(id).then(setData).catch((err) => setError(err.message));
   }, [id]);
 
+  async function changeApproval(studentId, approved) {
+    setBusyId(studentId);
+    setError("");
+    try {
+      const { applicant } = await setApplicantApproval(id, studentId, approved);
+      setData({ ...data, applicants: data.applicants.map((a) => (a.studentId === studentId ? applicant : a)) });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const grading = data?.grading;
   const applicants = data?.applicants || [];
-  const readyCount = applicants.filter((a) => a.status === "ready").length;
+  const approvedCount = applicants.filter((a) => a.approval).length;
 
   return (
     <div className="instructor-portal">
@@ -63,8 +108,8 @@ export default function InstructorGradingSession() {
             <>
               <ul className="stats roster-stats">
                 <li><strong>{applicants.length}</strong><span>Your applicants</span></li>
-                <li className="stat-ready"><strong>{readyCount}</strong><span>Ready</span></li>
-                <li className="stat-not-yet"><strong>{applicants.length - readyCount}</strong><span>Not yet</span></li>
+                <li className="stat-ready"><strong>{approvedCount}</strong><span>Approved</span></li>
+                <li className="stat-not-yet"><strong>{applicants.length - approvedCount}</strong><span>Waiting for you</span></li>
               </ul>
 
               <ul className="readiness-list">
@@ -74,6 +119,12 @@ export default function InstructorGradingSession() {
                       Applied for {applicant.targetBelt} on {shortDate(applicant.appliedOn)}:{" "}
                       {APPLICATION_LABEL[applicant.applicationStatus] || applicant.applicationStatus}
                     </span>
+                    <ApprovalBox
+                      applicant={applicant}
+                      canChange={grading.isUpcoming}
+                      busy={busyId === applicant.studentId}
+                      onChange={(approved) => changeApproval(applicant.studentId, approved)}
+                    />
                   </ReadinessRow>
                 ))}
               </ul>

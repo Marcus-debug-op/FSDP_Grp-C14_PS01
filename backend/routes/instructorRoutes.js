@@ -2,7 +2,8 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import {
-  listClasses, getCalendar, getGradingReadiness, listUpcomingGradings, getGradingApplicants, getRoster, saveAttendance,
+  listClasses, getCalendar, getGradingReadiness, listUpcomingGradings, getGradingApplicants, setApplicantApproval,
+  getRoster, saveAttendance,
 } from "../controller/instructorController.js";
 
 const router = Router();
@@ -14,6 +15,7 @@ router.get("/calendar", getCalendar);
 router.get("/grading-readiness", getGradingReadiness);
 router.get("/gradings", listUpcomingGradings);
 router.get("/gradings/:id/applicants", getGradingApplicants);
+router.put("/gradings/:id/applicants/:studentId/approval", setApplicantApproval);
 router.get("/sessions/:id/roster", getRoster);
 router.put("/sessions/:id/attendance", saveAttendance);
 
