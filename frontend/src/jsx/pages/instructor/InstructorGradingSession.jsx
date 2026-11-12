@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { getGradingApplicants } from "../../../js/services/instructorService.js";
 import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
 import ReadinessRow from "../../components/ReadinessRow.jsx";
+import BackButton from "../../components/BackButton.jsx";
 import { gradingDay, shortDate } from "./InstructorGrading.jsx";
 import "../../../css/auth.css";
 import "../../../css/instructor.css";
@@ -37,7 +38,7 @@ export default function InstructorGradingSession() {
       <section className="section instructor-kanji-section">
         <span className="instructor-kanji instructor-kanji-low" aria-hidden="true">合</span>
         <div className="container">
-          <Link to="/instructor/grading" className="instructor-back">Back to grading</Link>
+          <BackButton fallback="/instructor/grading" />
 
           {grading && (
             <>
