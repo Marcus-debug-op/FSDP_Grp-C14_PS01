@@ -7,6 +7,7 @@ import {
   Benefits, History, Vision, Shihan, Instructors, Overseas, Family, LifeMembers, Careers,
 } from "../components/about/AboutSections.jsx";
 import "../../css/discover.css";
+import usePageTitle from "../../js/hooks/usePageTitle.js";
 
 // Which component shows for each tab
 const panels = {
@@ -15,6 +16,7 @@ const panels = {
 };
 
 export default function About() {
+  usePageTitle("About");
   const { hash } = useLocation();
   const navigate = useNavigate();
   const tabRefs = useRef([]);

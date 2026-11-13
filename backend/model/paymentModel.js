@@ -44,7 +44,9 @@ export async function hasPendingApplicationForPlan(studentId, planId) {
   const result = await pool.query(
     `SELECT EXISTS (
        SELECT 1 FROM membership_applications
-       WHERE student_id = $1 AND plan_id = $2 AND approval_status = 'pending'
+       -- 'approved' too: Shihan may approve before the student pays. Rejected
+       -- applications still cannot pay (they must request reconsideration first).
+       WHERE student_id = $1 AND plan_id = $2 AND approval_status IN ('pending', 'approved')
      ) AS is_pending`,
     [studentId, planId]
   );
@@ -101,7 +103,7 @@ export async function linkRegistrationPayment(studentId, planId, paymentId) {
      SET registration_payment_id = $3
      WHERE a.student_id = $1
        AND a.plan_id = $2
-       AND a.approval_status = 'pending'
+       AND a.approval_status IN ('pending', 'approved')
        AND (
          a.registration_payment_id IS NULL
          OR NOT EXISTS (
@@ -132,6 +134,35 @@ export async function linkRegistrationPayment(studentId, planId, paymentId) {
   return result.rowCount === 1;
 }
 
+// Registration only: the payment this student's application is currently
+// waiting on, if it is still pending. Lets checkout send the student back to
+// the same Stripe page instead of creating a second payment.
+export async function findLinkedPendingRegistrationPayment(studentId, planId) {
+  const result = await pool.query(
+    `SELECT p.id, p.stripe_checkout_session_id
+     FROM membership_applications a
+     JOIN payments p ON p.id = a.registration_payment_id
+     WHERE a.student_id = $1
+       AND a.plan_id = $2
+       AND a.approval_status IN ('pending', 'approved')
+       AND p.student_id = $1
+       AND p.purpose = 'membership'
+       AND p.status = 'pending'`,
+    [studentId, planId]
+  );
+  return result.rows[0] || null;
+}
+
+
+// True when this payment is the one linked to a new-member application.
+// Lets the success page say "awaiting approval" instead of "membership active".
+export async function isRegistrationPayment(paymentId) {
+  const result = await pool.query(
+    "SELECT EXISTS (SELECT 1 FROM membership_applications WHERE registration_payment_id = $1) AS is_registration",
+    [paymentId]
+  );
+  return result.rows[0].is_registration;
+}
 
 // Used by the success page: only the student's own payment is returned.
 export async function findBySession(studentId, sessionId) {
@@ -198,10 +229,30 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
         );
 
         if (application.rowCount !== 1) {
-          console.warn(
-            "Paid registration is not linked to current application",
-            paymentId
+          // Safety net: the student paid on an older Stripe page. Link THIS paid
+          // payment, but only if the application is not already linked to a
+          // successful one, so no one can be activated or charged twice.
+          // Rejected applications are left for staff to handle.
+          const relinked = await client.query(
+            `UPDATE membership_applications a
+             SET registration_payment_id = $3
+             WHERE a.student_id = $1
+               AND a.plan_id = $2
+               AND a.approval_status IN ('pending', 'approved')
+               AND NOT EXISTS (
+                 SELECT 1 FROM payments old
+                 WHERE old.id = a.registration_payment_id
+                   AND old.status = 'succeeded'
+               )
+             RETURNING a.id`,
+            [studentId, plan.id, paymentId]
           );
+          if (relinked.rowCount !== 1) {
+            console.warn(
+              "Paid registration is not linked to current application",
+              paymentId
+            );
+          }
         }
         } else {
       // Existing membership purchase / renewal: preserve the original behaviour.

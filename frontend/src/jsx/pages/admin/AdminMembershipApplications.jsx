@@ -4,9 +4,19 @@ import "../../../css/admin-applications.css";
 
 const fmt = (date) => date ? new Date(date).toLocaleString('en-SG') : '—';
 const money = (cents) => `S$${(Number(cents || 0)/100).toFixed(2)}`;
+// "3 hours ago" style label for alert times.
+const ago = (date) => {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(date)) / 60000));
+  if (mins < 60) return mins <= 1 ? 'just now' : `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.round(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+};
 const nice = (value) => value === null || value === undefined || value === '' ? 'Not provided' : value;
 export default function AdminMembershipApplications() {
-  const [status, setStatus] = useState('pending');
+  // Opens on the admin's to-do list so approved members awaiting their book don't disappear.
+  const [status, setStatus] = useState('action');
   const [hqAlerts,setHQAlerts] = useState([]);
   const [hqError,setHQError] = useState('');
   async function refreshHQAlerts() {
@@ -103,33 +113,55 @@ export default function AdminMembershipApplications() {
   }
   const bookSteps = { not_prepared: 'preparing', preparing: 'ready', ready: 'issued' };
   const bookActions = { preparing: 'Start preparing book', ready: 'Mark ready for collection', issued: 'Confirm book issued' };
+  // Plain-language "what to do next" for each row in the list.
+  const nextStep = (a) => {
+    if (a.approval_status === 'rejected') return 'Rejected';
+    if (a.approval_status === 'pending') {
+      if (a.photo_review_status === 'resubmission_requested') return "Waiting for student's new photo";
+      if (a.photo_review_status !== 'accepted') return 'Review profile photo';
+      return 'Record Shihan decision';
+    }
+    if (!a.has_active_membership) return 'Approved · awaiting verified payment';
+    if (a.book_status === 'issued') return 'Complete';
+    return bookActions[bookSteps[a.book_status || 'not_prepared']];
+  };
   const paymentLabel = (a) => Number(a.succeeded_count) > 0 ? 'Possible paid registration (verify)' : Number(a.pending_count) > 0 ? 'Payment pending' : 'No matching payment';
   return <section className="section"><div className="container adm-app">
     <p className="eyebrow">Administration</p><h1>Membership Applications</h1>
     <p className="lead">Review registration applications and record the Shihan's decision. Membership activation requires verified payment, approval and an accepted photo.</p>
-    <section className="adm-app-panel" aria-label="Headquarters admin notifications">
-      <h2>ASK HQ coordination alerts ({hqAlerts.length})</h2>
-      <p>Arrange a first HQ class, check the HQ session pass and coordinate training attire. These are in-app notifications, not emails.</p>
+    {(hqAlerts.length > 0 || hqError) ? <section className="adm-hq" aria-label="HQ newcomers to contact">
+      <div className="adm-hq-head">
+        <h2>HQ newcomers to contact <span className="adm-hq-count">{hqAlerts.length}</span></h2>
+        <p>Arrange their first class, HQ session pass and training attire, then mark as done.</p>
+      </div>
       {hqError && <p role="alert" className="form-error">{hqError}</p>}
-      {hqAlerts.length===0 ? <p>No outstanding HQ notifications.</p> :
-        <ul>{hqAlerts.map(alert=><li key={alert.id} style={{marginBottom:'1rem'}}>
-          <strong>{alert.full_name}</strong> ({alert.email}) · {alert.phone || 'Phone not provided'}
-          <p>Application #{alert.application_id} · {alert.event_type === 'reapplication' ? 'Reapplication' : 'New HQ signup'} · {alert.experience_level || 'Experience unavailable'}</p>
-          <button type="button" className="btn btn-outline" onClick={()=>openDetail(alert.application_id)}>Review application</button>{' '}
-          <button type="button" className="btn btn-outline" onClick={()=>acknowledgeHQ(alert.id)}>Mark coordinated</button>
-        </li>)}</ul>}
-    </section>
+      <ul className="adm-hq-list">{hqAlerts.map(alert => <li key={alert.id} className="adm-hq-item">
+        <div className="adm-hq-who">
+          <strong>{alert.full_name}</strong>
+          <span>{alert.event_type === 'reapplication' ? 'Reapplied' : 'New signup'} · {alert.experience_level === 'experienced' ? 'Has experience' : 'Beginner'} · {ago(alert.created_at)}</span>
+        </div>
+        <div className="adm-hq-contact">
+          {alert.phone ? <a href={`tel:${alert.phone}`}>{alert.phone}</a> : <span>No phone</span>}
+          <a href={`mailto:${alert.email}`}>{alert.email}</a>
+        </div>
+        <div className="adm-hq-actions">
+          <button type="button" className="adm-hq-link" onClick={() => openDetail(alert.application_id)}>View application</button>
+          <button type="button" className="adm-hq-done" onClick={() => acknowledgeHQ(alert.id)}>Mark as done</button>
+        </div>
+      </li>)}</ul>
+    </section> : <p className="adm-hq-empty">No HQ newcomers waiting to be contacted.</p>}
     <div className="adm-app-toolbar">
       <label>Application status <select value={status} onChange={e=>setStatus(e.target.value)}>
-        <option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All</option>
+        <option value="action">Needs action</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="all">All</option>
       </select></label><button type="button" className="btn btn-outline" onClick={refresh}>Refresh</button>
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
-    {loading ? <p role="status">Loading applications…</p> : items.length === 0 ? <p>No applications in this category.</p> :
-      <div className="adm-app-tablewrap"><table className="adm-app-table"><thead><tr><th>Applicant</th><th>Dojo</th><th>Registration</th><th>Payment</th><th>Approval</th><th>Action</th></tr></thead><tbody>
+    {loading ? <p role="status">Loading applications…</p> : items.length === 0 ? <p>{status === 'action' ? 'Nothing needs action right now. Use the filter to see approved, rejected or all applications.' : 'No applications in this category.'}</p> :
+      <div className="adm-app-tablewrap"><table className="adm-app-table"><thead><tr><th>Applicant</th><th>Dojo</th><th>Registration</th><th>Payment</th><th>Approval</th><th>Next step</th><th>Action</th></tr></thead><tbody>
         {items.map(a=><tr key={a.id}><td><strong>{a.full_name}</strong><small>{a.email}</small></td>
         <td>{a.centre_name}{a.centre_name === "ASK Headquarters Dojo" && <small>HQ · coordinate session pass/attire</small>}</td><td>{a.plan_name}<small>{money(a.price_cents)}</small></td>
         <td>{paymentLabel(a)}</td><td><span className="adm-app-status">{a.approval_status}</span></td>
+        <td>{nextStep(a)}</td>
         <td><button className="btn btn-outline" type="button" onClick={()=>openDetail(a.id)}>Review</button></td></tr>)}
       </tbody></table></div>}
     {detail && <div className="adm-app-panel">

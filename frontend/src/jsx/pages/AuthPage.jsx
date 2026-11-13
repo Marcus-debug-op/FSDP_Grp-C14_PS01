@@ -5,6 +5,7 @@ import { getApplicationStatus } from "../../js/services/studentService.js";
 import SignInForm from "../components/SignInForm.jsx";
 import SignUpForm from "../components/SignUpForm.jsx";
 import "../../css/auth.css";
+import usePageTitle from "../../js/hooks/usePageTitle.js";
 
 // The signup-only sessionStorage value is NOT proof that registration payment is outstanding.
 // Always check the authenticated student's application before redirecting them to checkout.
@@ -12,6 +13,7 @@ export default function AuthPage() {
   const { user, loading } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  usePageTitle(pathname === "/signup" ? "Sign up" : "Sign in");
   const [resolvingStudent, setResolvingStudent] = useState(false);
 
   useEffect(() => {

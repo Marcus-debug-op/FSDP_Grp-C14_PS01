@@ -29,7 +29,12 @@ const selectFields = `
         ce.name AS centre_name,
         COALESCE(pay.succeeded_count,0) AS succeeded_count,
         COALESCE(pay.pending_count,0) AS pending_count,
-        pay.last_paid_at
+        pay.last_paid_at,
+        -- True only when THIS application's linked payment created an active membership.
+        EXISTS (SELECT 1 FROM memberships m
+                WHERE m.payment_id = a.registration_payment_id
+                  AND m.student_id = a.student_id
+                  AND m.status = 'active') AS has_active_membership
  FROM membership_applications a
  JOIN users u ON u.id = a.student_id AND u.role = 'student'
  JOIN membership_plans mp ON mp.id = a.plan_id
@@ -38,7 +43,12 @@ const selectFields = `
 
 export async function listApplications(status = 'pending') {
   const result = await pool.query(
-    `${selectFields} WHERE ($1::text = 'all' OR a.approval_status = $1)
+    // 'action' = admin to-do list: pending reviews, plus approved members whose
+    // membership book has not been issued yet. Other filters are unchanged.
+    `${selectFields} WHERE ($1::text = 'all'
+        OR ($1::text = 'action' AND (a.approval_status = 'pending'
+              OR (a.approval_status = 'approved' AND a.book_status <> 'issued')))
+        OR a.approval_status = $1)
      ORDER BY CASE WHEN a.approval_status='pending' THEN 0 ELSE 1 END, a.created_at DESC LIMIT 200`,
     [status]
   );

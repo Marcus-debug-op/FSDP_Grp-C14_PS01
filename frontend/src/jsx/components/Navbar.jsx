@@ -3,10 +3,20 @@ import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useMembershipAccess } from "../context/MembershipAccessContext.jsx";
 
-// Visitors, instructors and admins.
+// Visitors who are not signed in. Ordered by what a newcomer looks for;
+// the logo already goes Home, and "Join now" sits on the right as the main action.
+const publicLinks = [
+  { to: "/classes", label: "Classes" },
+  { to: "/schedule", label: "Timetable" },
+  { to: "/dojos", label: "Dojos" },
+  { to: "/join", label: "Join & Fees" },
+  { to: "/about", label: "About" },
+];
+
+// Signed-in instructors. "Classes" still opens the timetable, as before.
 const links = [
   { to: "/", label: "Home", end: true },
-  { to: "/classes", label: "Classes" },
+  { to: "/schedule", label: "Classes" },
   { to: "/dojos", label: "Dojos" },
   { to: "/about", label: "About" },
 ];
@@ -70,7 +80,7 @@ export default function Navbar() {
 
   const isStudent = user?.role === "student";
   const isAdmin = user?.role === "admin";
-  const navLinks = isStudent ? (isActiveMember ? studentLinks : []) : isAdmin ? adminLinks : links;
+  const navLinks = isStudent ? (isActiveMember ? studentLinks : []) : isAdmin ? adminLinks : user ? links : publicLinks;
   const firstName = user?.fullName?.split(" ")[0] || "Account";
   const studentsActive = studentMenuLinks.some((l) => pathname === l.to);
 
@@ -169,7 +179,10 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <Link to="/signin" onClick={close} className="btn btn-outline btn-small">Sign In</Link>
+            <>
+              <NavLink to="/signin" onClick={close} className="nav-link">Sign in</NavLink>
+              <Link to="/signup" onClick={close} className="btn btn-primary btn-small nav-join">Join now</Link>
+            </>
           )}
         </nav>
       </div>

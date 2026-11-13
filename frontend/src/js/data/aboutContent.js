@@ -18,7 +18,7 @@ export const aboutTabs = [
 
 export const aboutStats = [
   { to: 1988, label: "Founded", plain: true },
-  { to: 60, suffix: "+", label: "Dojos" },
+  { to: 60, suffix: "+", label: "Dojos in Singapore & overseas" },
   { to: 70, label: "Instructors" },
   { to: 10000, suffix: "+", label: "Members" },
 ];

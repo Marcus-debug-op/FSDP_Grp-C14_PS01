@@ -1,0 +1,22 @@
+/* QR check-in: instructor QR screen + student result page. */
+.ci-qr-layout { display: grid; grid-template-columns: auto 1fr; gap: 2.5rem; align-items: start; margin-top: 1.5rem; }
+.ci-qr-box { margin: 0; background: #fff; border: 1px solid var(--line); padding: 1.2rem; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.06); }
+.ci-qr-box img { display: block; width: min(420px, 80vw); height: auto; }
+.ci-qr-box figcaption { margin-top: 0.6rem; color: var(--muted); font-size: 0.9rem; }
+.ci-count { font-size: 1.15rem; margin: 0 0 1.2rem; }
+.ci-count strong { font-size: 2.6rem; color: var(--accent-text); margin-right: 0.3rem; }
+.ci-steps { margin: 0 0 1.2rem; padding-left: 1.3rem; display: grid; gap: 0.5rem; }
+.ci-note, .ci-hint { color: var(--muted); font-size: 0.92rem; }
+.ci-dev { margin-top: 1.5rem; padding: 0.8rem 1rem; border: 1px dashed var(--line); font-size: 0.85rem; color: var(--muted); }
+.ci-student { max-width: 560px; }
+.ci-status { font-size: 1.2rem; text-align: center; }
+.ci-result { border: 1px solid var(--line); background: var(--bg); padding: 2rem; text-align: center; }
+.ci-result .ci-steps { text-align: left; }
+.ci-icon { display: inline-grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 50%; font-size: 1.8rem; font-weight: 700; color: #fff; margin-bottom: 1rem; }
+.ci-success { border-top: 4px solid #2f7d4f; }
+.ci-success .ci-icon { background: #2f7d4f; }
+.ci-fail { border-top: 4px solid var(--accent); }
+.ci-fail .ci-icon { background: var(--accent); }
+.ci-class { font-size: 1.3rem; font-weight: 700; margin: 0.2rem 0; }
+.ci-result .btn { margin-top: 1.2rem; }
+@media (max-width: 800px) { .ci-qr-layout { grid-template-columns: 1fr; } .ci-qr-box { justify-self: center; } }

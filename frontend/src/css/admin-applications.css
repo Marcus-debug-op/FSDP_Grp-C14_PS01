@@ -18,3 +18,19 @@
 .adm-book-tracker h3{margin:0 0 .6rem}
 .adm-book-note{font-size:.9rem;color:#555;line-height:1.5}
 .adm-book-tracker button{margin:.25rem 0 .5rem}
+
+/* HQ newcomers: compact to-do list above the applications table. */
+.adm-hq{margin-top:20px;border:1px solid #e3d6cf;border-left:4px solid var(--accent,#a83f31);border-radius:10px;background:#fff;padding:16px 20px}
+.adm-hq-head h2{display:flex;align-items:center;gap:10px;margin:0;font-size:1.15rem}
+.adm-hq-head p{margin:4px 0 0;color:#5b5650;font-size:.9rem}
+.adm-hq-count{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:99px;background:var(--accent,#a83f31);color:#fff;font-size:.8rem;font-family:inherit}
+.adm-hq-list{list-style:none;margin:12px 0 0;padding:0}
+.adm-hq-item{display:grid;grid-template-columns:minmax(160px,1.2fr) minmax(160px,1fr) auto;gap:12px 20px;align-items:center;padding:12px 0;border-top:1px solid #eee7e2}
+.adm-hq-who{display:grid;gap:2px}.adm-hq-who span{font-size:.85rem;color:#6a645e}
+.adm-hq-contact{display:grid;gap:2px;font-size:.88rem;overflow-wrap:anywhere}.adm-hq-contact a{color:#263451}
+.adm-hq-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.adm-hq-link,.adm-hq-done{font:inherit;font-size:.85rem;font-weight:600;border-radius:6px;padding:7px 12px;cursor:pointer}
+.adm-hq-link{border:1px solid #cfc6bf;background:#fff;color:#263451}.adm-hq-link:hover{background:#f6f3f0}
+.adm-hq-done{border:1px solid var(--accent,#a83f31);background:var(--accent,#a83f31);color:#fff}.adm-hq-done:hover{filter:brightness(.92)}
+.adm-hq-empty{margin:20px 0 0;color:#6a645e;font-size:.9rem}
+@media(max-width:760px){.adm-hq-item{grid-template-columns:1fr}.adm-hq-actions{justify-content:flex-start}}

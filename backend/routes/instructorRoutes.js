@@ -5,6 +5,7 @@ import {
   listClasses, getCalendar, getGradingReadiness, listUpcomingGradings, getGradingApplicants, setApplicantApproval,
   getRoster, saveAttendance, getAttendanceTrends,
 } from "../controller/instructorController.js";
+import { createQr } from "../controller/checkInController.js";
 
 const router = Router();
 
@@ -19,5 +20,6 @@ router.get("/gradings/:id/applicants", getGradingApplicants);
 router.put("/gradings/:id/applicants/:studentId/approval", setApplicantApproval);
 router.get("/sessions/:id/roster", getRoster);
 router.put("/sessions/:id/attendance", saveAttendance);
+router.post("/sessions/:id/qr", createQr);   // QR check-in code for this class
 
 export default router;

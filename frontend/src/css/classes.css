@@ -1,0 +1,13 @@
+/* Public Classes guide. Uses the site's shared colours from index.css. */
+.cg-hero { padding-bottom: 3rem; }
+.cg-jump { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.8rem; }
+.cg-jump a { border: 1px solid var(--accent); color: var(--accent-text); padding: 0.5rem 1rem; text-decoration: none; font-size: 0.9rem; }
+.cg-jump a:hover { background: var(--accent); color: #fff; }
+.cg-intro { color: var(--muted); margin: 0 0 2rem; }
+.cg-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.2rem; }
+.cg-card { background: var(--bg); border: 1px solid var(--line); border-top: 3px solid var(--accent); padding: 1.4rem; display: flex; flex-direction: column; }
+.cg-card h3 { font-size: 1.25rem; margin: 0 0 0.4rem; }
+.cg-card p { color: var(--muted); margin: 0 0 1.2rem; flex: 1; }
+.cg-link { color: var(--accent-text); font-weight: 600; text-decoration: none; }
+.cg-link:hover { text-decoration: underline; }
+section[id] { scroll-margin-top: 90px; }

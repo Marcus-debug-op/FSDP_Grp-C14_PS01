@@ -248,3 +248,12 @@ a { color: var(--accent-text); }
   .account-menu.open { animation: none; }
   .account-toggle span, .nav-dropdown-toggle span { transition: none; }
 }
+
+/* Public navigation + footer (visitor view). Appended; nothing above changed. */
+.nav-join { letter-spacing: 0.12em; }
+.footer-cols { display: grid; grid-template-columns: repeat(3, minmax(120px, auto)); gap: 1.5rem 3rem; }
+.footer-heading { font-family: var(--font-body); font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent-text); margin: 0 0 0.8rem; }
+.footer-cols a { text-decoration: none; }
+.footer-cols a:hover { text-decoration: underline; }
+@media (max-width: 640px) { .footer-cols { grid-template-columns: 1fr 1fr; } }
+

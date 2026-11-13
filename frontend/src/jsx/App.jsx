@@ -10,6 +10,12 @@ import Home from "./pages/Home.jsx";
 import PublicTimetable from "./pages/PublicTimetable.jsx";
 import About from "./pages/About.jsx";
 import Dojos from "./pages/Dojos.jsx";
+import JoinFees from "./pages/JoinFees.jsx";
+import ClassesGuide from "./pages/ClassesGuide.jsx";
+import Contact from "./pages/Contact.jsx";
+import NotFound from "./pages/NotFound.jsx";
+import CheckIn from "./pages/student/CheckIn.jsx";
+import CheckInQr from "./pages/instructor/CheckInQr.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Payments from "./pages/Payments.jsx";
@@ -53,9 +59,12 @@ export default function App() {
       <SiteFrame isPublicPage={isPublicPage} pathname={pathname}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/classes" element={<PublicTimetable />} />
+          <Route path="/classes" element={<ClassesGuide />} />
+          <Route path="/schedule" element={<PublicTimetable />} />
           <Route path="/dojos" element={<Dojos />} />
           <Route path="/about" element={<About />} />
+          <Route path="/join" element={<JoinFees />} />
+          <Route path="/contact" element={<Contact />} />
           {/* Sign In and Sign Up share one page with a toggle */}
           <Route path="/signin" element={<AuthPage />} />
           <Route path="/signup" element={<AuthPage />} />
@@ -72,7 +81,7 @@ export default function App() {
           {/* Student pages not built yet: placeholders until the real pages are ready */}
           <Route path="/lessons" element={<ProtectedRoute activeMembership><ComingSoon page="lessons" /></ProtectedRoute>} />
           <Route path="/timetable" element={<ProtectedRoute activeMembership><ComingSoon page="timetable" /></ProtectedRoute>} />
-          <Route path="/check-in" element={<ProtectedRoute activeMembership><ComingSoon page="checkIn" /></ProtectedRoute>} />
+          <Route path="/check-in" element={<ProtectedRoute activeMembership role="student"><CheckIn /></ProtectedRoute>} />
           {/* Personal settings is built: contact details editable, belt and membership view-only. FSDP-42 */}
           <Route path="/settings" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
           <Route path="/grading" element={<ProtectedRoute activeMembership role="student"><Grading /></ProtectedRoute>} />
@@ -89,12 +98,13 @@ export default function App() {
           <Route path="/admin/grading/:id" element={<ProtectedRoute role="admin"><AdminGradingApplications /></ProtectedRoute>} />
           <Route path="/belt-progress" element={<ProtectedRoute activeMembership><BeltProgress /></ProtectedRoute>} />
           <Route path="/instructor/classes/:id" element={<ProtectedRoute role="instructor"><ClassRoster /></ProtectedRoute>} />
+          <Route path="/instructor/sessions/:id/qr" element={<ProtectedRoute role="instructor"><CheckInQr /></ProtectedRoute>} />
           <Route path="/instructor/calendar" element={<ProtectedRoute role="instructor"><InstructorCalendar /></ProtectedRoute>} />
           <Route path="/instructor/analytics" element={<ProtectedRoute role="instructor"><InstructorAnalytics /></ProtectedRoute>} />
           <Route path="/instructor/grading" element={<ProtectedRoute role="instructor"><InstructorGrading /></ProtectedRoute>} />
           <Route path="/instructor/gradings/:id" element={<ProtectedRoute role="instructor"><InstructorGradingSession /></ProtectedRoute>} />
           {/* Any unknown address falls back to the homepage */}
-          <Route path="*" element={<Home />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </SiteFrame>
       </MembershipAccessProvider>

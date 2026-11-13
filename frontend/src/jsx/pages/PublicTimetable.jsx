@@ -1,17 +1,24 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import ClassCard from "../components/ClassCard.jsx";
 import { getClasses } from "../../js/services/classService.js";
 import { DAYS } from "../../js/data/hqClasses.js";
 import "../../css/content.css";
 import ScrollReveal from "../components/ScrollReveal.jsx";
+import usePageTitle from "../../js/hooks/usePageTitle.js";
 
 export default function PublicTimetable() {
+  usePageTitle("Timetable");
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [centre, setCentre] = useState("All");
   const [day, setDay] = useState("All");
-  const [type, setType] = useState("All");
+  // "See times" on the Classes page opens this page with ?type=... pre-selected.
+  // It can hold one type or several joined by "," (e.g. "Mixed/Family,Mixed").
+  const [params] = useSearchParams();
+  const [preset] = useState(() => (params.get("type") || "").split(",").map((t) => t.trim()).filter(Boolean));
+  const [type, setType] = useState(preset.length > 1 ? "__preset" : preset[0] || "All");
 
   // Load classes once when the page opens
   useEffect(() => {
@@ -30,7 +37,7 @@ export default function PublicTimetable() {
     (c) =>
       (centre === "All" || c.dojo === centre) &&
       (day === "All" || c.day === day) &&
-      (type === "All" || c.type === type)
+      (type === "All" || (type === "__preset" ? preset.includes(c.type) : c.type === type))
   );
 
   // Group by day so the page reads like a weekly timetable
@@ -69,6 +76,7 @@ export default function PublicTimetable() {
             Class type
             <select value={type} onChange={(e) => setType(e.target.value)}>
               <option value="All">All types</option>
+              {preset.length > 1 && <option value="__preset">{preset.join(" + ")}</option>}
               {types.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
