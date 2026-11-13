@@ -68,7 +68,7 @@ export async function findNextBelt(userId) {
             n.min_months_at_rank, n.min_classes_at_rank
      FROM student_profiles p
      JOIN belt_ranks current ON current.id = p.current_belt_id
-     JOIN belt_ranks n ON n.rank_order > current.rank_order
+     JOIN belt_ranks n ON n.rank_order = current.rank_order + 1
      WHERE p.user_id = $1
      ORDER BY n.rank_order
      LIMIT 1`,
@@ -83,9 +83,16 @@ export async function findNextBelt(userId) {
 // not something to apply for. Sessions whose registration has already closed
 // are still returned, with registration_open false, because "the deadline has
 // passed" is more useful to show than an empty panel.
-export async function findNextGradingSession() {
+export async function findNextGradingSession(userId) {
   const result = await pool.query(
-    `SELECT gs.id,
+    `WITH next_belt AS (
+       SELECT n.rank_order
+       FROM student_profiles p
+       JOIN belt_ranks c ON c.id = p.current_belt_id
+       JOIN belt_ranks n ON n.rank_order = c.rank_order + 1
+       WHERE p.user_id = $1
+     )
+     SELECT gs.id,
             to_char(gs.grading_date, 'YYYY-MM-DD')            AS grading_date,
             to_char(gs.start_time, 'HH24:MI')                 AS start_time,
             to_char(gs.registration_closes_on, 'YYYY-MM-DD')  AS registration_closes_on,
@@ -93,13 +100,25 @@ export async function findNextGradingSession() {
             (gs.registration_closes_on - ${SGT_TODAY})::int   AS days_to_deadline,
             (gs.grading_date - ${SGT_TODAY})::int             AS days_to_grading,
             c.name                                            AS centre_name,
-            c.address                                         AS centre_address
+            c.address                                         AS centre_address,
+            COALESCE(minb.ladder, maxb.ladder)                AS ladder
      FROM grading_sessions gs
      LEFT JOIN centres c ON c.id = gs.centre_id
+     LEFT JOIN belt_ranks minb ON minb.id = gs.min_target_belt_id
+     LEFT JOIN belt_ranks maxb ON maxb.id = gs.max_target_belt_id
      WHERE gs.status = 'scheduled'
        AND gs.grading_date >= ${SGT_TODAY}
+       AND (
+         (minb.id IS NULL AND maxb.id IS NULL)
+         OR EXISTS (
+           SELECT 1 FROM next_belt nb
+           WHERE (minb.id IS NULL OR nb.rank_order >= minb.rank_order)
+             AND (maxb.id IS NULL OR nb.rank_order <= maxb.rank_order)
+         )
+       )
      ORDER BY gs.grading_date, gs.start_time
-     LIMIT 1`
+     LIMIT 1`,
+    [userId]
   );
   return result.rows[0];
 }

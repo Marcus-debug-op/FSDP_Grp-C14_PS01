@@ -140,6 +140,8 @@ export async function getRecommendedClasses(studentId, rankOrder, limit = 3) {
      WHERE cl.is_active
        AND (minb.rank_order IS NULL OR minb.rank_order <= $2)
        AND (maxb.rank_order IS NULL OR maxb.rank_order >= $2)
+       AND (minb.id IS NULL OR minb.ladder = (SELECT ladder FROM belt_ranks WHERE rank_order = $2))
+       AND (maxb.id IS NULL OR maxb.ladder = (SELECT ladder FROM belt_ranks WHERE rank_order = $2))
      ORDER BY open_to_all, ns.session_date, cl.start_time
      LIMIT $3`,
     [studentId, rankOrder, limit]

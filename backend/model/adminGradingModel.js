@@ -13,8 +13,7 @@ const SESSION_SELECT = `
          ex.id AS examiner_id, ex.full_name AS examiner_name,
          minb.id AS min_belt_id, minb.name AS min_belt_name, minb.rank_order AS min_belt_rank,
          maxb.id AS max_belt_id, maxb.name AS max_belt_name, maxb.rank_order AS max_belt_rank,
-         COUNT(ga.id) FILTER (WHERE ga.instructor_approved_at IS NOT NULL AND ga.status <> 'withdrawn')::int AS approved_count,
-         COUNT(ga.id) FILTER (WHERE ga.instructor_approved_at IS NULL AND ga.status <> 'withdrawn')::int AS awaiting_count
+         COUNT(ga.id) FILTER (WHERE ga.instructor_approved_at IS NOT NULL AND ga.status <> 'withdrawn')::int AS application_count
   FROM grading_sessions gs
   JOIN centres ce ON ce.id = gs.centre_id
   LEFT JOIN users ex ON ex.id = gs.examiner_id
@@ -37,8 +36,7 @@ function toSession(row) {
     examiner: row.examiner_id ? { id: row.examiner_id, name: row.examiner_name } : null,
     minBelt: row.min_belt_id ? { id: row.min_belt_id, name: row.min_belt_name, rankOrder: row.min_belt_rank } : null,
     maxBelt: row.max_belt_id ? { id: row.max_belt_id, name: row.max_belt_name, rankOrder: row.max_belt_rank } : null,
-    approvedCount: row.approved_count,
-    awaitingCount: row.awaiting_count,
+    applicationCount: row.application_count,
   };
 }
 
@@ -63,7 +61,7 @@ export async function findInstructor(id) {
 }
 
 export async function findBelt(id) {
-  const result = await pool.query("SELECT id, name, rank_order FROM belt_ranks WHERE id = $1", [id]);
+  const result = await pool.query("SELECT id, name, rank_order, ladder FROM belt_ranks WHERE id = $1", [id]);
   return result.rows[0] || null;
 }
 
@@ -98,7 +96,8 @@ export async function listApprovedApplications(sessionId) {
             cb.id AS current_belt_id, cb.name AS current_belt_name,
             nb.id AS next_belt_id, nb.name AS next_belt_name,
             nb.min_months_at_rank, nb.min_classes_at_rank,
-            tb.id AS target_belt_id, tb.name AS target_belt_name, tb.rank_order AS target_belt_rank,
+            tb.id AS target_belt_id, tb.name AS target_belt_name, tb.rank_order AS target_belt_rank, tb.ladder AS target_ladder,
+            EXTRACT(YEAR FROM age(gs.grading_date, so.date_of_birth))::int AS age_on_grading_date,
             (EXTRACT(YEAR FROM age(${SGT_TODAY}, sp.belt_awarded_on)) * 12
               + EXTRACT(MONTH FROM age(${SGT_TODAY}, sp.belt_awarded_on)))::int AS months_at_belt,
             (SELECT COUNT(*)::int
@@ -120,6 +119,7 @@ export async function listApprovedApplications(sessionId) {
      JOIN belt_ranks tb ON tb.id = ga.target_belt_id
      LEFT JOIN users ap ON ap.id = ga.instructor_approved_by
      LEFT JOIN student_profiles sp ON sp.user_id = u.id
+     LEFT JOIN student_onboarding so ON so.user_id = u.id
      LEFT JOIN belt_ranks cb ON cb.id = sp.current_belt_id
      LEFT JOIN belt_ranks nb ON nb.rank_order = cb.rank_order + 1
      WHERE ga.grading_session_id = $1
