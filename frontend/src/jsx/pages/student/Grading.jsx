@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import ProgressLayout, { Swatch, Bar } from "../../components/student/ProgressLayout.jsx";
-import { getEligibility } from "../../../js/services/gradingService.js";
+import { getEligibility, applyForGrading } from "../../../js/services/gradingService.js";
 import { colourHex, formatDate } from "../../../js/utils/beltFormat.js";
 import "../../../css/grading.css";
 
@@ -16,9 +16,19 @@ const APPLICATION_LABEL = {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+// An application in one of these states no longer counts, so the student may
+// apply for the same grading again. Same rule as the server uses.
+const DEAD_APPLICATION = ["withdrawn", "rejected"];
+
+const fmtMoney = (cents) =>
+  (cents / 100).toLocaleString("en-SG", { style: "currency", currency: "SGD" });
+
 export default function Grading() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
+  // Stripe sends the student back with ?cancelled=1 if they leave checkout
+  // without paying (see cancel_url in gradingController.applyForGrading).
+  const [params] = useSearchParams();
 
   useEffect(() => {
     getEligibility().then(setData).catch((err) => setError(err.message));
@@ -26,12 +36,12 @@ export default function Grading() {
 
   return (
     <ProgressLayout title="Grading" subtitle="Where you stand for your next belt and when the next grading is.">
-      <Body data={data} error={error} />
+      <Body data={data} error={error} cancelled={params.get("cancelled") === "1"} />
     </ProgressLayout>
   );
 }
 
-function Body({ data, error }) {
+function Body({ data, error, cancelled }) {
   if (error) return <p className="prog-alert" role="alert">{error}</p>;
   if (!data) return <p className="prog-loading" aria-live="polite">Checking your eligibility…</p>;
 
@@ -44,7 +54,9 @@ function Body({ data, error }) {
     );
   }
 
-  const { currentBelt, nextBelt, atHighestBelt, progress, eligible, unmet, nextGrading, application, syllabus } = data;
+  const { currentBelt, nextBelt, atHighestBelt, progress, eligible, unmet, nextGrading, application, syllabus,
+          canApply, fee } = data;
+  const hasLiveApplication = Boolean(application && !DEAD_APPLICATION.includes(application.status));
 
   if (atHighestBelt) {
     return (
@@ -64,6 +76,14 @@ function Body({ data, error }) {
 
   return (
     <>
+      {/* Back from Stripe without paying. Nothing was created, so say so
+          plainly -- but not if they have since applied successfully. */}
+      {cancelled && !hasLiveApplication && (
+        <p className="grad-notice" role="status">
+          Payment was cancelled. You haven't been charged and no application was made.
+        </p>
+      )}
+
       <article className={eligible ? "prog-card grad-status is-ok" : "prog-card grad-status"}>
         <div className="grad-status-top">
           <BeltPath current={currentBelt} next={nextBelt} />
@@ -115,7 +135,15 @@ function Body({ data, error }) {
       </div>
 
       <div className="prog-grid">
-        <NextGrading session={nextGrading} application={application} />
+        <NextGrading
+          session={nextGrading}
+          application={application}
+          hasLiveApplication={hasLiveApplication}
+          canApply={canApply}
+          fee={fee}
+          eligible={eligible}
+          nextBelt={nextBelt}
+        />
 
         <article className="prog-card">
           <div className="prog-card-head">
@@ -133,7 +161,7 @@ function Body({ data, error }) {
       </div>
 
       <p className="prog-footnote">
-        Applying and paying the exam fee is coming soon. <Link to="/belt-progress">Back to My Belt</Link>
+        <Link to="/belt-progress">Back to My Belt</Link>
       </p>
     </>
   );
@@ -173,7 +201,66 @@ function Stat({ label, value, unit, percent, met, note }) {
   );
 }
 
-function NextGrading({ session, application }) {
+// the Apply button, or a line saying why there isn't one.
+//
+// The button only appears when the server says canApply -- eligible, before
+// the deadline, not already applied, and with an exam fee set. The server
+// checks all of that again when the button is pressed, so this is only what
+// the student sees, never the gate itself.
+function ApplyPanel({ session, hasLiveApplication, canApply, fee, eligible, nextBelt }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  // Already applied: the "Applied ..." line above says everything needed.
+  if (hasLiveApplication) return null;
+
+  if (canApply) {
+    async function handleApply() {
+      setBusy(true);
+      setError("");
+      try {
+        // On success the browser leaves for Stripe, so `busy` stays true and
+        // the button can't be pressed a second time on the way out.
+        await applyForGrading(session.id);
+      } catch (err) {
+        setError(err.message);
+        setBusy(false);
+      }
+    }
+
+    return (
+      <div className="grad-apply">
+        <p className="grad-apply-fee">
+          <span>Exam fee for {nextBelt.name}</span>
+          <strong>{fmtMoney(fee.amountCents)}</strong>
+        </p>
+        <p className="prog-muted">
+          Applying is your decision. You'll pay the exam fee securely through Stripe, and your
+          application is only submitted once the payment goes through.
+        </p>
+        {error && <p className="prog-alert" role="alert">{error}</p>}
+        <button type="button" className="prog-btn grad-apply-btn" onClick={handleApply} disabled={busy}>
+          {busy ? "Opening secure payment…" : `Apply and pay ${fmtMoney(fee.amountCents)}`}
+        </button>
+      </div>
+    );
+  }
+
+  // No button. Say why, so it never looks like the page is broken.
+  let reason = null;
+  if (!eligible) {
+    reason = fee
+      ? `The exam fee for ${nextBelt.name} is ${fmtMoney(fee.amountCents)}. You can apply once you meet the requirements above.`
+      : null;
+  } else if (!session.registrationOpen) {
+    reason = "Registration for this grading has closed, so you can't apply for it.";
+  } else if (!fee) {
+    reason = `The exam fee for ${nextBelt.name} hasn't been set up yet, so applications aren't open. Please ask the front desk.`;
+  }
+  return reason ? <p className="grad-apply-note">{reason}</p> : null;
+}
+
+function NextGrading({ session, application, hasLiveApplication, canApply, fee, eligible, nextBelt }) {
   if (!session) {
     return (
       <article className="prog-card">
@@ -221,6 +308,14 @@ function NextGrading({ session, application }) {
           <strong>{APPLICATION_LABEL[application.status] || application.status}</strong>
         </p>
       )}
+      <ApplyPanel
+        session={session}
+        hasLiveApplication={hasLiveApplication}
+        canApply={canApply}
+        fee={fee}
+        eligible={eligible}
+        nextBelt={nextBelt}
+      />
     </article>
   );
 }

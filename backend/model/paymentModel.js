@@ -1,6 +1,8 @@
 // MODEL: SQL for buying memberships and credit top-ups.
 // Tables come from database/migrations/001_shared_schema.sql.
 import pool from "../db.js";
+// a paid grading exam fee creates the grading application.
+import { createApplicationFromPayment } from "./gradingModel.js";
 
 const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 
@@ -157,6 +159,7 @@ export async function markFailed(paymentId, reason) {
 // Runs as one transaction and only once per payment, even if Stripe
 // sends the same event twice.
 // item = { kind: 'membership' | 'credits', itemId }
+//     or { kind: 'grading', itemId: gradingSessionId, targetBeltId }   (FSDP-65)
 export async function markSucceeded({ paymentId, paymentIntentId, customerId, item }) {
   const client = await pool.connect();
   try {
@@ -175,6 +178,8 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
       return { alreadyDone: true };
     }
     const studentId = updated.rows[0].student_id;
+    // set when a grading fee was paid twice for the same grading.
+    let duplicateGradingPayment = false;
 
     if (item.kind === "membership") {
       const plan = (await client.query(
@@ -236,6 +241,25 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
       } // End non-registration membership purchases
       // The membership fee doesn't include lesson credits. Students buy those
       // separately as a credit top-up (1 credit = 1 lesson).
+    } else if (item.kind === "grading") {
+      // the exam fee is paid, so the grading application is created
+      // now, in this same transaction. item.itemId is the grading session and
+      // item.targetBeltId the belt, both set by gradingController on the server.
+      // This branch must stay ABOVE the credits one below: without it a grading
+      // payment would fall through and be treated as a credit pack.
+      const application = await createApplicationFromPayment(client, {
+        studentId,
+        gradingSessionId: item.itemId,
+        targetBeltId: item.targetBeltId,
+        paymentId,
+      });
+      if (!application.created) {
+        // The student already has a live application for this grading, so this
+        // is a second payment for the same thing. The money was taken, so the
+        // payment still counts as succeeded; it needs refunding by hand.
+        console.warn("Duplicate grading fee payment, needs a refund:", paymentId, "student", studentId);
+        duplicateGradingPayment = true;
+      }
     } else {
       const pack = (await client.query(
         "SELECT credits FROM credit_packages WHERE id = $1",
@@ -259,7 +283,7 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
     }
 
     await client.query("COMMIT");
-    return { alreadyDone: false, studentId };
+    return { alreadyDone: false, studentId, duplicateGradingPayment };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

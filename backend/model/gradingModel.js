@@ -124,7 +124,7 @@ export async function findNextGradingSession(userId) {
 }
 
 // The student's application for one grading session, if any.
-// has already applied, and FSDP-65 to enforce "can't apply twice" server-side.
+// has already applied, and to enforce "can't apply twice" server-side.
 // 'withdrawn' and 'rejected' applications are returned too -- the caller
 // decides whether those should block a fresh attempt.
 export async function findApplicationForSession(userId, gradingSessionId) {
@@ -136,6 +136,107 @@ export async function findApplicationForSession(userId, gradingSessionId) {
     [userId, gradingSessionId]
   );
   return result.rows[0];
+}
+
+// ---------------------------------------------------------------------
+// apply for grading and pay the exam fee
+// ---------------------------------------------------------------------
+
+// The exam fee for grading TO a belt, in cents, from the ASK Grading SOP rows
+// in grading_fee_schedule (migration 006).
+//
+// That table is keyed by text (category, grade_name, belt_colour), not by
+// belt_ranks.id, so the two are matched by name here:
+//   children's kyu  belt "Children Kyu 12 Red"  = "Children " + grade + " " + colour
+//   dan grades      belt "Shodan" / "Junior Dan" = grade name, ignoring case
+//   adult kyu       belt "6th Kyu"               = grade "Kyu 6"
+// Checked against every seeded belt: each gradeable belt matches exactly one
+// fee row, the two Ungraded belts match none, and no fee row is left over.
+//
+// Returns undefined unless there is exactly ONE match. A renamed belt, or a
+// missing or duplicated fee row, must stop an application rather than charge a
+// guess. Also returns undefined when the table itself is missing (migration
+// 006 not run on this database) so the grading page still loads there.
+export async function findExamFee(targetBeltId) {
+  let result;
+  try {
+    result = await pool.query(
+      `SELECT f.fee_cents, f.category, f.grade_name
+       FROM belt_ranks b
+       JOIN grading_fee_schedule f ON (
+            (b.ladder = 'children' AND f.category = 'children_kyu'
+               AND b.name = 'Children ' || f.grade_name || ' ' || f.belt_colour)
+         OR (f.category = 'yudansha' AND lower(b.name) = lower(f.grade_name))
+         OR (b.ladder = 'adult' AND f.category = 'adult_kyu'
+               AND b.name ~ '^[0-9]+(st|nd|rd|th) Kyu$'
+               AND f.grade_name = 'Kyu ' || substring(b.name from '^[0-9]+'))
+       )
+       WHERE b.id = $1`,
+      [targetBeltId]
+    );
+  } catch (err) {
+    if (err.code === "42P01") return undefined; // undefined_table
+    throw err;
+  }
+  if (result.rows.length !== 1) return undefined;
+  return { amountCents: result.rows[0].fee_cents };
+}
+
+// Grading-fee checkouts this student started recently and hasn't finished.
+// Stripe checkouts expire after about 30 minutes (see paymentController), so
+// anything older can't still be open. Used to hand back the SAME checkout if
+// the student presses Apply twice, instead of opening a second one they could
+// also pay.
+export async function findRecentPendingFeePayments(userId) {
+  const result = await pool.query(
+    `SELECT id, stripe_checkout_session_id, amount_cents
+     FROM payments
+     WHERE student_id = $1
+       AND purpose = 'grading_fee'
+       AND status = 'pending'
+       AND stripe_checkout_session_id IS NOT NULL
+       AND created_at > NOW() - INTERVAL '35 minutes'
+     ORDER BY created_at DESC`,
+    [userId]
+  );
+  return result.rows;
+}
+
+// Creates the grading application. Called ONLY from paymentModel.markSucceeded,
+// inside its transaction, once Stripe has confirmed the exam fee -- which is
+// what makes "the application is only created once the fee is paid" true.
+// `client` is that transaction's client, so the application and the payment
+// succeed or fail together.
+//
+// The row starts as 'pending' with no instructor approval, which is the state
+// the instructor's approval screen and the admin's list both expect.
+//
+// grading_applications has UNIQUE (student_id, grading_session_id), so a
+// student who withdrew or was rejected and applies again cannot get a second
+// row. Their old row is brought back to 'pending' instead, with the new
+// payment and any earlier approval cleared. A row in any other state is left
+// alone and `created` comes back false: the student already has a live
+// application, so this payment is a duplicate and must not disturb it.
+export async function createApplicationFromPayment(client, { studentId, gradingSessionId, targetBeltId, paymentId }) {
+  const result = await client.query(
+    `INSERT INTO grading_applications (student_id, grading_session_id, target_belt_id, status, payment_id)
+     VALUES ($1, $2, $3, 'pending', $4)
+     ON CONFLICT (student_id, grading_session_id) DO UPDATE
+       SET status = 'pending',
+           target_belt_id = EXCLUDED.target_belt_id,
+           payment_id = EXCLUDED.payment_id,
+           applied_at = NOW(),
+           decided_at = NULL,
+           remarks = NULL,
+           instructor_approved_by = NULL,
+           instructor_approved_at = NULL
+       WHERE grading_applications.status IN ('withdrawn', 'rejected')
+     RETURNING id`,
+    [studentId, gradingSessionId, targetBeltId, paymentId]
+  );
+  return result.rowCount === 1
+    ? { created: true, applicationId: result.rows[0].id }
+    : { created: false, applicationId: null };
 }
 
 // The syllabus a student has to demonstrate for a given belt. Reference text,

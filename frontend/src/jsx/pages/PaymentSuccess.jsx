@@ -55,7 +55,11 @@ export default function PaymentSuccess() {
     title = "Payment confirmed.";
     body = payment.purpose === "membership"
       ? `Your membership is active. You paid ${fmtMoney(payment.amountCents)}. To book lessons, buy lesson credits (1 credit = 1 lesson).`
-      : `Your lesson credits have been added. You paid ${fmtMoney(payment.amountCents)}.`;
+      // a grading exam fee. Without this case the page told the
+      // student their lesson credits had been added.
+      : payment.purpose === "grading_fee"
+        ? `Your grading application has been submitted. You paid ${fmtMoney(payment.amountCents)} for the exam fee. Your instructor will review it next.`
+        : `Your lesson credits have been added. You paid ${fmtMoney(payment.amountCents)}.`;
   } else if (payment?.status === "failed") {
     title = "Payment didn't go through.";
     body = `${payment.failureReason || "The payment failed."} You haven't been charged.`;
@@ -76,7 +80,12 @@ export default function PaymentSuccess() {
             <div className="sp-intro-action sp-button-row">
               <Link to="/dashboard" className="sp-btn sp-btn-primary">Back to dashboard</Link>
               {payment?.status === "failed" && (
-                <Link to="/payments" className="sp-btn sp-btn-secondary">Try again</Link>
+                // A failed exam fee is retried from the grading page, where the
+                // Apply button is; everything else from Payments.
+                <Link to={payment.purpose === "grading_fee" ? "/grading" : "/payments"} className="sp-btn sp-btn-secondary">Try again</Link>
+              )}
+              {payment?.status === "succeeded" && payment.purpose === "grading_fee" && (
+                <Link to="/grading" className="sp-btn sp-btn-secondary">View my grading</Link>
               )}
               {payment?.status === "succeeded" && payment.purpose === "membership" && (
                 <Link to="/payments" className="sp-btn sp-btn-secondary">Buy lesson credits</Link>
