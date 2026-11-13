@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { getSession, cancelSession, moveSession } from "../../js/services/sessionService.js";
 import "../../css/session-change.css";
 
-// FSDP-56: lets the instructor teaching a lesson (or an admin) cancel it or
-// move it to another dojo for the day. Every student who booked it gets a
-// notice on their dashboard and an email; cancelling also returns their credits.
-// Drop it into any page that knows the session id:
+// FSDP-56: lets an admin cancel a lesson or move it to another dojo for the
+// day. Every student who booked it gets a notice on their dashboard and an
+// email; cancelling also returns their credits. Admin pages only: instructors
+// use "Can't make it" (FSDP-69) instead. Drop it into an admin page that knows
+// the session id:
 //   <SessionChangeActions sessionId={id} onChanged={reload} />
 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
