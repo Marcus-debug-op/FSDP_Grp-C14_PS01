@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import { getRoster, saveAttendance } from "../../../js/services/instructorService.js";
 import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
-import SessionChangeActions from "../../components/SessionChangeActions.jsx";
 import BackButton from "../../components/BackButton.jsx";
 import "../../../css/auth.css";
 import "../../../css/instructor.css";
@@ -102,11 +101,12 @@ export default function ClassRoster() {
               {session.attendanceClosed && (
                 <p className="notice roster-closed">Attendance closed 24 hours after this class ended, so this roster is view only.</p>
               )}
+
               {session.canMark && (
                 <Link to={`/instructor/sessions/${id}/qr`} className="btn btn-primary btn-small roster-qr-btn">Show check-in QR code</Link>
               )}
-              {/* FSDP-56: cancel the lesson or move it to another dojo for the day */}
-              <SessionChangeActions sessionId={id} />
+              
+
             </>
           )}
 
