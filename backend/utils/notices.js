@@ -50,6 +50,7 @@ export function bookingConfirmed(studentId, booking) {
 
 // FSDP-47: once Stripe confirms a payment. Only one email per payment.
 // item = { kind: 'membership' | 'credits', itemId }
+//     or { kind: 'grading', itemId: gradingSessionId, targetBeltId }   (FSDP-65)
 export async function paymentReceived(paymentId, paymentIntentId, item) {
   try {
     const result = await pool.query(
@@ -57,10 +58,15 @@ export async function paymentReceived(paymentId, paymentIntentId, item) {
               to_char(p.updated_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS paid_on,
               CASE WHEN $2 = 'membership'
                    THEN (SELECT name FROM membership_plans WHERE id = $3)
+                   -- FSDP-65: a grading fee is named after the belt being graded
+                   -- for. Without this case it fell into the ELSE below and the
+                   -- receipt named whichever credit pack shared the session's id.
+                   WHEN $2 = 'grading'
+                   THEN (SELECT name || ' grading' FROM belt_ranks WHERE id = $4)
                    ELSE (SELECT name FROM credit_packages WHERE id = $3) END AS item_name
        FROM payments p
        WHERE p.id = $1 AND p.status = 'succeeded'`,
-      [paymentId, item.kind, item.itemId]
+      [paymentId, item.kind, item.itemId, item.targetBeltId ?? null]
     );
     const p = result.rows[0];
     if (!p) return null;
@@ -76,9 +82,12 @@ export async function paymentReceived(paymentId, paymentIntentId, item) {
       console.error("Couldn't get Stripe receipt link", paymentId, err.message);
     }
 
+    const isGrading = item.kind === "grading";
     const what = item.kind === "membership"
       ? `${p.item_name || "Membership"} (membership fee)`
-      : `${p.item_name || "Lesson credits"} (lesson credits)`;
+      : isGrading
+        ? `${p.item_name || "Grading"} (exam fee)`
+        : `${p.item_name || "Lesson credits"} (lesson credits)`;
     const amount = money(p.amount_cents);
 
     return notify({
@@ -90,14 +99,18 @@ export async function paymentReceived(paymentId, paymentIntentId, item) {
       email: {
         subject: `Payment received: ${amount} for ${p.item_name || "your purchase"}`,
         paragraphs: [
-          "Thank you, your payment went through.",
+          isGrading
+            ? "Thank you, your payment went through and your grading application has been submitted."
+            : "Thank you, your payment went through.",
           `Item: ${what}`,
           `Amount: ${amount}`,
           `Date: ${longDate(p.paid_on)}`,
           `Reference: payment #${paymentId}`,
           receiptUrl ? `Receipt: ${receiptUrl}` : "You can see this payment any time under Payments on the website.",
         ],
-        button: { label: "View my payments", path: "/payments" },
+        button: isGrading
+          ? { label: "View my grading", path: "/grading" }
+          : { label: "View my payments", path: "/payments" },
       },
     });
   } catch (err) {

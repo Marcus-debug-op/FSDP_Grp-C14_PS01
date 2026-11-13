@@ -35,4 +35,21 @@ async function request(path, { method = "GET", body } = {}) {
 //
 // `canApply` is the server's own decision and is re-checked when an
 // application is actually submitted -- never treat it as the only gate.
+//
+// `fee` is { amountCents } for the belt being graded for, or null when no exam
+// fee has been set up for it -- in which case canApply is false too.
 export const getEligibility = () => request("/api/grading/eligibility");
+
+// the student has decided to apply. The server checks eligibility,
+// the deadline and the fee again, then answers with a Stripe Checkout address,
+// and this sends the browser there (same as paymentService.startCheckout).
+//
+// Nothing is created by this call. The application only exists once Stripe has
+// confirmed the exam fee, so closing the Stripe page leaves nothing behind.
+export async function applyForGrading(gradingSessionId) {
+  const { url } = await request("/api/grading/applications", {
+    method: "POST",
+    body: { gradingSessionId },
+  });
+  window.location.assign(url);
+}

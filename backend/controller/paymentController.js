@@ -263,6 +263,9 @@ export async function stripeWebhook(req, res) {
         const item = {
           kind: obj.metadata.kind,
           itemId: Number(obj.metadata.itemId),
+          // only grading checkouts carry this (set in
+          // gradingController.applyForGrading). null for everything else.
+          targetBeltId: Number(obj.metadata.targetBeltId) || null,
         };
         const outcome = await Payment.markSucceeded({
           paymentId,
