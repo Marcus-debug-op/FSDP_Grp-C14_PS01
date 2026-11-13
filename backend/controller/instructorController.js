@@ -97,6 +97,69 @@ export async function getCalendar(req, res, next) {
   }
 }
 
+// A student is worth checking on when, in the last 4 weeks, they came to half
+// as many classes or fewer than in the 4 weeks before (and at least 2 fewer, so
+// going from 1 class to 0 doesn't count as a drop).
+function droppedOff(row) {
+  return row.recent * 2 <= row.previous && row.previous - row.recent >= 2;
+}
+
+function ratePercent(attended, expected) {
+  return expected > 0 ? Math.round((attended / expected) * 100) : null;
+}
+
+// GET /api/instructor/attendance-trends  (FSDP-71)
+// Weekly attendance at the instructor's classes for the last 8 weeks, oldest
+// first, plus the students whose attendance has dropped.
+export async function getAttendanceTrends(req, res, next) {
+  try {
+    const [weekRows, studentRows] = await Promise.all([
+      Instructor.listWeeklyAttendance(req.user.id),
+      Instructor.listStudentAttendanceChange(req.user.id),
+    ]);
+
+    const weeks = weekRows.map((row) => ({
+      from: row.from_date,
+      to: row.to_date,
+      classes: row.classes,
+      expected: row.expected,
+      attended: row.attended,
+      rate: ratePercent(row.attended, row.expected),
+    }));
+
+    // Last 4 weeks against the 4 before, for the summary line.
+    const total = (list) => list.reduce(
+      (sum, w) => ({ expected: sum.expected + w.expected, attended: sum.attended + w.attended }),
+      { expected: 0, attended: 0 }
+    );
+    const recent = total(weeks.slice(4));
+    const previous = total(weeks.slice(0, 4));
+
+    const checkOn = studentRows
+      .filter(droppedOff)
+      .sort((a, b) => (b.previous - b.recent) - (a.previous - a.recent) || a.full_name.localeCompare(b.full_name))
+      .map((row) => ({
+        studentId: row.id,
+        fullName: row.full_name,
+        homeDojo: row.home_dojo,
+        recent: row.recent,
+        previous: row.previous,
+        lastAttended: row.last_attended,
+      }));
+
+    res.json({
+      weeks,
+      summary: {
+        recentRate: ratePercent(recent.attended, recent.expected),
+        previousRate: ratePercent(previous.attended, previous.expected),
+      },
+      checkOn,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Membership rule from the club's grading SOP: a member for at least 3 months.
 // An active membership stands in for "no outstanding membership fees".
 const MIN_MONTHS_AS_MEMBER = 3;

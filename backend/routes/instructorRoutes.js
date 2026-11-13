@@ -3,7 +3,7 @@ import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import {
   listClasses, getCalendar, getGradingReadiness, listUpcomingGradings, getGradingApplicants, setApplicantApproval,
-  getRoster, saveAttendance,
+  getRoster, saveAttendance, getAttendanceTrends,
 } from "../controller/instructorController.js";
 
 const router = Router();
@@ -12,6 +12,7 @@ router.use(requireAuth, requireRole("instructor"));
 
 router.get("/classes", listClasses);
 router.get("/calendar", getCalendar);
+router.get("/attendance-trends", getAttendanceTrends);
 router.get("/grading-readiness", getGradingReadiness);
 router.get("/gradings", listUpcomingGradings);
 router.get("/gradings/:id/applicants", getGradingApplicants);
