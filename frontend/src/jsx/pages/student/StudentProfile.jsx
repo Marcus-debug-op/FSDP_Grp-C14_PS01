@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { getProfile, getPhotoReviewStatus, getApplicationStatus, resubmitApplicationPhoto } from "../../../js/services/studentService.js";
+import { getProfile, getPhotoReviewStatus, getApplicationStatus, reapplyForMembership, resubmitApplicationPhoto } from "../../../js/services/studentService.js";
 import "../../../css/student-profile.css";
 
 const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
@@ -21,6 +21,20 @@ const APPLICATION_STATES = {
 };
 
 function ApplicationStatusCard({ application, busy, error, onRefresh }) {
+  const [reapplyNote,setReapplyNote]=useState('');
+  const [reapplyBusy,setReapplyBusy]=useState(false);
+  const [reapplyError,setReapplyError]=useState('');
+  const [reapplyMessage,setReapplyMessage]=useState('');
+  async function submitReapplication(e) {
+    e.preventDefault();setReapplyBusy(true);setReapplyError('');
+    try {
+      const result=await reapplyForMembership(reapplyNote);
+      setReapplyMessage(result.message);
+      setReapplyNote('');
+      await onRefresh();
+    } catch(err){setReapplyError(err.message||'Unable to submit request.');}
+    finally{setReapplyBusy(false);}
+  }
   const state = application ? (APPLICATION_STATES[application.status] || {
     label: "Status unavailable", description: "Please contact an administrator if this persists.", tone: "pending"
   }) : null;
@@ -46,8 +60,33 @@ function ApplicationStatusCard({ application, busy, error, onRefresh }) {
           {application.membership && <Field label="Membership" value={application.membership.status} />}
           {application.membership?.endDate && <Field label="Membership ends" value={application.membership.endDate} />}
         </dl>
-        {application.status === "rejected" && application.rejectionReason &&
-          <p className="stprofile-application-note"><strong>Reason:</strong> {application.rejectionReason}</p>}
+        {application.status === "rejected" && <div className="stprofile-reconsideration-flow">
+          <div className="stprofile-rejection-reason" role="note">
+            <div className="stprofile-rejection-symbol" aria-hidden="true">!</div>
+            <div>
+              <h3>Application not approved</h3>
+              <p className="stprofile-rejection-label">Reason provided by the administrator</p>
+              <p className="stprofile-rejection-detail">{application.rejectionReason || "Please contact the administrator for more information."}</p>
+            </div>
+          </div>
+          <form onSubmit={submitReapplication} className="stprofile-reapply-panel">
+            <div className="stprofile-reapply-title">
+              <div>
+                <h3>Request reconsideration</h3>
+                <p>Have additional information to share? Submit an explanation for the administrator to review your application again.</p>
+              </div>
+            </div>
+            <label htmlFor="stprofile-reapply-reason">Your explanation <span className="stprofile-required">Required</span></label>
+            <textarea id="stprofile-reapply-reason" rows={5} minLength={10} maxLength={500} required value={reapplyNote} onChange={e=>setReapplyNote(e.target.value)} placeholder="Explain what has changed, or provide the additional training details requested by the administrator." />
+            <div className="stprofile-reapply-bottom">
+              <span className="stprofile-reapply-hint">{reapplyNote.trim().length}/500 characters · Minimum 10</span>
+              <button type="submit" className="stprofile-action stprofile-reapply-submit" disabled={reapplyBusy || reapplyNote.trim().length < 10}>{reapplyBusy ? "Submitting…" : "Submit reconsideration"}</button>
+            </div>
+            <p className="stprofile-reapply-footnote">Your existing account will be reused. Don't pay again unless the system explicitly asks you to.</p>
+            {reapplyError && <p className="stprofile-reapply-feedback error" role="alert">{reapplyError}</p>}
+            {reapplyMessage && <p className="stprofile-reapply-feedback success" role="status">{reapplyMessage}</p>}
+          </form>
+        </div>}
         {application.status === "photo_resubmission_required" && application.photoReviewNote &&
           <p className="stprofile-application-note"><strong>Photo update requested:</strong> {application.photoReviewNote}</p>}
       </>}
@@ -173,7 +212,7 @@ export default function StudentProfile() {
               <Field label="Training goal" value={profile.trainingGoal}/>
             </dl></section>
           </div>
-          <section className="stprofile-card stprofile-membership"><div><h2>Membership</h2><p>Plan selected during registration</p></div><div className="stprofile-member-right"><strong>{profile.membershipPlan === "annual" ? "1-year membership" : nice(profile.membershipPlan)}</strong><span className={profile.membershipStatus === "active" ? "stprofile-status active" : "stprofile-status"}>{profile.membershipStatus === "pending_payment" ? "Payment pending" : profile.membershipStatus === "active" ? "Active" : nice(profile.membershipStatus)}</span></div></section>
+          <section className="stprofile-card stprofile-membership"><div><h2>Membership</h2><p>Plan selected during registration</p></div><div className="stprofile-member-right"><strong>{profile.membershipPlan === "annual" ? "1-year membership" : nice(profile.membershipPlan)}</strong><span className={profile.membershipStatus === "active" ? "stprofile-status active" : "stprofile-status"}>{profile.membershipStatus === "active" ? "Active" : profile.membershipStatus === "pending_payment" ? (application?.paymentStatus === "succeeded" ? "Paid · awaiting approval" : "Payment pending") : nice(profile.membershipStatus)}</span></div></section>
           <p className="stprofile-footnote">Your registration status is updated from your application, verified payment and membership records. Membership activation also requires approval and an accepted profile photo. Passwords and uploaded documents are never displayed.</p>
         </>}
       </div>

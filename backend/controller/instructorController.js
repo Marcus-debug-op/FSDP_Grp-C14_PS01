@@ -97,6 +97,69 @@ export async function getCalendar(req, res, next) {
   }
 }
 
+// A student is worth checking on when, in the last 4 weeks, they came to half
+// as many classes or fewer than in the 4 weeks before (and at least 2 fewer, so
+// going from 1 class to 0 doesn't count as a drop).
+function droppedOff(row) {
+  return row.recent * 2 <= row.previous && row.previous - row.recent >= 2;
+}
+
+function ratePercent(attended, expected) {
+  return expected > 0 ? Math.round((attended / expected) * 100) : null;
+}
+
+// GET /api/instructor/attendance-trends  (FSDP-71)
+// Weekly attendance at the instructor's classes for the last 8 weeks, oldest
+// first, plus the students whose attendance has dropped.
+export async function getAttendanceTrends(req, res, next) {
+  try {
+    const [weekRows, studentRows] = await Promise.all([
+      Instructor.listWeeklyAttendance(req.user.id),
+      Instructor.listStudentAttendanceChange(req.user.id),
+    ]);
+
+    const weeks = weekRows.map((row) => ({
+      from: row.from_date,
+      to: row.to_date,
+      classes: row.classes,
+      expected: row.expected,
+      attended: row.attended,
+      rate: ratePercent(row.attended, row.expected),
+    }));
+
+    // Last 4 weeks against the 4 before, for the summary line.
+    const total = (list) => list.reduce(
+      (sum, w) => ({ expected: sum.expected + w.expected, attended: sum.attended + w.attended }),
+      { expected: 0, attended: 0 }
+    );
+    const recent = total(weeks.slice(4));
+    const previous = total(weeks.slice(0, 4));
+
+    const checkOn = studentRows
+      .filter(droppedOff)
+      .sort((a, b) => (b.previous - b.recent) - (a.previous - a.recent) || a.full_name.localeCompare(b.full_name))
+      .map((row) => ({
+        studentId: row.id,
+        fullName: row.full_name,
+        homeDojo: row.home_dojo,
+        recent: row.recent,
+        previous: row.previous,
+        lastAttended: row.last_attended,
+      }));
+
+    res.json({
+      weeks,
+      summary: {
+        recentRate: ratePercent(recent.attended, recent.expected),
+        previousRate: ratePercent(previous.attended, previous.expected),
+      },
+      checkOn,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // Membership rule from the club's grading SOP: a member for at least 3 months.
 // An active membership stands in for "no outstanding membership fees".
 const MIN_MONTHS_AS_MEMBER = 3;
@@ -116,7 +179,9 @@ function gradingProgress(row) {
     {
       key: "classes",
       label: "Classes since last grading",
-      value: `${row.classes_since_belt} of ${row.min_classes_at_rank}`,
+      value: row.min_classes_at_rank > 0
+        ? `${row.classes_since_belt} of ${row.min_classes_at_rank}`
+        : `${row.classes_since_belt} classes, no minimum`,
       met: row.classes_since_belt >= row.min_classes_at_rank,
     },
     {
@@ -164,6 +229,7 @@ function publicGrading(row) {
     startTime: row.start_time,
     closesOn: row.closes_on,
     registrationOpen: row.registration_open,
+    isUpcoming: row.is_upcoming,
   };
 }
 
@@ -171,37 +237,93 @@ function publicGrading(row) {
 export async function listUpcomingGradings(req, res, next) {
   try {
     const rows = await Instructor.listUpcomingGradings(req.user.id);
-    res.json({ gradings: rows.map((row) => ({ ...publicGrading(row), myApplicants: row.my_applicants })) });
+    res.json({
+      gradings: rows.map((row) => ({ ...publicGrading(row), myApplicants: row.my_applicants, myAwaiting: row.my_awaiting })),
+    });
   } catch (err) {
     next(err);
   }
 }
 
+// The instructor's own students who applied for a grading, each with the same
+// readiness checks as the grading readiness page and their approval.
+async function loadApplicants(instructorId, gradingId) {
+  const [applications, progressRows] = await Promise.all([
+    Instructor.listMyApplicants(instructorId, gradingId),
+    Instructor.listGradingProgress(instructorId),
+  ]);
+  const progressById = new Map(progressRows.map((row) => [row.id, gradingProgress(row)]));
+
+  return applications
+    .filter((application) => progressById.has(application.student_id))
+    .map((application) => ({
+      ...progressById.get(application.student_id),
+      applicationId: application.id,
+      applicationStatus: application.status,
+      targetBelt: application.target_belt,
+      appliedOn: application.applied_on,
+      approval: application.approved_on
+        ? { by: application.approved_by, byYou: application.approved_by_id === instructorId, on: application.approved_on }
+        : null,
+    }));
+}
+
 // GET /api/instructor/gradings/:id/applicants
-// Only the instructor's own students, each with the same readiness checks as
-// the grading readiness page.
 export async function getGradingApplicants(req, res, next) {
   try {
     const gradingId = parseId(req.params.id);
     const grading = gradingId && (await Instructor.findGrading(gradingId));
     if (!grading) return res.status(404).json({ message: "Grading not found." });
 
-    const [applications, progressRows] = await Promise.all([
-      Instructor.listMyApplicants(req.user.id, grading.id),
-      Instructor.listGradingProgress(req.user.id),
-    ]);
-    const progressById = new Map(progressRows.map((row) => [row.id, gradingProgress(row)]));
-
-    const applicants = applications
-      .filter((application) => progressById.has(application.student_id))
-      .map((application) => ({
-        ...progressById.get(application.student_id),
-        applicationStatus: application.status,
-        targetBelt: application.target_belt,
-        appliedOn: application.applied_on,
-      }));
-
+    const applicants = await loadApplicants(req.user.id, grading.id);
     res.json({ grading: publicGrading(grading), applicants });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/instructor/gradings/:id/applicants/:studentId/approval
+// Body: { approved: true | false }. Approving sends the application on to the
+// admin. Only Ready students can be approved, only before the grading day, and
+// only while the application is still pending (the admin hasn't reviewed it).
+export async function setApplicantApproval(req, res, next) {
+  try {
+    const gradingId = parseId(req.params.id);
+    const studentId = parseId(req.params.studentId);
+    const grading = gradingId && (await Instructor.findGrading(gradingId));
+    if (!grading) return res.status(404).json({ message: "Grading not found." });
+    if (typeof req.body?.approved !== "boolean") {
+      return res.status(400).json({ message: "Say whether to approve or undo the approval." });
+    }
+    if (!grading.is_upcoming) {
+      return res.status(400).json({ message: "This grading has already taken place." });
+    }
+
+    const applicant = (await loadApplicants(req.user.id, grading.id)).find((a) => a.studentId === studentId);
+    if (!applicant) return res.status(404).json({ message: "Application not found." });
+    // Once the admin has decided, the approval is locked so the application
+    // doesn't disappear from the admin's grading page.
+    if (applicant.applicationStatus !== "pending") {
+      return res.status(409).json({ message: "The admin has already reviewed this application, so it can't be changed." });
+    }
+
+    if (req.body.approved) {
+      if (applicant.status !== "ready") {
+        return res.status(400).json({ message: "This student doesn't meet every requirement yet." });
+      }
+      if (applicant.approval && !applicant.approval.byYou) {
+        return res.status(409).json({ message: `${applicant.approval.by} has already approved this application.` });
+      }
+      await Instructor.setApplicationApproval(applicant.applicationId, req.user.id);
+    } else {
+      if (applicant.approval && !applicant.approval.byYou) {
+        return res.status(403).json({ message: "Only the instructor who approved this can undo it." });
+      }
+      await Instructor.setApplicationApproval(applicant.applicationId, null);
+    }
+
+    const updated = (await loadApplicants(req.user.id, grading.id)).find((a) => a.studentId === studentId);
+    res.json({ applicant: updated });
   } catch (err) {
     next(err);
   }

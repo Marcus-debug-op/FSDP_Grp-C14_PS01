@@ -4,8 +4,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { getTodaysClasses } from "../../../js/services/instructorService.js";
 import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
-import ScrollReveal from "../../components/ScrollReveal.jsx";
-import useHeroScrollFade from "../../../js/hooks/useHeroScrollFade.js";
+import ScrollReveal from "../../components/ScrollReveal.jsx";import useHeroScrollFade from "../../../js/hooks/useHeroScrollFade.js";
 import "../../../css/auth.css";
 import "../../../css/instructor.css";
 

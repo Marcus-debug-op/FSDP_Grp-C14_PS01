@@ -1,6 +1,8 @@
 // MODEL: SQL for buying memberships and credit top-ups.
 // Tables come from database/migrations/001_shared_schema.sql.
 import pool from "../db.js";
+// a paid grading exam fee creates the grading application.
+import { createApplicationFromPayment } from "./gradingModel.js";
 
 const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 
@@ -44,7 +46,9 @@ export async function hasPendingApplicationForPlan(studentId, planId) {
   const result = await pool.query(
     `SELECT EXISTS (
        SELECT 1 FROM membership_applications
-       WHERE student_id = $1 AND plan_id = $2 AND approval_status = 'pending'
+       -- 'approved' too: Shihan may approve before the student pays. Rejected
+       -- applications still cannot pay (they must request reconsideration first).
+       WHERE student_id = $1 AND plan_id = $2 AND approval_status IN ('pending', 'approved')
      ) AS is_pending`,
     [studentId, planId]
   );
@@ -101,7 +105,7 @@ export async function linkRegistrationPayment(studentId, planId, paymentId) {
      SET registration_payment_id = $3
      WHERE a.student_id = $1
        AND a.plan_id = $2
-       AND a.approval_status = 'pending'
+       AND a.approval_status IN ('pending', 'approved')
        AND (
          a.registration_payment_id IS NULL
          OR NOT EXISTS (
@@ -132,6 +136,35 @@ export async function linkRegistrationPayment(studentId, planId, paymentId) {
   return result.rowCount === 1;
 }
 
+// Registration only: the payment this student's application is currently
+// waiting on, if it is still pending. Lets checkout send the student back to
+// the same Stripe page instead of creating a second payment.
+export async function findLinkedPendingRegistrationPayment(studentId, planId) {
+  const result = await pool.query(
+    `SELECT p.id, p.stripe_checkout_session_id
+     FROM membership_applications a
+     JOIN payments p ON p.id = a.registration_payment_id
+     WHERE a.student_id = $1
+       AND a.plan_id = $2
+       AND a.approval_status IN ('pending', 'approved')
+       AND p.student_id = $1
+       AND p.purpose = 'membership'
+       AND p.status = 'pending'`,
+    [studentId, planId]
+  );
+  return result.rows[0] || null;
+}
+
+
+// True when this payment is the one linked to a new-member application.
+// Lets the success page say "awaiting approval" instead of "membership active".
+export async function isRegistrationPayment(paymentId) {
+  const result = await pool.query(
+    "SELECT EXISTS (SELECT 1 FROM membership_applications WHERE registration_payment_id = $1) AS is_registration",
+    [paymentId]
+  );
+  return result.rows[0].is_registration;
+}
 
 // Used by the success page: only the student's own payment is returned.
 export async function findBySession(studentId, sessionId) {
@@ -157,6 +190,7 @@ export async function markFailed(paymentId, reason) {
 // Runs as one transaction and only once per payment, even if Stripe
 // sends the same event twice.
 // item = { kind: 'membership' | 'credits', itemId }
+//     or { kind: 'grading', itemId: gradingSessionId, targetBeltId }   (FSDP-65)
 export async function markSucceeded({ paymentId, paymentIntentId, customerId, item }) {
   const client = await pool.connect();
   try {
@@ -175,6 +209,8 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
       return { alreadyDone: true };
     }
     const studentId = updated.rows[0].student_id;
+    // set when a grading fee was paid twice for the same grading.
+    let duplicateGradingPayment = false;
 
     if (item.kind === "membership") {
       const plan = (await client.query(
@@ -198,10 +234,30 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
         );
 
         if (application.rowCount !== 1) {
-          console.warn(
-            "Paid registration is not linked to current application",
-            paymentId
+          // Safety net: the student paid on an older Stripe page. Link THIS paid
+          // payment, but only if the application is not already linked to a
+          // successful one, so no one can be activated or charged twice.
+          // Rejected applications are left for staff to handle.
+          const relinked = await client.query(
+            `UPDATE membership_applications a
+             SET registration_payment_id = $3
+             WHERE a.student_id = $1
+               AND a.plan_id = $2
+               AND a.approval_status IN ('pending', 'approved')
+               AND NOT EXISTS (
+                 SELECT 1 FROM payments old
+                 WHERE old.id = a.registration_payment_id
+                   AND old.status = 'succeeded'
+               )
+             RETURNING a.id`,
+            [studentId, plan.id, paymentId]
           );
+          if (relinked.rowCount !== 1) {
+            console.warn(
+              "Paid registration is not linked to current application",
+              paymentId
+            );
+          }
         }
         } else {
       // Existing membership purchase / renewal: preserve the original behaviour.
@@ -236,6 +292,25 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
       } // End non-registration membership purchases
       // The membership fee doesn't include lesson credits. Students buy those
       // separately as a credit top-up (1 credit = 1 lesson).
+    } else if (item.kind === "grading") {
+      // the exam fee is paid, so the grading application is created
+      // now, in this same transaction. item.itemId is the grading session and
+      // item.targetBeltId the belt, both set by gradingController on the server.
+      // This branch must stay ABOVE the credits one below: without it a grading
+      // payment would fall through and be treated as a credit pack.
+      const application = await createApplicationFromPayment(client, {
+        studentId,
+        gradingSessionId: item.itemId,
+        targetBeltId: item.targetBeltId,
+        paymentId,
+      });
+      if (!application.created) {
+        // The student already has a live application for this grading, so this
+        // is a second payment for the same thing. The money was taken, so the
+        // payment still counts as succeeded; it needs refunding by hand.
+        console.warn("Duplicate grading fee payment, needs a refund:", paymentId, "student", studentId);
+        duplicateGradingPayment = true;
+      }
     } else {
       const pack = (await client.query(
         "SELECT credits FROM credit_packages WHERE id = $1",
@@ -259,7 +334,7 @@ export async function markSucceeded({ paymentId, paymentIntentId, customerId, it
     }
 
     await client.query("COMMIT");
-    return { alreadyDone: false, studentId };
+    return { alreadyDone: false, studentId, duplicateGradingPayment };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

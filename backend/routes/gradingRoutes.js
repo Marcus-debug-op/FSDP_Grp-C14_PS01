@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
-import { getEligibility } from "../controller/gradingController.js";
+import { getEligibility, applyForGrading } from "../controller/gradingController.js";
 
 const router = Router();
 
@@ -13,8 +13,12 @@ router.use(requireAuth, requireRole("student"));
 // Read-only -- nothing in this file writes.
 router.get("/eligibility", getEligibility);
 
+// apply for grading and pay the exam fee. Re-checks eligibility on the
+// server and opens a Stripe Checkout. It does not create the application --
+// that happens in paymentModel.markSucceeded once Stripe confirms the payment.
+router.post("/applications", applyForGrading);
+
 // Coming next in this domain:
-//   POST /applications      FSDP-65 apply and pay the exam fee
 //   GET  /applications/me   FSDP-66 track application status
 
 export default router;

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { checkSignupEmail } from "../../js/services/authService.js";
 import { getRegistrationPlans, getRegistrationCentres } from "../../js/services/registrationService.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -73,6 +75,45 @@ export default function SignUpForm() {
   const [photoPreview, setPhotoPreview] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+  const [emailExists, setEmailExists] = useState(false);
+  const [emailCheckedValue, setEmailCheckedValue] = useState("");
+  const [emailCheckError, setEmailCheckError] = useState("");
+  const checkGeneration = useRef(0);
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  async function verifyEmail(emailValue = details.email) {
+    const email = emailValue.trim().toLowerCase();
+    if (!emailPattern.test(email)) return false;
+    if (emailCheckedValue === email && !emailCheckError) return !emailExists;
+    const generation = ++checkGeneration.current;
+    setCheckingEmail(true);
+    setEmailCheckError("");
+    try {
+      const result = await checkSignupEmail(email);
+      if (generation !== checkGeneration.current) return false;
+      setEmailExists(Boolean(result.exists));
+      setEmailCheckedValue(email);
+      return !result.exists;
+    } catch (err) {
+      if (generation === checkGeneration.current) {
+        setEmailCheckError("Unable to check this email right now. Please try again.");
+        setEmailCheckedValue("");
+      }
+      return false; // fail closed: user can retry; no duplicate signup on uncertain check
+    } finally {
+      if (generation === checkGeneration.current) setCheckingEmail(false);
+    }
+  }
+
+  function changeEmail(value) {
+    checkGeneration.current += 1;
+    setEmailCheckedValue("");
+    setEmailExists(false);
+    setEmailCheckError("");
+    setCheckingEmail(false);
+    update("email", value);
+  }
   const update = (name, value) => setDetails((prev) => ({ ...prev, [name]: value }));
   const goTo = (target) => {
     if (Date.now() - lastStepChangeAt.current < TRANSITION_GUARD_MS) return;
@@ -82,16 +123,18 @@ export default function SignUpForm() {
     setStep(target);
   };
 
-  function next() {
+  async function next() {
     if (Date.now() - lastStepChangeAt.current < TRANSITION_GUARD_MS) return;
     setError("");
     if (step === 0) {
       if (details.fullName.trim().length < 2 || details.fullName.trim().length > 100) return setError("Enter your full name (2–100 characters).");
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.email.trim())) return setError("Enter a valid email address.");
+      if (!emailPattern.test(details.email.trim())) return setError("Enter a valid email address.");
       if (!dateIsValid(details.dateOfBirth)) return setError("Enter a valid date of birth (not a future date).");
       if (!["male", "female", "other", "prefer_not_to_say"].includes(details.gender)) return setError("Please select a gender option.");
       if (details.password.length < 8 || details.password.length > 72) return setError("Password must be between 8 and 72 characters.");
       if (details.password !== details.confirm) return setError("Passwords do not match.");
+      const available = await verifyEmail();
+      if (!available) return; // display the inline account notice below
     }
     if (step === 2 && (!selectedPlanId || !plans.some(p => p.id === selectedPlanId))) return setError("Choose a registration plan before continuing.");
     if (step === 1 && details.experienceNotes.length > 1000) return setError("Training notes must be under 1,000 characters.");
@@ -217,7 +260,16 @@ export default function SignUpForm() {
           <p className="signup-subtitle">Create your account to begin your Aikido journey.</p>
           <div className="signup-field-grid">
             <label className="signup-span-full">Full name <input autoComplete="name" placeholder="Enter your full name" value={details.fullName} onChange={e => update("fullName", e.target.value)} maxLength={100} required /></label>
-            <label className="signup-span-full">Email address <input type="email" autoComplete="email" placeholder="you@example.com" value={details.email} onChange={e => update("email", e.target.value)} required /></label>
+            <label className="signup-span-full">Email address <input type="email" autoComplete="email" placeholder="you@example.com" value={details.email} onChange={e => changeEmail(e.target.value)} onBlur={() => { if (emailPattern.test(details.email.trim())) void verifyEmail(); }} aria-describedby="signup-email-notice" required /></label>
+            {(checkingEmail || emailExists || emailCheckError) && (
+              <div id="signup-email-notice" className={`signup-span-full signup-email-notice ${checkingEmail ? "signup-email-checking" : "form-error"}`} role={emailExists || emailCheckError ? "alert" : "status"}>
+                {checkingEmail ? <p>Checking email address…</p> : emailExists ? <>
+                  <strong>Email already registered</strong>
+                  <p>An account with this email already exists. Sign in to view your application or request reconsideration.</p>
+                  <Link className="signup-email-signin" to="/signin">Go to Sign In</Link>
+                </> : <p>{emailCheckError}</p>}
+              </div>
+            )}
             <label className="signup-span-full">Date of birth <input type="date" autoComplete="bday" min="1900-01-01" max={maxDate} value={details.dateOfBirth} onChange={e => update("dateOfBirth", e.target.value)} required /></label>
             <label className="signup-span-full">Gender
               <select value={details.gender} onChange={e => update("gender", e.target.value)} required>
@@ -235,53 +287,64 @@ export default function SignUpForm() {
 
         {step === 1 && <>
           <h2>Your training experience</h2>
-          <p className="signup-subtitle">We welcome everyone, whether this is your first class or you're returning to the mat.</p>
+          <p className="signup-subtitle">Beginners are always welcome. If you have trained before, tell us a little about it.</p>
           <label className="signup-experience-toggle">
             <input
               type="checkbox"
               checked={details.experienceLevel === "experienced"}
               onChange={(event) => toggleExperience(event.target.checked)}
             />
-            <span><strong>I have previous Aikido experience</strong><small>Leave unchecked if you're just starting out.</small></span>
+            <span><strong>I have previous Aikido experience</strong></span>
           </label>
           {details.experienceLevel === "experienced" ? <div className="signup-extra-fields">
             <label>Previous rank / belt <input placeholder="e.g. 5th kyu" maxLength={100} value={details.previousRank} onChange={e => update("previousRank", e.target.value)} /></label>
             <label>Training background <textarea maxLength={1000} rows={3} placeholder="Previous dojo, years of training..." value={details.experienceNotes} onChange={e => update("experienceNotes", e.target.value)} /></label>
-            <label>Supporting certificate <span className="signup-optional">(optional · PDF, PNG or JPG · max 2 MB)</span><input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={chooseFile} /></label>
-            {experienceFile && <p className="form-hint">Selected: {experienceFile.name}</p>}
-          </div> : <p className="signup-soft-note">No previous experience needed. You can continue to the membership step.</p>}
+            <div className="signup-file-field">
+              <span className="signup-file-title">Grading certificate <span className="signup-optional">(optional)</span></span>
+              <div className="signup-file-row">
+                <label className="signup-photo-upload">{experienceFile ? "Replace file" : "Upload file"}
+                  <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={chooseFile} />
+                </label>
+                {experienceFile
+                  ? <span className="signup-file-name">{experienceFile.name} <button type="button" className="signup-remove-photo" onClick={() => setExperienceFile(null)}>Remove</button></span>
+                  : <small>PDF, PNG or JPG · Max 2 MB</small>}
+              </div>
+            </div>
+          </div> : null}
         </>}
 
         {step === 2 && <>
           <h2>Choose your membership</h2>
-          <p className="signup-subtitle">Select your registration package. Payment is completed securely after profile setup.</p>
+          <p className="signup-subtitle">You will pay securely after completing your profile. Membership starts once the Shihan approves your application.</p>
           {planLoading && <p role="status" className="signup-soft-note">Loading membership options...</p>}
           {planError && <p role="alert" className="signup-soft-note">Could not load membership plans: {planError}</p>}
           {!planLoading && !planError && plans.length === 0 && (
             <p role="alert" className="signup-soft-note">No registration package is available. Please contact the team.</p>
           )}
           {!planLoading && !planError && plans.map((plan) => (
-            <label key={plan.id} className="signup-membership-card" style={{ display: "block", cursor: "pointer", marginBottom: "1rem" }}>
-              <div className="signup-plan-top">
-                <span>NEW STUDENT REGISTRATION</span>
-                <span className="signup-plan-tag">{plan.durationMonths} MONTHS</span>
+            <label key={plan.id} className={`signup-plan-card${selectedPlanId === plan.id ? " is-selected" : ""}`}>
+              <input
+                type="radio"
+                className="signup-plan-radio"
+                name="registrationPlan"
+                value={plan.id}
+                checked={selectedPlanId === plan.id}
+                onChange={() => setSelectedPlanId(plan.id)}
+                aria-label={`Select ${plan.name}`}
+              />
+              <div className="signup-plan-head">
+                <div>
+                  <span className="signup-plan-eyebrow">New member</span>
+                  <h3>{plan.name}</h3>
+                </div>
+                <div className="signup-plan-price"><strong>S${(plan.priceCents / 100).toFixed(2)}</strong><span>one-time fee</span></div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginTop: "1rem" }}>
-                <h3 style={{ margin: 0 }}>{plan.name}</h3>
-                <input
-                  type="radio"
-                  name="registrationPlan"
-                  value={plan.id}
-                  checked={selectedPlanId === plan.id}
-                  onChange={() => setSelectedPlanId(plan.id)}
-                  aria-label={`Select ${plan.name}`}
-                />
-              </div>
-              <p style={{ marginTop: ".75rem" }}><strong>SGD {(plan.priceCents / 100).toFixed(2)}</strong> one-time registration charge</p>
-              <div className="signup-plan-note">
-                <strong>Payment required to activate membership</strong>
-                <span>Complete your profile next, then proceed to Stripe Checkout. Training credits and top-ups are separate.</span>
-              </div>
+              <ul className="signup-plan-includes" aria-label="Included">
+                <li>Membership for the current year</li>
+                <li>Aikido Shinju-Kai handbook</li>
+                <li>Membership book</li>
+              </ul>
+              <p className="signup-plan-foot">Annual renewal S$48 · Training passes and attire sold separately</p>
             </label>
           ))}
         </>}
@@ -315,6 +378,8 @@ export default function SignUpForm() {
                 <option value="">{centreLoading ? "Loading dojos…" : "Select your preferred dojo"}</option>
                 {centres.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
               </select>
+              {centres.some(c=>String(c.id)===String(preferredCentreId) && c.name === 'ASK Headquarters Dojo') &&
+                <p role="status" className="form-hint">Our HQ team will contact you to arrange your first class, session pass and training attire.</p>}
               {centreError && <small role="alert">Could not load dojos: {centreError}</small>}
               {!centreLoading && !centreError && centres.length === 0 && <small role="alert">No active dojos available.</small>}
             </label>
@@ -336,7 +401,7 @@ export default function SignUpForm() {
 
             <label className="signup-span-full">Your training goal <textarea required maxLength={500} rows={3} placeholder="What would you like to achieve through Aikido?" value={details.trainingGoal} onChange={e => update("trainingGoal", e.target.value)} /></label>
           </div>
-          <p className="signup-soft-note">When you finish, your pending account will be created and you will proceed to secure payment.</p>
+          <p className="signup-soft-note">Next: secure payment with Stripe.</p>
         </>}
       </div>
 
@@ -344,7 +409,7 @@ export default function SignUpForm() {
         {step > 0 && <button type="button" className="btn btn-outline" disabled={submitting} onClick={() => goTo(step - 1)}>Back</button>}
 
         {step < 3
-          ? <button type="button" className="btn btn-primary signup-next" disabled={step === 2 && (planLoading || !!planError || !selectedPlanId)} onClick={next}>Continue <span aria-hidden="true">→</span></button>
+          ? <button type="button" className="btn btn-primary signup-next" disabled={checkingEmail || emailExists || (step === 2 && (planLoading || !!planError || !selectedPlanId))} onClick={next}>Continue <span aria-hidden="true">→</span></button>
           : <button type="submit" className="btn btn-primary signup-next" disabled={submitting}>{submitting ? "Creating account…" : "Create account →"}</button>}
       </div>
     </form>

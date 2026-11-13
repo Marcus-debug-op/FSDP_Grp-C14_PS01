@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   cancelPrivateLesson,
+  changePrivateLessonInstructor,
   createPrivateLesson,
   getCentres,
   getInstructorAvailability,
@@ -12,6 +13,7 @@ import {
 } from "../../../js/services/adminService.js";
 import { formatShortDate, formatTime, todayString } from "../../../js/utils/formatters.js";
 import PageHeader from "../../components/admin/PageHeader.jsx";
+import OfferRow from "../../components/admin/OfferRow.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -119,7 +121,7 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
     headingRef.current?.focus();
   }, []);
 
-  const slotReady = date && startTime && endTime && endTime > startTime;
+  const slotReady = centreId && date && startTime && endTime && endTime > startTime;
 
   useEffect(() => {
     if (!slotReady) {
@@ -127,7 +129,7 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
       return undefined;
     }
     let active = true;
-    getInstructorAvailability({ date, startTime, endTime, lessonId: request?.id })
+    getInstructorAvailability({ centreId, date, startTime, endTime, lessonId: request?.id })
       .then((list) => {
         if (!active) return;
         setInstructors(list);
@@ -137,7 +139,7 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
     return () => {
       active = false;
     };
-  }, [date, startTime, endTime, slotReady, request]);
+  }, [centreId, date, startTime, endTime, slotReady, request]);
 
   const cost = request ? request.creditCost : LESSON_COST;
   const short = student && student.credits < cost;
@@ -211,17 +213,22 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
           Instructor
           <select value={instructorId} onChange={(e) => setInstructorId(e.target.value)} disabled={!instructors} required>
             <option value="">
-              {!slotReady ? "Choose a date and time first" : !instructors ? "Checking who is free..." : `Choose an instructor (${freeCount} free)`}
+              {!slotReady ? "Choose a dojo, date and time first" : !instructors ? "Checking who is free..." : `Choose an instructor (${freeCount} free)`}
             </option>
             {(instructors || []).map((i) => (
               <option key={i.id} value={i.id} disabled={!i.isFree}>
                 {i.isFree
                   ? i.name
-                  : `${i.name} - busy, ${i.conflicts[0].label} ${formatTime(i.conflicts[0].startTime)} to ${formatTime(i.conflicts[0].endTime)}`}
+                  : `${i.name} - busy, ${i.conflicts[0].label} ${formatTime(i.conflicts[0].startTime)} to ${formatTime(i.conflicts[0].endTime)}${
+                      i.conflicts[0].travelOnly ? ` at ${i.conflicts[0].centreName}, too close to travel` : ""
+                    }`}
               </option>
             ))}
           </select>
-          <span className="form-hint">Only instructors with no class or private lesson at this time can be picked.</span>
+          <span className="form-hint">
+            Only instructors who are free can be picked. If their lesson before or after is at another dojo, it needs to be at
+            least 3 hours apart.
+          </span>
         </label>
 
         <label>
@@ -283,11 +290,25 @@ function CancelRow({ lesson, colSpan, onDone, onClose }) {
   );
 }
 
+function OfferStatus({ lesson }) {
+  const { offer } = lesson;
+  if (!offer || offer.status === "accepted") return <span className="offer-tag offer-ok">Confirmed</span>;
+  if (offer.status === "pending") return <span className="offer-tag offer-wait">Waiting for reply</span>;
+  return (
+    <>
+      <span className="offer-tag offer-no">Declined</span>
+      {offer.note && <span className="att-sub">"{offer.note}"</span>}
+    </>
+  );
+}
+
 function StudentCell({ student, showCredits }) {
   return (
     <td data-label="Student">
-      <Link to={`/admin/students/${student.id}`} className="adm-link att-name">{student.name}</Link>
-      <span className="att-sub">{showCredits ? credits(student.credits) : student.email}</span>
+      <div>
+        <Link to={`/admin/students/${student.id}`} className="adm-link att-name">{student.name}</Link>
+        <span className="att-sub">{showCredits ? credits(student.credits) : student.email}</span>
+      </div>
     </td>
   );
 }
@@ -301,6 +322,7 @@ export default function AdminPrivateLessons() {
   const [notice, setNotice] = useState("");
   const [form, setForm] = useState(null);
   const [cancelling, setCancelling] = useState(null);
+  const [changing, setChanging] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [reload, setReload] = useState(0);
 
@@ -323,6 +345,7 @@ export default function AdminPrivateLessons() {
 
   function changeView(key) {
     setCancelling(null);
+    setChanging(null);
     setSearchParams(key === "requests" ? {} : { view: key }, { replace: true });
   }
 
@@ -334,7 +357,9 @@ export default function AdminPrivateLessons() {
 
   function handleSaved(lesson) {
     setForm(null);
-    setNotice(`Scheduled ${lesson.student.name} with ${lesson.instructor.name} on ${when(lesson)}. ${credits(lesson.creditCost)} taken.`);
+    setNotice(
+      `Scheduled ${lesson.student.name} with ${lesson.instructor.name} on ${when(lesson)}. ${credits(lesson.creditCost)} taken. Waiting for ${lesson.instructor.name} to accept.`
+    );
     setReload((n) => n + 1);
   }
 
@@ -345,6 +370,23 @@ export default function AdminPrivateLessons() {
         ? `Declined ${lesson.student.name}'s request.`
         : `Cancelled ${lesson.student.name}'s lesson.${refunded ? ` ${credits(refunded)} returned.` : ""}`
     );
+    setReload((n) => n + 1);
+  }
+
+  function openCancel(id) {
+    setChanging(null);
+    setCancelling(id);
+  }
+
+  function openChange(id) {
+    setCancelling(null);
+    setChanging(id);
+  }
+
+  async function changeInstructor(lesson, instructorId) {
+    const updated = await changePrivateLessonInstructor(lesson.id, instructorId);
+    setChanging(null);
+    setNotice(`Offered ${lesson.student.name}'s lesson to ${updated.instructor.name}. No extra credits taken. Waiting for them to accept.`);
     setReload((n) => n + 1);
   }
 
@@ -372,7 +414,7 @@ export default function AdminPrivateLessons() {
         <PageHeader
           eyebrow="Scheduling"
           title="Private Lessons"
-          lead="Schedule one-to-one lessons with an instructor who is free. Credits are taken when you schedule and returned if you cancel."
+          lead="Schedule one-to-one lessons with an instructor who is free. The instructor then accepts or declines. Credits are taken when you schedule and returned if you cancel."
           actions={
             !form && (
               <button type="button" className="btn btn-primary" onClick={() => openForm(null)}>New Private Lesson</button>
@@ -437,7 +479,7 @@ export default function AdminPrivateLessons() {
                     <td data-label="Note">{l.studentNote || <span className="adm-muted">None</span>}</td>
                     <td className="lesson-actions">
                       <button type="button" className="btn btn-outline btn-small" onClick={() => openForm(l)}>Schedule</button>
-                      <button type="button" className="link-button" onClick={() => setCancelling(l.id)}>Decline</button>
+                      <button type="button" className="link-button" onClick={() => openCancel(l.id)}>Decline</button>
                     </td>
                   </tr>
                   {cancelling === l.id && (
@@ -467,9 +509,20 @@ export default function AdminPrivateLessons() {
                   <tr>
                     <td data-label="When">{when(l)}</td>
                     <StudentCell student={l.student} />
-                    <td data-label="Instructor">{l.instructor.name}</td>
+                    <td data-label="Instructor">
+                      <div>
+                        <span className="att-name">{l.instructor.name}</span>
+                        <OfferStatus lesson={l} />
+                      </div>
+                    </td>
                     <td data-label="Dojo">{l.centre.name}</td>
                     <td className="lesson-actions">
+                      {l.date >= todayString() && l.offer?.status === "declined" && (
+                        <button type="button" className="btn btn-primary btn-small" onClick={() => openChange(l.id)}>Pick Another</button>
+                      )}
+                      {l.date >= todayString() && l.offer?.status !== "declined" && (
+                        <button type="button" className="link-button" onClick={() => openChange(l.id)}>Change instructor</button>
+                      )}
                       {l.isDue && (
                         <>
                           <button type="button" className="btn btn-outline btn-small" disabled={busyId === l.id} onClick={() => markOutcome(l, "completed")}>
@@ -480,11 +533,27 @@ export default function AdminPrivateLessons() {
                           </button>
                         </>
                       )}
-                      <button type="button" className="link-button" onClick={() => setCancelling(l.id)}>Cancel</button>
+                      <button type="button" className="link-button" onClick={() => openCancel(l.id)}>Cancel</button>
                     </td>
                   </tr>
                   {cancelling === l.id && (
                     <CancelRow lesson={l} colSpan={5} onDone={handleCancelled} onClose={() => setCancelling(null)} />
+                  )}
+                  {changing === l.id && (
+                    <OfferRow
+                      colSpan={5}
+                      prompt={`Give ${l.student.name}'s lesson on ${when(l)} to another instructor. The student is not charged again.`}
+                      hint="The new instructor gets a request to accept or decline."
+                      loadInstructors={() =>
+                        getInstructorAvailability({ centreId: l.centre.id, date: l.date, startTime: l.startTime, endTime: l.endTime, lessonId: l.id }).then((list) =>
+                          list
+                            .filter((i) => i.id !== l.instructor.id)
+                            .map((i) => ({ ...i, declined: l.offer?.status === "declined" && l.offer.instructor.id === i.id }))
+                        )
+                      }
+                      onOffer={(instructorId) => changeInstructor(l, instructorId)}
+                      onClose={() => setChanging(null)}
+                    />
                   )}
                 </Fragment>
               ))}

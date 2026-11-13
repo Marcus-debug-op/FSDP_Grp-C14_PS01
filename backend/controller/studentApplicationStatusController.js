@@ -28,6 +28,7 @@ export async function getApplicationStatus(req, res, next) {
         ? application.rejection_reason : null,
       paymentStatus: application.linked_payment_status || 'unlinked',
       planName: application.plan_name,
+      planId: application.plan_id,
       preferredCentre: application.preferred_centre,
       submittedAt: application.submitted_at,
       reviewedAt: application.reviewed_at,

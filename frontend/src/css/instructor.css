@@ -128,8 +128,65 @@ button.calendar-day:hover { background: var(--surface); }
 .filters input { font: inherit; text-transform: none; letter-spacing: normal; padding: 0.65rem 0.9rem; min-width: 260px; background: #fff; color: var(--text); border: 1px solid #8a847c; }
 .readiness-empty { margin-top: 1.5rem; }
 .grading-section-title { margin-top: 3rem; }
+
+/* Instructor approval of a grading application */
+.approval { margin: 0.6rem 0 0; font-size: 0.9rem; }
+.approval p { margin: 0; }
+.approval-done { padding: 0.4rem 0.7rem; border: 1px solid var(--ok-line); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+.approval-blocked { color: var(--muted); }
+.approval-button { margin-top: 0.7rem; }
+.approval-button:disabled { opacity: 0.6; cursor: not-allowed; }
+.approval-undo { padding: 0.2rem 0; border: 0; background: none; font: inherit; font-size: 0.85rem; color: var(--accent-text); text-decoration: underline; cursor: pointer; }
+.approval-undo:disabled { color: var(--muted); cursor: not-allowed; }
+.awaiting-count { color: var(--accent-text); font-weight: 700; }
 .roster-stats .stat-ready strong { color: var(--ok); }
 .roster-stats .stat-not-yet strong { color: var(--accent-text); }
+
+/* ---------- Attendance trends (Analytics page) ---------- */
+/* Read out by screen readers, hidden on screen. */
+.instructor-portal .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* One centred column, so the page sits in the middle of wide screens. */
+.analytics-page { max-width: 64rem; }
+.trends-summary { margin: 2rem 0 0; padding: 1.1rem 1.4rem; border-left: 4px solid var(--accent); background: var(--surface); font-size: 1.1rem; font-weight: 600; }
+.trends-heading { margin: 3rem 0 0; font-size: 1.8rem; }
+.trends-note { margin: 0.7rem 0 0; color: var(--muted); }
+.trends-loading { color: var(--muted); }
+
+.trend-chart {
+  list-style: none; padding: 1.5rem 1.5rem 1rem; margin: 1.2rem 0 0;
+  display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 1rem;
+  border: 1px solid var(--line); background: var(--bg);
+}
+.trend-week { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; min-width: 0; }
+.trend-value { font-size: 1.05rem; font-weight: 700; }
+.trend-track { display: flex; align-items: flex-end; width: 100%; max-width: 4.5rem; height: 16rem; background: var(--surface); }
+.trend-bar { display: block; width: 100%; background: var(--accent); }
+.trend-label { font-size: 0.9rem; color: var(--muted); white-space: nowrap; }
+
+/* Framed box like the chart, solid so the faint kanji behind the page stays behind it. */
+.check-on-list { list-style: none; padding: 0; margin: 1.2rem 0 0; border: 1px solid var(--line); background: var(--bg); }
+.check-on-row {
+  position: relative;
+  display: grid; grid-template-columns: minmax(0, 2fr) auto minmax(0, 1fr); align-items: center; gap: 0.4rem 1.5rem;
+  padding: 1.3rem 1.5rem 1.3rem 1.8rem; font-size: 1.1rem;
+}
+.check-on-row + .check-on-row { border-top: 1px solid var(--line); }
+/* Red marker inside the box, so the frame's corners stay clean. */
+.check-on-row::before { content: ""; position: absolute; left: 0; top: 1rem; bottom: 1rem; width: 4px; background: var(--accent); }
+.check-on-dojo { display: block; font-size: 0.9rem; color: var(--muted); }
+.check-on-change { margin: 0; font-weight: 700; color: var(--accent-text); white-space: nowrap; }
+.check-on-last { margin: 0; font-size: 0.95rem; color: var(--text); text-align: right; }
+
+@media (max-width: 800px) {
+  .trend-chart { gap: 0.3rem; padding: 0.8rem 0.5rem 0.6rem; }
+  .trend-value { font-size: 0.7rem; }
+  .trend-label { font-size: 0.65rem; }
+  .trend-track { height: 10rem; }
+  .check-on-row { font-size: 1rem; padding: 1rem 1rem 1rem 1.3rem; }
+  .check-on-row { grid-template-columns: 1fr auto; }
+  .check-on-last { grid-column: 1 / -1; text-align: left; }
+}
 
 @media (max-width: 800px) {
   .filters input { width: 100%; min-width: 0; }

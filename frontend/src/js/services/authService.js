@@ -34,3 +34,7 @@ export async function getMe(token) {
   const data = await request("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } });
   return data.user;
 }
+
+// Step 1 signup check: only returns { exists }, not private application details.
+export const checkSignupEmail = (email) =>
+  request("/api/auth/check-email", { method: "POST", body: JSON.stringify({ email }) });

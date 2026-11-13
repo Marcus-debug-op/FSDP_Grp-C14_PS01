@@ -1,11 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useMembershipAccess } from "../context/MembershipAccessContext.jsx";
 
-// Visitors, instructors and admins.
+// Visitors who are not signed in. Ordered by what a newcomer looks for;
+// the logo already goes Home, and "Join now" sits on the right as the main action.
+const publicLinks = [
+  { to: "/classes", label: "Classes" },
+  { to: "/schedule", label: "Timetable" },
+  { to: "/dojos", label: "Dojos" },
+  { to: "/join", label: "Join & Fees" },
+  { to: "/about", label: "About" },
+];
+
+// Signed-in instructors. "Classes" still opens the timetable, as before.
 const links = [
   { to: "/", label: "Home", end: true },
-  { to: "/classes", label: "Classes" },
+  { to: "/schedule", label: "Classes" },
   { to: "/dojos", label: "Dojos" },
   { to: "/about", label: "About" },
 ];
@@ -35,6 +46,7 @@ const studentMenuLinks = [
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { isActiveMember } = useMembershipAccess();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   // Mobile dropdown menu, and the student's account menu (Settings, Sign out)
@@ -68,7 +80,7 @@ export default function Navbar() {
 
   const isStudent = user?.role === "student";
   const isAdmin = user?.role === "admin";
-  const navLinks = isStudent ? studentLinks : isAdmin ? adminLinks : links;
+  const navLinks = isStudent ? (isActiveMember ? studentLinks : []) : isAdmin ? adminLinks : user ? links : publicLinks;
   const firstName = user?.fullName?.split(" ")[0] || "Account";
   const studentsActive = studentMenuLinks.some((l) => pathname === l.to);
 
@@ -87,7 +99,7 @@ export default function Navbar() {
         </Link>
 
         {/* Students: Check in stays visible on phones, outside the menu (AT-1) */}
-        {isStudent && (
+        {isStudent && isActiveMember && (
           <Link to="/check-in" className="btn btn-primary btn-small nav-checkin nav-checkin-mobile">Check In</Link>
         )}
 
@@ -109,7 +121,7 @@ export default function Navbar() {
 
           {isStudent ? (
             <>
-              <div className="account nav-dropdown" ref={studentsRef}>
+              {isActiveMember && (<div className="account nav-dropdown" ref={studentsRef}>
                 <button
                   type="button"
                   className={studentsActive ? "nav-link nav-dropdown-toggle active" : "nav-link nav-dropdown-toggle"}
@@ -125,12 +137,15 @@ export default function Navbar() {
                   ))}
                 </div>
               </div>
-              {studentMenuLinks.map((l) => (
+              )}
+              {isActiveMember && studentMenuLinks.map((l) => (
                 <NavLink key={l.to} to={l.to} onClick={close} className="nav-link nav-mobile-only">{l.label}</NavLink>
               ))}
+              
 
-              <Link to="/check-in" className="btn btn-primary btn-small nav-checkin nav-checkin-desktop">Check In</Link>
+              {isActiveMember && <Link to="/check-in" className="btn btn-primary btn-small nav-checkin nav-checkin-desktop">Check In</Link>}
 
+              {!isActiveMember && <NavLink to="/profile" onClick={close} className="nav-link">Application Status</NavLink>}
               {/* Desktop: name opens a small menu */}
               <div className="account" ref={accountRef}>
                 <button
@@ -164,7 +179,10 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <Link to="/signin" onClick={close} className="btn btn-outline btn-small">Sign In</Link>
+            <>
+              <NavLink to="/signin" onClick={close} className="nav-link">Sign in</NavLink>
+              <Link to="/signup" onClick={close} className="btn btn-primary btn-small nav-join">Join now</Link>
+            </>
           )}
         </nav>
       </div>

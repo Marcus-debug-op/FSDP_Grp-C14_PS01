@@ -9,6 +9,35 @@ import * as Payment from "../model/paymentModel.js";
 import { activateApplicationAfterPayment } from "../model/registrationActivationModel.js";
 import { paymentReceived } from "../utils/notices.js";
 
+// Registration only: record a Checkout that Stripe itself says is paid, in case
+// the webhook never arrived (e.g. the Stripe CLI listener was not running).
+// Does exactly what the webhook does; markSucceeded only works once per payment,
+// so the webhook and this check can never both count the same payment.
+// `session` must come from getStripe() (our secret key), never from the browser.
+async function recordPaidRegistrationSession(session, studentId) {
+  const paymentId = Number(session.metadata?.paymentId);
+  const itemId = Number(session.metadata?.itemId);
+  if (!paymentId || session.payment_status !== "paid" || session.metadata?.kind !== "membership") return false;
+  if (String(session.client_reference_id) !== String(studentId)) return false;
+  const plan = await Payment.findPlan(itemId);
+  if (!plan || plan.name !== "Registration (New Member)") return false;
+
+  const item = { kind: "membership", itemId };
+  const outcome = await Payment.markSucceeded({
+    paymentId,
+    paymentIntentId: session.payment_intent,
+    customerId: session.customer,
+    item,
+  });
+  if (!outcome.alreadyDone) {
+    paymentReceived(paymentId, session.payment_intent, item);
+    console.log("Registration payment recorded from Stripe check (no webhook)", paymentId);
+  }
+  const activation = await activateApplicationAfterPayment(paymentId);
+  console.log("Registration activation check", paymentId, activation);
+  return true;
+}
+
 const FRONTEND_URL = () => (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 
 // GET /api/payments/options
@@ -69,6 +98,37 @@ export async function createCheckout(req, res, next) {
       }
     }
 
+    const isRegistration = kind === "membership" && item.name === "Registration (New Member)";
+
+    // Registration only: if the student already has an unpaid checkout, reuse it
+    // instead of creating another payment (prevents paying on an old page that
+    // is no longer linked to the application).
+    if (isRegistration) {
+      const existing = await Payment.findLinkedPendingRegistrationPayment(req.user.id, item.id);
+      if (existing && !existing.stripe_checkout_session_id) {
+        // Stripe never created a page for this one, so it can never be paid.
+        await Payment.markFailed(existing.id, "Checkout page was never created.");
+      } else if (existing) {
+        let previous;
+        try {
+          previous = await getStripe().checkout.sessions.retrieve(existing.stripe_checkout_session_id);
+        } catch (err) {
+          console.error("Could not check previous registration checkout", existing.id, err.message);
+          return res.status(503).json({ message: "Could not reach the payment provider. Please try again in a moment." });
+        }
+        if (previous.status === "open" && previous.url) {
+          return res.status(200).json({ url: previous.url });
+        }
+        if (previous.status === "complete") {
+          // Paid but not recorded yet (webhook missed): record it now.
+          await recordPaidRegistrationSession(previous, req.user.id);
+          return res.status(409).json({ message: "Your payment is being confirmed. Please refresh your application status in a minute." });
+        }
+        // Expired: record it even if the webhook listener was not running.
+        await Payment.markFailed(existing.id, "Checkout expired before payment.");
+      }
+    }
+
     const purpose = kind === "membership" ? "membership" : "credit_topup";
     const description = kind === "membership"
       ? `${item.duration_months}-month membership fee · lesson credits sold separately`
@@ -93,6 +153,8 @@ export async function createCheckout(req, res, next) {
       );
 
       if (!linked) {
+        // Don't leave an unusable pending payment behind.
+        await Payment.markFailed(paymentId, "Registration checkout could not be linked to the application.");
         return res.status(409).json({
           message:
             "Registration payment already recorded or application unavailable."
@@ -104,7 +166,9 @@ export async function createCheckout(req, res, next) {
     const metadata = { paymentId: String(paymentId), kind, itemId: String(itemId) };
     const customer = await Payment.findStripeCustomer(req.user.id);
 
-    const session = await getStripe().checkout.sessions.create({
+    let session;
+    try {
+    session = await getStripe().checkout.sessions.create({
       mode: "payment",
       line_items: [{
         quantity: 1,
@@ -124,6 +188,14 @@ export async function createCheckout(req, res, next) {
         ? `${FRONTEND_URL()}/registration/checkout?cancelled=1`
         : `${FRONTEND_URL()}/payments?cancelled=1`,
     });
+    } catch (err) {
+      // Registration only: Stripe failed, so mark this payment failed. The next
+      // attempt then starts cleanly. Other purchases keep their original behaviour.
+      if (isRegistration) {
+        await Payment.markFailed(paymentId, "Checkout page could not be created.").catch(() => {});
+      }
+      throw err;
+    }
 
     await Payment.attachCheckoutSession(paymentId, session.id);
     res.status(201).json({ url: session.url });
@@ -135,9 +207,25 @@ export async function createCheckout(req, res, next) {
 // GET /api/payments/session/:sessionId   (used by the success page)
 export async function getSessionStatus(req, res, next) {
   try {
-    const payment = await Payment.findBySession(req.user.id, req.params.sessionId);
+    let payment = await Payment.findBySession(req.user.id, req.params.sessionId);
     if (!payment) return res.status(404).json({ message: "Payment not found." });
+
+    // Registration only: if still pending, ask Stripe directly whether it was paid.
+    if (payment.status === "pending" && payment.purpose === "membership") {
+      try {
+        const session = await getStripe().checkout.sessions.retrieve(req.params.sessionId);
+        if (Number(session.metadata?.paymentId) === Number(payment.id) &&
+            await recordPaidRegistrationSession(session, req.user.id)) {
+          payment = await Payment.findBySession(req.user.id, req.params.sessionId);
+        }
+      } catch (err) {
+        // Not fatal: the page keeps checking and the webhook may still arrive.
+        console.error("Could not check registration payment with Stripe", payment.id, err.message);
+      }
+    }
+
     res.json({
+      isRegistration: await Payment.isRegistrationPayment(payment.id),
       status: payment.status,
       purpose: payment.purpose,
       amountCents: payment.amount_cents,
@@ -175,6 +263,9 @@ export async function stripeWebhook(req, res) {
         const item = {
           kind: obj.metadata.kind,
           itemId: Number(obj.metadata.itemId),
+          // only grading checkouts carry this (set in
+          // gradingController.applyForGrading). null for everything else.
+          targetBeltId: Number(obj.metadata.targetBeltId) || null,
         };
         const outcome = await Payment.markSucceeded({
           paymentId,

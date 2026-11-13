@@ -10,6 +10,8 @@ import {
   getTimetable, getHistory, listPrivateLessons, requestPrivateLesson, withdrawPrivateLesson, listNotices, readNotices,
 } from "../controller/myLessonsController.js";
 import express from "express";
+import { reapply } from "../controller/membershipReapplicationController.js";
+import { checkIn } from "../controller/checkInController.js";
 
 const router = Router();
 
@@ -18,6 +20,8 @@ router.use(requireAuth, requireRole("student"));
 router.get("/dashboard", getDashboard);
 router.get("/profile", getProfile);
 router.get("/application/status", getApplicationStatus);
+router.post("/check-in", checkIn);   // QR check-in (body: { token })
+router.post("/application/reapply", reapply);
 router.get("/application/photo-status", photoStatus);
 router.post("/application/photo", express.raw({ type: ["image/jpeg", "image/png", "image/webp"], limit: "2mb" }), resubmitPhoto);
 

@@ -88,6 +88,67 @@ const MY_STUDENTS = `
   WHERE cs.instructor_id = $1 AND b.status = 'booked'
     AND cs.session_date >= ${TODAY} - INTERVAL '3 months'`;
 
+// Attendance at the instructor's classes for each of the last 8 weeks
+// (FSDP-71). Week 0 is the 7 days up to yesterday, week 7 the oldest. Today is
+// left out because its classes may not be marked yet. "Expected" is everyone on
+// the roster: booked, or already marked. "Attended" is present or late.
+export async function listWeeklyAttendance(instructorId) {
+  const result = await pool.query(
+    `WITH weeks AS (
+       SELECT k, ${TODAY} - 7 * (k + 1) AS from_date, ${TODAY} - 7 * k - 1 AS to_date
+       FROM generate_series(0, 7) AS k
+     ),
+     my_sessions AS (
+       SELECT cs.id, cs.session_date
+       FROM class_sessions cs
+       WHERE cs.instructor_id = $1 AND cs.status <> 'cancelled'
+         AND cs.session_date BETWEEN ${TODAY} - 56 AND ${TODAY} - 1
+     ),
+     expected AS (
+       SELECT s.session_date, a.status
+       FROM my_sessions s
+       JOIN LATERAL (
+         SELECT b.student_id FROM bookings b WHERE b.session_id = s.id AND b.status = 'booked'
+         UNION
+         SELECT a.student_id FROM attendance a WHERE a.session_id = s.id
+       ) x ON TRUE
+       LEFT JOIN attendance a ON a.session_id = s.id AND a.student_id = x.student_id
+     )
+     SELECT w.k,
+            to_char(w.from_date, 'YYYY-MM-DD') AS from_date,
+            to_char(w.to_date, 'YYYY-MM-DD') AS to_date,
+            (SELECT COUNT(*)::int FROM my_sessions s WHERE s.session_date BETWEEN w.from_date AND w.to_date) AS classes,
+            (SELECT COUNT(*)::int FROM expected e WHERE e.session_date BETWEEN w.from_date AND w.to_date) AS expected,
+            (SELECT COUNT(*)::int FROM expected e
+             WHERE e.session_date BETWEEN w.from_date AND w.to_date AND e.status IN ('present', 'late')) AS attended
+     FROM weeks w
+     ORDER BY w.k DESC`,
+    [instructorId]
+  );
+  return result.rows;
+}
+
+// Classes each of the instructor's students attended (at any dojo) in the last
+// 28 days and the 28 days before that, to spot anyone dropping off (FSDP-71).
+export async function listStudentAttendanceChange(instructorId) {
+  const result = await pool.query(
+    `WITH my_students AS (${MY_STUDENTS})
+     SELECT u.id, u.full_name, hc.name AS home_dojo,
+            COUNT(cs.id) FILTER (WHERE cs.session_date BETWEEN ${TODAY} - 28 AND ${TODAY} - 1)::int AS recent,
+            COUNT(cs.id) FILTER (WHERE cs.session_date BETWEEN ${TODAY} - 56 AND ${TODAY} - 29)::int AS previous,
+            to_char(MAX(cs.session_date), 'YYYY-MM-DD') AS last_attended
+     FROM my_students s
+     JOIN users u ON u.id = s.student_id
+     LEFT JOIN student_profiles sp ON sp.user_id = u.id
+     LEFT JOIN centres hc ON hc.id = sp.home_centre_id
+     LEFT JOIN attendance a ON a.student_id = u.id AND a.status IN ('present', 'late')
+     LEFT JOIN class_sessions cs ON cs.id = a.session_id AND cs.status <> 'cancelled' AND cs.session_date < ${TODAY}
+     GROUP BY u.id, u.full_name, hc.name`,
+    [instructorId]
+  );
+  return result.rows;
+}
+
 // Applications that still count. Withdrawn and rejected ones do not.
 const LIVE_APPLICATION = "ga.status NOT IN ('withdrawn', 'rejected')";
 
@@ -140,7 +201,11 @@ export async function listUpcomingGradings(instructorId) {
             gs.registration_closes_on >= ${TODAY} AS registration_open,
             (SELECT COUNT(*)::int FROM grading_applications ga
              WHERE ga.grading_session_id = gs.id AND ${LIVE_APPLICATION}
-               AND ga.student_id IN (SELECT student_id FROM my_students)) AS my_applicants
+               AND ga.student_id IN (SELECT student_id FROM my_students)) AS my_applicants,
+            (SELECT COUNT(*)::int FROM grading_applications ga
+             WHERE ga.grading_session_id = gs.id AND ${LIVE_APPLICATION}
+               AND ga.instructor_approved_at IS NULL
+               AND ga.student_id IN (SELECT student_id FROM my_students)) AS my_awaiting
      FROM grading_sessions gs
      JOIN centres ce ON ce.id = gs.centre_id
      WHERE gs.status = 'scheduled' AND gs.grading_date >= ${TODAY}
@@ -157,7 +222,8 @@ export async function findGrading(gradingId) {
             to_char(gs.grading_date, 'YYYY-MM-DD') AS grading_date,
             to_char(gs.start_time, 'HH24:MI') AS start_time,
             to_char(gs.registration_closes_on, 'YYYY-MM-DD') AS closes_on,
-            gs.registration_closes_on >= ${TODAY} AS registration_open
+            gs.registration_closes_on >= ${TODAY} AS registration_open,
+            (gs.status = 'scheduled' AND gs.grading_date >= ${TODAY}) AS is_upcoming
      FROM grading_sessions gs
      JOIN centres ce ON ce.id = gs.centre_id
      WHERE gs.id = $1`,
@@ -170,16 +236,31 @@ export async function findGrading(gradingId) {
 export async function listMyApplicants(instructorId, gradingId) {
   const result = await pool.query(
     `WITH my_students AS (${MY_STUDENTS})
-     SELECT ga.student_id, ga.status, tb.name AS target_belt,
-            to_char(ga.applied_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS applied_on
+     SELECT ga.id, ga.student_id, ga.status, tb.name AS target_belt,
+            to_char(ga.applied_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS applied_on,
+            ga.instructor_approved_by AS approved_by_id, ap.full_name AS approved_by,
+            to_char(ga.instructor_approved_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS approved_on
      FROM grading_applications ga
      JOIN belt_ranks tb ON tb.id = ga.target_belt_id
+     LEFT JOIN users ap ON ap.id = ga.instructor_approved_by
      WHERE ga.grading_session_id = $2 AND ${LIVE_APPLICATION}
        AND ga.student_id IN (SELECT student_id FROM my_students)
      ORDER BY ga.applied_at`,
     [instructorId, gradingId]
   );
   return result.rows;
+}
+
+// Records or clears the instructor's approval on one application. The admin's
+// grading page (adminGradingModel) only lists applications once approved.
+export async function setApplicationApproval(applicationId, instructorId) {
+  await pool.query(
+    `UPDATE grading_applications
+     SET instructor_approved_by = $2::int,
+         instructor_approved_at = CASE WHEN $2::int IS NULL THEN NULL ELSE NOW() END
+     WHERE id = $1`,
+    [applicationId, instructorId]
+  );
 }
 
 // One session, only if this instructor teaches it.
