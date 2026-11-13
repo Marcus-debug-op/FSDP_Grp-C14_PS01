@@ -1,4 +1,5 @@
 import pool from "../db.js";
+import { createOffer, withdrawPendingOffers } from "./lessonOfferModel.js";
 
 const SGT_TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 
@@ -13,11 +14,23 @@ const LESSON_SELECT = `
          s.id AS student_id, s.full_name AS student_name, s.email AS student_email,
          ce.id AS centre_id, ce.name AS centre_name,
          i.id AS instructor_id, i.full_name AS instructor_name,
+         lo.id AS offer_id, lo.status AS offer_status, lo.response_note AS offer_note,
+         lo.instructor_id AS offer_instructor_id, lo.instructor_name AS offer_instructor_name,
+         lo.offered_at AS offer_offered_at, lo.responded_at AS offer_responded_at,
          (SELECT COALESCE(SUM(ct.change), 0)::int FROM credit_transactions ct WHERE ct.student_id = s.id) AS student_credits
   FROM private_lessons pl
   JOIN users s ON s.id = pl.student_id
   JOIN centres ce ON ce.id = pl.centre_id
-  LEFT JOIN users i ON i.id = pl.instructor_id`;
+  LEFT JOIN users i ON i.id = pl.instructor_id
+  LEFT JOIN LATERAL (
+    SELECT lo.id, lo.status, lo.response_note, lo.instructor_id, oi.full_name AS instructor_name,
+           lo.offered_at, lo.responded_at
+    FROM lesson_offers lo
+    JOIN users oi ON oi.id = lo.instructor_id
+    WHERE lo.private_lesson_id = pl.id AND lo.status <> 'withdrawn'
+    ORDER BY lo.offered_at DESC, lo.id DESC
+    LIMIT 1
+  ) lo ON TRUE`;
 
 const VIEW_FILTERS = {
   requests: { where: "pl.status = 'requested'", order: "pl.preferred_date, pl.requested_at" },
@@ -44,6 +57,16 @@ function toLesson(row) {
     student: { id: row.student_id, name: row.student_name, email: row.student_email, credits: row.student_credits },
     centre: { id: row.centre_id, name: row.centre_name },
     instructor: row.instructor_id ? { id: row.instructor_id, name: row.instructor_name } : null,
+    offer: row.offer_id
+      ? {
+          id: row.offer_id,
+          status: row.offer_status,
+          note: row.offer_note,
+          instructor: { id: row.offer_instructor_id, name: row.offer_instructor_name },
+          offeredAt: row.offer_offered_at,
+          respondedAt: row.offer_responded_at,
+        }
+      : null,
   };
 }
 
@@ -67,16 +90,21 @@ export async function findLesson(id, db = pool) {
   return result.rows[0] ? toLesson(result.rows[0]) : null;
 }
 
+const LATEST_PRIVATE_OFFER = `
+  SELECT lo.status FROM lesson_offers lo
+  WHERE lo.private_lesson_id = pl.id AND lo.status <> 'withdrawn'
+  ORDER BY lo.offered_at DESC, lo.id DESC LIMIT 1`;
+
 const INSTRUCTOR_CONFLICTS = `
-  SELECT cs.instructor_id, c.title AS label, ce.name AS centre_name,
+  SELECT cs.instructor_id, 'class' AS kind, c.title AS label, ce.name AS centre_name,
          to_char(cs.start_time, 'HH24:MI') AS start_time, to_char(cs.end_time, 'HH24:MI') AS end_time
   FROM class_sessions cs
   JOIN classes c ON c.id = cs.class_id
-  JOIN centres ce ON ce.id = c.centre_id
+  JOIN centres ce ON ce.id = COALESCE(cs.centre_id, c.centre_id)
   WHERE cs.session_date = $1::date AND cs.status <> 'cancelled'
     AND cs.start_time < $3::time AND cs.end_time > $2::time
   UNION ALL
-  SELECT c.instructor_id, c.title, ce.name,
+  SELECT c.instructor_id, 'class', c.title, ce.name,
          to_char(c.start_time, 'HH24:MI'), to_char(c.end_time, 'HH24:MI')
   FROM classes c
   JOIN centres ce ON ce.id = c.centre_id
@@ -84,22 +112,33 @@ const INSTRUCTOR_CONFLICTS = `
     AND c.start_time < $3::time AND c.end_time > $2::time
     AND NOT EXISTS (SELECT 1 FROM class_sessions cs2 WHERE cs2.class_id = c.id AND cs2.session_date = $1::date)
   UNION ALL
-  SELECT pl.instructor_id, 'Private lesson', ce.name,
+  SELECT pl.instructor_id, 'private', 'Private lesson', ce.name,
          to_char(pl.start_time, 'HH24:MI'), to_char(pl.end_time, 'HH24:MI')
   FROM private_lessons pl
   JOIN centres ce ON ce.id = pl.centre_id
   WHERE pl.status = 'scheduled' AND pl.lesson_date = $1::date
     AND pl.id IS DISTINCT FROM $4::int
-    AND pl.start_time < $3::time AND pl.end_time > $2::time`;
+    AND pl.start_time < $3::time AND pl.end_time > $2::time
+    AND COALESCE((${LATEST_PRIVATE_OFFER}), 'accepted') <> 'declined'
+  UNION ALL
+  SELECT lo.instructor_id, 'cover', 'Cover offer: ' || c.title, ce.name,
+         to_char(cs.start_time, 'HH24:MI'), to_char(cs.end_time, 'HH24:MI')
+  FROM lesson_offers lo
+  JOIN class_sessions cs ON cs.id = lo.session_id
+  JOIN classes c ON c.id = cs.class_id
+  JOIN centres ce ON ce.id = COALESCE(cs.centre_id, c.centre_id)
+  WHERE lo.status = 'pending' AND cs.session_date = $1::date AND cs.status <> 'cancelled'
+    AND cs.id IS DISTINCT FROM $5::int
+    AND cs.start_time < $3::time AND cs.end_time > $2::time`;
 
 function toConflict(row) {
-  return { label: row.label, centreName: row.centre_name, startTime: row.start_time, endTime: row.end_time };
+  return { kind: row.kind, label: row.label, centreName: row.centre_name, startTime: row.start_time, endTime: row.end_time };
 }
 
-export async function listInstructorAvailability({ date, startTime, endTime, excludeLessonId = null }) {
+export async function listInstructorAvailability({ date, startTime, endTime, excludeLessonId = null, excludeSessionId = null }) {
   const [instructors, conflicts] = await Promise.all([
     pool.query("SELECT id, full_name FROM users WHERE role = 'instructor' ORDER BY full_name"),
-    pool.query(INSTRUCTOR_CONFLICTS, [date, startTime, endTime, excludeLessonId]),
+    pool.query(INSTRUCTOR_CONFLICTS, [date, startTime, endTime, excludeLessonId, excludeSessionId]),
   ]);
   return instructors.rows.map((row) => {
     const busy = conflicts.rows.filter((c) => c.instructor_id === row.id).map(toConflict);
@@ -126,6 +165,30 @@ async function withTransaction(fn) {
     throw err;
   } finally {
     client.release();
+  }
+}
+
+function describeClash(clash) {
+  if (clash.kind === "private") return "a private lesson";
+  if (clash.kind === "cover") return `an unanswered cover offer for ${clash.label.replace("Cover offer: ", "")}`;
+  return clash.label;
+}
+
+export async function findInstructorClash(db, { instructorId, date, startTime, endTime, lessonId = null, sessionId = null }) {
+  const busy = await db.query(
+    `SELECT * FROM (${INSTRUCTOR_CONFLICTS}) conflicts WHERE instructor_id = $6 LIMIT 1`,
+    [date, startTime, endTime, lessonId, sessionId, instructorId]
+  );
+  return busy.rows[0] || null;
+}
+
+export async function assertInstructorFree(db, { instructorId, instructorName, date, startTime, endTime, lessonId = null, sessionId = null }) {
+  const clash = await findInstructorClash(db, { instructorId, date, startTime, endTime, lessonId, sessionId });
+  if (clash) {
+    throw new LessonError(
+      409,
+      `${instructorName} is not free then. They have ${describeClash(clash)} at ${clash.centre_name}, ${formatClock(clash.start_time)} to ${formatClock(clash.end_time)}.`
+    );
   }
 }
 
@@ -164,17 +227,7 @@ export async function scheduleLesson({ lessonId = null, studentId, centreId, ins
     await client.query("SELECT pg_advisory_xact_lock(7101, $1)", [instructorId]);
     await client.query("SELECT pg_advisory_xact_lock(7102, $1)", [studentId]);
 
-    const busy = await client.query(
-      `SELECT * FROM (${INSTRUCTOR_CONFLICTS}) conflicts WHERE instructor_id = $5 LIMIT 1`,
-      [date, startTime, endTime, lessonId, instructorId]
-    );
-    const clash = busy.rows[0];
-    if (clash) {
-      throw new LessonError(
-        409,
-        `${instructorName} is not free then. They have ${clash.label === "Private lesson" ? "a private lesson" : clash.label} at ${clash.centre_name}, ${formatClock(clash.start_time)} to ${formatClock(clash.end_time)}.`
-      );
-    }
+    await assertInstructorFree(client, { instructorId, instructorName, date, startTime, endTime, lessonId });
 
     const studentClash = await client.query(
       `SELECT 'a private lesson' AS label FROM private_lessons
@@ -232,7 +285,48 @@ export async function scheduleLesson({ lessonId = null, studentId, centreId, ins
       [studentId, -creditCost, id]
     );
 
+    await createOffer({ privateLessonId: id, instructorId, adminId }, client);
     return findLesson(id, client);
+  });
+}
+
+export async function changeInstructor({ lessonId, instructorId, adminId }) {
+  return withTransaction(async (client) => {
+    const existing = await client.query(
+      `SELECT pl.status, pl.instructor_id, to_char(pl.lesson_date, 'YYYY-MM-DD') AS lesson_date,
+              to_char(pl.start_time, 'HH24:MI') AS start_time, to_char(pl.end_time, 'HH24:MI') AS end_time,
+              pl.lesson_date < ${SGT_TODAY} AS is_past,
+              (${LATEST_PRIVATE_OFFER.replaceAll("pl.id", "$1")}) AS offer_status
+       FROM private_lessons pl WHERE pl.id = $1 FOR UPDATE`,
+      [lessonId]
+    );
+    if (existing.rowCount === 0) throw new LessonError(404, "Private lesson not found.");
+    const lesson = existing.rows[0];
+    if (lesson.status !== "scheduled") throw new LessonError(409, "Only upcoming lessons can change instructor.");
+    if (lesson.is_past) throw new LessonError(409, "This lesson has already passed.");
+    if (lesson.instructor_id === instructorId && lesson.offer_status !== "declined") {
+      throw new LessonError(409, "This instructor already has the lesson.");
+    }
+
+    const instructor = await client.query("SELECT full_name FROM users WHERE id = $1 AND role = 'instructor'", [instructorId]);
+    if (instructor.rowCount === 0) throw new LessonError(400, "Please choose an instructor.");
+    if (lesson.instructor_id === instructorId) {
+      throw new LessonError(409, `${instructor.rows[0].full_name} already declined this lesson. Please pick someone else.`);
+    }
+
+    await client.query("SELECT pg_advisory_xact_lock(7101, $1)", [instructorId]);
+    await assertInstructorFree(client, {
+      instructorId,
+      instructorName: instructor.rows[0].full_name,
+      date: lesson.lesson_date,
+      startTime: lesson.start_time,
+      endTime: lesson.end_time,
+      lessonId,
+    });
+
+    await client.query("UPDATE private_lessons SET instructor_id = $2 WHERE id = $1", [lessonId, instructorId]);
+    await createOffer({ privateLessonId: lessonId, instructorId, adminId }, client);
+    return findLesson(lessonId, client);
   });
 }
 
@@ -255,6 +349,7 @@ export async function cancelLesson({ lessonId, adminNote }) {
        WHERE id = $1`,
       [lessonId, nextStatus, adminNote]
     );
+    await withdrawPendingOffers({ privateLessonId: lessonId }, client);
 
     const charged = await client.query(
       "SELECT COALESCE(SUM(change), 0)::int AS total FROM credit_transactions WHERE private_lesson_id = $1",

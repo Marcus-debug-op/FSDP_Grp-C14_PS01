@@ -55,6 +55,14 @@ export const cancelPrivateLesson = (id, adminNote) =>
   request(`/private-lessons/${id}/cancel`, { method: "PATCH", body: { adminNote } });
 export const recordPrivateLessonOutcome = (id, outcome) =>
   request(`/private-lessons/${id}/outcome`, { method: "PATCH", body: { outcome } }).then((d) => d.lesson);
+export const changePrivateLessonInstructor = (id, instructorId) =>
+  request(`/private-lessons/${id}/instructor`, { method: "PATCH", body: { instructorId } }).then((d) => d.lesson);
+
+export const getCoverRequests = (view) => request("/cover-requests", { query: { view } });
+export const getCoverAvailability = (id) => request(`/cover-requests/${id}/availability`).then((d) => d.instructors);
+export const offerCover = (id, instructorId) =>
+  request(`/cover-requests/${id}/offer`, { method: "POST", body: { instructorId } }).then((d) => d.request);
+export const cancelCoverLesson = (id, reason) => request(`/cover-requests/${id}/cancel`, { method: "POST", body: { reason } });
 
 // New-member application review (admin-only API)
 export const listMembershipApplications = (status = "pending") => request("/applications", { query: { status } }).then((r) => r.applications);

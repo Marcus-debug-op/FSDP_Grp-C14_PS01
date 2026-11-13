@@ -1,7 +1,9 @@
 import * as Admin from "../model/adminModel.js";
 import * as Lessons from "../model/privateLessonModel.js";
 import * as Grading from "../model/adminGradingModel.js";
-import { privateLessonScheduled, privateLessonClosed } from "../utils/notices.js";
+import * as Cover from "../model/adminCoverModel.js";
+import { sendOfferNotice } from "../model/lessonOfferModel.js";
+import { privateLessonScheduled, privateLessonClosed, lessonCancelled } from "../utils/notices.js";
 import { addDays, dateFromToday, isValidDate, isValidTime, mondayOf } from "../utils/schedule.js";
 
 class HttpError extends Error {
@@ -295,6 +297,7 @@ export const createPrivateLesson = handle(async (req, res) => {
     adminId: req.user.id,
   });
   privateLessonScheduled(lesson); // FSDP-54: tell the student (website + email)
+  if (lesson.offer) sendOfferNotice(lesson.offer.id);
   res.status(201).json({ lesson });
 });
 
@@ -309,6 +312,17 @@ export const schedulePrivateLesson = handle(async (req, res) => {
     adminId: req.user.id,
   });
   privateLessonScheduled(lesson); // FSDP-54: tell the student (website + email)
+  if (lesson.offer) sendOfferNotice(lesson.offer.id);
+  res.json({ lesson });
+});
+
+export const changePrivateLessonInstructor = handle(async (req, res) => {
+  const lesson = await Lessons.changeInstructor({
+    lessonId: parseId(req.params.id, "Lesson ID"),
+    instructorId: parseId((req.body || {}).instructorId, "Instructor"),
+    adminId: req.user.id,
+  });
+  if (lesson.offer) sendOfferNotice(lesson.offer.id);
   res.json({ lesson });
 });
 
@@ -327,6 +341,57 @@ export const recordPrivateLessonOutcome = handle(async (req, res) => {
   if (!LESSON_OUTCOMES.includes(outcome)) throw badRequest("Outcome must be completed or no_show.");
   const lesson = await Lessons.recordOutcome({ lessonId: parseId(req.params.id, "Lesson ID"), outcome });
   res.json({ lesson });
+});
+
+export const listCoverRequests = handle(async (req, res) => {
+  const view = req.query.view || "open";
+  if (!Cover.COVER_VIEWS.includes(view)) throw badRequest("View must be open or recent.");
+  res.json({ view, ...(await Cover.listCoverRequests(view)) });
+});
+
+export const getCoverAvailability = handle(async (req, res) => {
+  const request = await Cover.findCoverRequest(parseId(req.params.id, "Cover request"));
+  if (!request) throw notFound("Cover request not found.");
+  const { session } = request;
+  const declinedIds = new Set(request.declined.map((d) => d.id));
+  const instructors = await Lessons.listInstructorAvailability({
+    date: session.date,
+    startTime: session.startTime,
+    endTime: session.endTime,
+    excludeSessionId: session.id,
+  });
+  res.json({
+    instructors: instructors
+      .filter((i) => i.id !== request.originalInstructor.id && i.id !== request.teachingInstructor.id)
+      .map((i) => ({ ...i, declined: declinedIds.has(i.id) })),
+  });
+});
+
+export const offerCover = handle(async (req, res) => {
+  const result = await Cover.offerCover({
+    requestId: parseId(req.params.id, "Cover request"),
+    instructorId: parseId((req.body || {}).instructorId, "Instructor"),
+    adminId: req.user.id,
+  });
+  sendOfferNotice(result.offerId);
+  res.json({ request: result.request });
+});
+
+export const cancelCoverLesson = handle(async (req, res) => {
+  const reason = text((req.body || {}).reason, "Reason", { max: 300 });
+  const result = await Cover.cancelCoverLesson({
+    requestId: parseId(req.params.id, "Cover request"),
+    user: req.user,
+    reason,
+  });
+  if (result.session) {
+    for (const a of result.affected) lessonCancelled(a.studentId, result.session, a.refunded);
+  }
+  res.json({
+    request: result.request,
+    studentsTold: result.affected.length,
+    creditsReturned: result.affected.reduce((sum, a) => sum + a.refunded, 0),
+  });
 });
 
 function plural(n, one, many) {
