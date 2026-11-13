@@ -115,7 +115,9 @@ async function assess(userId) {
       name: belt.name, colour: belt.colour, awardedOn: belt.belt_awarded_on,
       monthsAtBelt, daysAtBelt: Number(belt.days_at_belt) || 0,
     },
-    nextBelt: { id: nextBelt.id, name: nextBelt.name, colour: nextBelt.colour },
+    // ladder ('adult' | 'children') lets the page explain that a children's
+    // grading also covers earlier grades, as the children's syllabus states.
+    nextBelt: { id: nextBelt.id, name: nextBelt.name, colour: nextBelt.colour, ladder: nextBelt.ladder },
     atHighestBelt: false,
     progress: {
       classes: {

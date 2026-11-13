@@ -57,7 +57,7 @@
 
 .grad-applied { margin: 0; padding: 0.7rem 0.9rem; border-radius: 10px; background: var(--prog-soft); font-size: 0.88rem; }
 
-/* ---------- Apply and pay the exam fee ---------- */
+/* ---------- Apply and pay the exam fee (FSDP-65) ---------- */
 .grad-notice {
   margin: 0; padding: 0.9rem 1.1rem; border-radius: var(--prog-radius);
   background: var(--prog-soft); color: var(--prog-text); font-size: 0.92rem;
@@ -77,10 +77,19 @@
 
 .grad-apply-note { margin: 0; padding-top: 0.75rem; border-top: 1px solid var(--prog-line); font-size: 0.88rem; color: var(--prog-muted); }
 
-.grad-syllabus { list-style: none; counter-reset: syl; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+/* Show about four techniques, then scroll the rest -- keeps the card short so
+   the "Next grading" card beside it isn't left with a long empty gap. */
+.grad-syllabus {
+  list-style: none; counter-reset: syl; margin: 0; padding: 0 0.4rem 0 0;
+  display: flex; flex-direction: column; gap: 0.4rem;
+  max-height: 16.5rem; overflow-y: auto; overscroll-behavior: contain;
+}
+
+.grad-syllabus::-webkit-scrollbar { width: 8px; }
+.grad-syllabus::-webkit-scrollbar-thumb { background: var(--prog-line); border-radius: 999px; }
 
 .grad-syllabus li {
-  counter-increment: syl; display: flex; align-items: center; gap: 0.7rem;
+  counter-increment: syl; display: flex; align-items: flex-start; gap: 0.7rem;
   padding: 0.5rem 0.6rem; border-radius: 10px; font-size: 0.92rem;
 }
 
@@ -90,6 +99,20 @@
   content: counter(syl); flex: 0 0 auto; display: inline-grid; place-items: center;
   width: 1.6rem; height: 1.6rem; border-radius: 7px; background: var(--prog-soft);
   font-size: 0.75rem; font-weight: 700; color: var(--prog-muted);
+}
+
+/* Syllabus items: technique on top, the attacks under it (migration 013). */
+.grad-syllabus-intro { margin: 0; font-size: 0.88rem; }
+
+.grad-syl-text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; padding-top: 0.15rem; }
+
+.grad-syl-tech { font-weight: 650; color: var(--prog-text); }
+
+.grad-syl-detail { font-size: 0.86rem; color: var(--prog-muted); line-height: 1.45; }
+
+.grad-syllabus-note {
+  margin: 0; padding: 0.65rem 0.85rem; border-radius: 10px;
+  background: var(--prog-soft); font-size: 0.84rem; color: var(--prog-text);
 }
 
 @media (max-width: 860px) {

@@ -64,7 +64,7 @@ export async function findTrainingSinceBelt(userId) {
 // beltModel.findCurrentBelt.
 export async function findNextBelt(userId) {
   const result = await pool.query(
-    `SELECT n.id, n.name, n.colour, n.rank_order,
+    `SELECT n.id, n.name, n.colour, n.rank_order, n.ladder,
             n.min_months_at_rank, n.min_classes_at_rank
      FROM student_profiles p
      JOIN belt_ranks current ON current.id = p.current_belt_id
@@ -139,7 +139,7 @@ export async function findApplicationForSession(userId, gradingSessionId) {
 }
 
 // ---------------------------------------------------------------------
-// apply for grading and pay the exam fee
+// FSDP-65: apply for grading and pay the exam fee
 // ---------------------------------------------------------------------
 
 // The exam fee for grading TO a belt, in cents, from the ASK Grading SOP rows

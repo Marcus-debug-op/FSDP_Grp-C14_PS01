@@ -145,25 +145,65 @@ function Body({ data, error, cancelled }) {
           nextBelt={nextBelt}
         />
 
-        <article className="prog-card">
-          <div className="prog-card-head">
-            <h2 className="prog-card-title">What you'll demonstrate</h2>
-            {syllabus.length > 0 && <span className="prog-count">{syllabus.length}</span>}
-          </div>
-          {syllabus.length > 0 ? (
-            <ol className="grad-syllabus">
-              {syllabus.map((item) => <li key={item}>{item}</li>)}
-            </ol>
-          ) : (
-            <p className="prog-muted">The {nextBelt.name} syllabus hasn't been published yet.</p>
-          )}
-        </article>
+        <SyllabusCard syllabus={syllabus} nextBelt={nextBelt} />
       </div>
 
       <p className="prog-footnote">
         <Link to="/belt-progress">Back to My Belt</Link>
       </p>
     </>
+  );
+}
+
+// What the student must show at the grading, from belt_requirements
+// (migration 013, transcribed from the official syllabus sheets).
+//
+// Each row is stored as "Technique: what is tested", e.g. "Ikkyo: Katatedori,
+// Shomenuchi". The part before the first ": " is shown as the heading of the
+// item; a row without one is shown whole.
+function SyllabusCard({ syllabus, nextBelt }) {
+  const items = syllabus.map((row) => {
+    const split = row.indexOf(": ");
+    return split > 0
+      ? { technique: row.slice(0, split), detail: row.slice(split + 2) }
+      : { technique: row, detail: "" };
+  });
+
+  return (
+    <article className="prog-card">
+      <div className="prog-card-head">
+        <h2 className="prog-card-title">What you'll demonstrate</h2>
+        {items.length > 0 && <span className="prog-count">{items.length}</span>}
+      </div>
+
+      {items.length > 0 ? (
+        <>
+          <p className="prog-muted grad-syllabus-intro">
+            The {nextBelt.name} grading covers these techniques and the attacks listed with each.
+          </p>
+          <ol className="grad-syllabus">
+            {items.map((item, i) => (
+              <li key={i}>
+                <span className="grad-syl-text">
+                  <span className="grad-syl-tech">{item.technique}</span>
+                  {item.detail && <span className="grad-syl-detail">{item.detail}</span>}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {/* The children's sheets say each grade covers the grades before it
+              ("Syllabus coverage" bars, and Part 2 "adds on to Part 1"). The
+              adult sheet says no such thing, so this is only shown for children. */}
+          {nextBelt.ladder === "children" && (
+            <p className="grad-syllabus-note">
+              Children's gradings can also include techniques from earlier grades, so keep practising those too.
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="prog-muted">The {nextBelt.name} syllabus hasn't been published yet.</p>
+      )}
+    </article>
   );
 }
 
@@ -201,7 +241,7 @@ function Stat({ label, value, unit, percent, met, note }) {
   );
 }
 
-// the Apply button, or a line saying why there isn't one.
+// FSDP-65: the Apply button, or a line saying why there isn't one.
 //
 // The button only appears when the server says canApply -- eligible, before
 // the deadline, not already applied, and with an exam fee set. The server
