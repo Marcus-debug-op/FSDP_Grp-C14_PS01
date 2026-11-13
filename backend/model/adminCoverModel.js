@@ -125,12 +125,14 @@ async function lockOpenRequest(client, requestId) {
   const result = await client.query(
     `SELECT cr.id, cr.status, cr.instructor_id AS original_id, cr.requested_at,
             cs.id AS session_id, cs.status AS session_status, cs.instructor_id AS teaching_id,
+            COALESCE(cs.centre_id, c.centre_id) AS centre_id,
             to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
             ${HAS_STARTED} AS has_started
      FROM cover_requests cr
      JOIN class_sessions cs ON cs.id = cr.session_id
+     JOIN classes c ON c.id = cs.class_id
      WHERE cr.id = $1
      FOR UPDATE OF cr`,
     [requestId]
@@ -165,6 +167,7 @@ export async function offerCover({ requestId, instructorId, adminId }) {
     await assertInstructorFree(client, {
       instructorId,
       instructorName: name,
+      centreId: request.centre_id,
       date: request.session_date,
       startTime: request.start_time,
       endTime: request.end_time,

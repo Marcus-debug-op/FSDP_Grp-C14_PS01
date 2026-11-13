@@ -5,7 +5,8 @@ function optionText(i) {
   if (i.declined) return `${i.name} - already declined`;
   if (i.isFree) return i.name;
   const c = i.conflicts[0];
-  return `${i.name} - busy, ${c.label} ${formatTime(c.startTime)} to ${formatTime(c.endTime)}`;
+  const where = c.travelOnly ? ` at ${c.centreName}, too close to travel` : "";
+  return `${i.name} - busy, ${c.label} ${formatTime(c.startTime)} to ${formatTime(c.endTime)}${where}`;
 }
 
 export default function OfferRow({ colSpan, prompt, hint, loadInstructors, onOffer, onClose, submitLabel = "Send Offer" }) {

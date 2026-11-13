@@ -282,8 +282,9 @@ export const listPrivateLessons = handle(async (req, res) => {
 export const getInstructorAvailability = handle(async (req, res) => {
   const date = validDate(req.query.date, "Lesson date");
   const { startTime, endTime } = timeRange(req.query.startTime, req.query.endTime);
+  const centreId = parseId(req.query.centreId, "Dojo");
   const excludeLessonId = optionalId(req.query.lessonId, "Lesson ID") || null;
-  res.json({ instructors: await Lessons.listInstructorAvailability({ date, startTime, endTime, excludeLessonId }) });
+  res.json({ instructors: await Lessons.listInstructorAvailability({ date, startTime, endTime, centreId, excludeLessonId }) });
 });
 
 export const createPrivateLesson = handle(async (req, res) => {
@@ -358,6 +359,7 @@ export const getCoverAvailability = handle(async (req, res) => {
     date: session.date,
     startTime: session.startTime,
     endTime: session.endTime,
+    centreId: session.centre.id,
     excludeSessionId: session.id,
   });
   res.json({
