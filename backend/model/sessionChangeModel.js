@@ -1,5 +1,5 @@
-// MODEL: an admin, or the instructor teaching it, cancels a session or moves
-// it to another dojo for the day (FSDP-56). Students who booked it get their
+// MODEL: an admin cancels a session or moves it to another dojo for the day
+// (FSDP-56). Instructors can't: they use "Can't make it" (FSDP-69) instead. Students who booked it get their
 // credits back (if cancelled) and a notice; see utils/notices.js.
 // Columns centre_id, change_note and changed_at come from migration 011.
 import pool from "../db.js";
@@ -24,12 +24,11 @@ const FROM_SESSION = `
   JOIN classes cl ON cl.id = cs.class_id
   JOIN centres ce ON ce.id = COALESCE(cs.centre_id, cl.centre_id)`;
 
-// Admins can change any session; instructors only the ones they teach.
+// Only admins can cancel or move a session. The route already checks this;
+// checking again here keeps it true if the model is called from somewhere else.
 function checkAllowed(session, user) {
+  if (user?.role !== "admin") throw new ChangeError(403, "Only an admin can cancel or move a lesson.");
   if (!session) throw new ChangeError(404, "That lesson couldn't be found.");
-  if (user.role === "instructor" && session.instructor_id !== user.id) {
-    throw new ChangeError(403, "You can only change lessons you teach.");
-  }
 }
 
 // Details for the change panel: the session, how many students booked it,

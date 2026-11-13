@@ -1,5 +1,4 @@
-// CONTROLLER: cancel a session or move it to another dojo (FSDP-56).
-// Admins can change any session, instructors only the ones they teach.
+// CONTROLLER: cancel a session or move it to another dojo (FSDP-56). Admins only.
 import * as Change from "../model/sessionChangeModel.js";
 import * as Notices from "../utils/notices.js";
 

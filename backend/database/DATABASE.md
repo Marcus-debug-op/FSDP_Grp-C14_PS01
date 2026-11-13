@@ -80,7 +80,7 @@ Instructor-side attendance (roster) also writes to `attendance`. Use `method = '
   where a lesson is should use `COALESCE(cs.centre_id, cl.centre_id)`.
 - `class_sessions.change_note` is the reason students see; `changed_at` is when it changed.
 - Cancel or move a session only through `POST /api/sessions/:id/cancel` or `/move`
-  (admins: any session, instructors: their own). That returns booked students' credits
+  (admins only; instructors use "Can't make it", FSDP-69). That returns booked students' credits
   and sends their notices. Don't set `class_sessions.status = 'cancelled'` directly.
 - When the dojo cancels a session, bookings stay `booked` (so students still see it marked
   "Cancelled") and the credits come back as `booking_refund` rows.
