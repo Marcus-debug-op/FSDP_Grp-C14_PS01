@@ -1,6 +1,6 @@
 import * as Applications from "../model/membershipApplicationAdminModel.js";
 
-const allowedStatuses = new Set(['all','pending','approved','rejected']);
+const allowedStatuses = new Set(['action','all','pending','approved','rejected']);
 
 export async function list(req, res, next) {
   try {

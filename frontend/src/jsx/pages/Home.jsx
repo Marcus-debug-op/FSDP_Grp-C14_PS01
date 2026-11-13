@@ -41,7 +41,7 @@ const steps = [
 // Key facts about the school.
 const stats = [
   { value: "1988", label: "Founded" },
-  { value: "60+", label: "Dojos" },
+  { value: "60+", label: "Dojos in Singapore & overseas" },
   { value: "10,000+", label: "Members" },
 ];
 
@@ -147,6 +147,9 @@ function HomePage() {
               </ScrollReveal>
             ))}
           </ol>
+          <p className="center" style={{ marginTop: "2.5rem" }}>
+            Questions about joining? <Link to="/join#faq">Read the FAQ <span aria-hidden="true">→</span></Link>
+          </p>
         </div>
       </section>
 
@@ -173,7 +176,7 @@ function HomePage() {
         <ScrollReveal className="container center">
           <h2>Find your class.</h2>
           <p>See what is available for adults, children and more before you sign up.</p>
-          <Link to="/classes" className="btn btn-light">See Full Timetable</Link>
+          <Link to="/schedule" className="btn btn-light">See Full Timetable</Link>
         </ScrollReveal>
       </section>
     </>

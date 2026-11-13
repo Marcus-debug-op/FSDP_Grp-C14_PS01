@@ -1,0 +1,20 @@
+/* Public Contact page. Uses the site's shared colours from index.css. */
+.ct-hero { padding-bottom: 3rem; }
+.ct-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+.ct-card { background: var(--bg); border: 1px solid var(--line); border-top: 4px solid var(--accent); padding: 1.6rem; box-shadow: 0 10px 30px rgba(0,0,0,.05); }
+.ct-card h2 { font-size: 1.5rem; margin: 0 0 1rem; }
+.ct-card p { margin: 0 0 0.4rem; }
+.ct-strong { font-weight: 700; }
+.ct-row { display: flex; align-items: center; gap: 0.9rem; padding: 0.85rem 0; border-top: 1px solid var(--line); color: var(--text); text-decoration: none; font-weight: 600; overflow-wrap: anywhere; }
+.ct-row:hover { color: var(--accent-text); }
+.ct-label { display: inline-block; min-width: 4.2rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-text); }
+.ct-hours { border-top: 1px solid var(--line); padding-top: 0.85rem; }
+.ct-hours dl { margin: 0.5rem 0 0; display: grid; gap: 0.3rem; }
+.ct-hours dl div { display: flex; justify-content: space-between; gap: 1rem; }
+.ct-hours dt { color: var(--muted); }
+.ct-hours dd { margin: 0; font-weight: 600; }
+.ct-muted { color: var(--muted); }
+.ct-topics { list-style: none; padding: 0; margin: 1.5rem 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 1rem; }
+.ct-topics a { display: block; border: 1px solid var(--line); padding: 1.1rem 1.2rem; color: var(--text); text-decoration: none; font-weight: 600; }
+.ct-topics a:hover { border-color: var(--accent); color: var(--accent-text); }
+@media (max-width: 800px) { .ct-grid { grid-template-columns: 1fr; } }

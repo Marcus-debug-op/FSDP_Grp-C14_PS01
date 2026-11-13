@@ -51,6 +51,10 @@ export default function PaymentSuccess() {
   if (error) {
     title = "Something went wrong.";
     body = error;
+  } else if (payment?.status === "succeeded" && payment.isRegistration) {
+    // New-member registration: paid, but membership waits for photo check and Shihan approval.
+    title = "Payment received.";
+    body = `Thank you. Your ${fmtMoney(payment.amountCents)} registration fee is confirmed. Your membership becomes active once your profile photo is accepted and the Shihan approves your application. You can follow its progress on your profile.`;
   } else if (payment?.status === "succeeded") {
     title = "Payment confirmed.";
     body = payment.purpose === "membership"
@@ -78,7 +82,10 @@ export default function PaymentSuccess() {
               {payment?.status === "failed" && (
                 <Link to="/payments" className="sp-btn sp-btn-secondary">Try again</Link>
               )}
-              {payment?.status === "succeeded" && payment.purpose === "membership" && (
+              {payment?.status === "succeeded" && payment.isRegistration && (
+                <Link to="/profile" className="sp-btn sp-btn-secondary">View application status</Link>
+              )}
+              {payment?.status === "succeeded" && payment.purpose === "membership" && !payment.isRegistration && (
                 <Link to="/payments" className="sp-btn sp-btn-secondary">Buy lesson credits</Link>
               )}
             </div>

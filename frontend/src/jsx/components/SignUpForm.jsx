@@ -287,53 +287,64 @@ export default function SignUpForm() {
 
         {step === 1 && <>
           <h2>Your training experience</h2>
-          <p className="signup-subtitle">We welcome everyone, whether this is your first class or you're returning to the mat.</p>
+          <p className="signup-subtitle">Beginners are always welcome. If you have trained before, tell us a little about it.</p>
           <label className="signup-experience-toggle">
             <input
               type="checkbox"
               checked={details.experienceLevel === "experienced"}
               onChange={(event) => toggleExperience(event.target.checked)}
             />
-            <span><strong>I have previous Aikido experience</strong><small>Leave unchecked if you're just starting out.</small></span>
+            <span><strong>I have previous Aikido experience</strong></span>
           </label>
           {details.experienceLevel === "experienced" ? <div className="signup-extra-fields">
             <label>Previous rank / belt <input placeholder="e.g. 5th kyu" maxLength={100} value={details.previousRank} onChange={e => update("previousRank", e.target.value)} /></label>
             <label>Training background <textarea maxLength={1000} rows={3} placeholder="Previous dojo, years of training..." value={details.experienceNotes} onChange={e => update("experienceNotes", e.target.value)} /></label>
-            <label>Supporting certificate <span className="signup-optional">(optional · PDF, PNG or JPG · max 2 MB)</span><input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={chooseFile} /></label>
-            {experienceFile && <p className="form-hint">Selected: {experienceFile.name}</p>}
-          </div> : <p className="signup-soft-note">No previous experience needed. You can continue to the membership step.</p>}
+            <div className="signup-file-field">
+              <span className="signup-file-title">Grading certificate <span className="signup-optional">(optional)</span></span>
+              <div className="signup-file-row">
+                <label className="signup-photo-upload">{experienceFile ? "Replace file" : "Upload file"}
+                  <input type="file" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg" onChange={chooseFile} />
+                </label>
+                {experienceFile
+                  ? <span className="signup-file-name">{experienceFile.name} <button type="button" className="signup-remove-photo" onClick={() => setExperienceFile(null)}>Remove</button></span>
+                  : <small>PDF, PNG or JPG · Max 2 MB</small>}
+              </div>
+            </div>
+          </div> : null}
         </>}
 
         {step === 2 && <>
           <h2>Choose your membership</h2>
-          <p className="signup-subtitle">Select your registration package. Payment is completed securely after profile setup.</p>
+          <p className="signup-subtitle">You will pay securely after completing your profile. Membership starts once the Shihan approves your application.</p>
           {planLoading && <p role="status" className="signup-soft-note">Loading membership options...</p>}
           {planError && <p role="alert" className="signup-soft-note">Could not load membership plans: {planError}</p>}
           {!planLoading && !planError && plans.length === 0 && (
             <p role="alert" className="signup-soft-note">No registration package is available. Please contact the team.</p>
           )}
           {!planLoading && !planError && plans.map((plan) => (
-            <label key={plan.id} className="signup-membership-card" style={{ display: "block", cursor: "pointer", marginBottom: "1rem" }}>
-              <div className="signup-plan-top">
-                <span>NEW STUDENT REGISTRATION</span>
-                <span className="signup-plan-tag">{plan.durationMonths} MONTHS</span>
+            <label key={plan.id} className={`signup-plan-card${selectedPlanId === plan.id ? " is-selected" : ""}`}>
+              <input
+                type="radio"
+                className="signup-plan-radio"
+                name="registrationPlan"
+                value={plan.id}
+                checked={selectedPlanId === plan.id}
+                onChange={() => setSelectedPlanId(plan.id)}
+                aria-label={`Select ${plan.name}`}
+              />
+              <div className="signup-plan-head">
+                <div>
+                  <span className="signup-plan-eyebrow">New member</span>
+                  <h3>{plan.name}</h3>
+                </div>
+                <div className="signup-plan-price"><strong>S${(plan.priceCents / 100).toFixed(2)}</strong><span>one-time fee</span></div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginTop: "1rem" }}>
-                <h3 style={{ margin: 0 }}>{plan.name}</h3>
-                <input
-                  type="radio"
-                  name="registrationPlan"
-                  value={plan.id}
-                  checked={selectedPlanId === plan.id}
-                  onChange={() => setSelectedPlanId(plan.id)}
-                  aria-label={`Select ${plan.name}`}
-                />
-              </div>
-              <p style={{ marginTop: ".75rem" }}><strong>SGD {(plan.priceCents / 100).toFixed(2)}</strong> one-time registration fee (includes current-year membership, handbook and membership book)</p>
-              <div className="signup-plan-note">
-                <strong>Payment and Shihan approval required for membership activation</strong>
-                <span>Complete your profile next, then proceed to Stripe Checkout. Annual renewal is S$48 in subsequent years; not charged again at signup. Training passes and attire are separate.</span>
-              </div>
+              <ul className="signup-plan-includes" aria-label="Included">
+                <li>Membership for the current year</li>
+                <li>Aikido Shinju-Kai handbook</li>
+                <li>Membership book</li>
+              </ul>
+              <p className="signup-plan-foot">Annual renewal S$48 · Training passes and attire sold separately</p>
             </label>
           ))}
         </>}
@@ -368,7 +379,7 @@ export default function SignUpForm() {
                 {centres.map(c => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
               </select>
               {centres.some(c=>String(c.id)===String(preferredCentreId) && c.name === 'ASK Headquarters Dojo') &&
-                <p role="status" className="form-hint">ASK HQ selected: our admin team will receive an in-app coordination alert for your first class, HQ session pass and training attire.</p>}
+                <p role="status" className="form-hint">Our HQ team will contact you to arrange your first class, session pass and training attire.</p>}
               {centreError && <small role="alert">Could not load dojos: {centreError}</small>}
               {!centreLoading && !centreError && centres.length === 0 && <small role="alert">No active dojos available.</small>}
             </label>
@@ -390,7 +401,7 @@ export default function SignUpForm() {
 
             <label className="signup-span-full">Your training goal <textarea required maxLength={500} rows={3} placeholder="What would you like to achieve through Aikido?" value={details.trainingGoal} onChange={e => update("trainingGoal", e.target.value)} /></label>
           </div>
-          <p className="signup-soft-note">When you finish, your pending account will be created and you will proceed to secure payment.</p>
+          <p className="signup-soft-note">Next: secure payment with Stripe.</p>
         </>}
       </div>
 

@@ -3,8 +3,10 @@ import DojoCard from "../components/DojoCard.jsx";
 import ScrollReveal from "../components/ScrollReveal.jsx";
 import { dojos, REGIONS } from "../../js/data/dojos.js";
 import "../../css/discover.css";
+import usePageTitle from "../../js/hooks/usePageTitle.js";
 
 export default function Dojos() {
+  usePageTitle("Find a dojo");
   const [region, setRegion] = useState("All");
   const [query, setQuery] = useState("");
   const [hideUnavailable, setHideUnavailable] = useState(true);

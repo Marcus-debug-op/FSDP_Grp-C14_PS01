@@ -10,6 +10,10 @@ import Home from "./pages/Home.jsx";
 import PublicTimetable from "./pages/PublicTimetable.jsx";
 import About from "./pages/About.jsx";
 import Dojos from "./pages/Dojos.jsx";
+import JoinFees from "./pages/JoinFees.jsx";
+import ClassesGuide from "./pages/ClassesGuide.jsx";
+import Contact from "./pages/Contact.jsx";
+import NotFound from "./pages/NotFound.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Payments from "./pages/Payments.jsx";
@@ -51,9 +55,12 @@ export default function App() {
       <SiteFrame isPublicPage={isPublicPage} pathname={pathname}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/classes" element={<PublicTimetable />} />
+          <Route path="/classes" element={<ClassesGuide />} />
+          <Route path="/schedule" element={<PublicTimetable />} />
           <Route path="/dojos" element={<Dojos />} />
           <Route path="/about" element={<About />} />
+          <Route path="/join" element={<JoinFees />} />
+          <Route path="/contact" element={<Contact />} />
           {/* Sign In and Sign Up share one page with a toggle */}
           <Route path="/signin" element={<AuthPage />} />
           <Route path="/signup" element={<AuthPage />} />
@@ -90,7 +97,7 @@ export default function App() {
           <Route path="/instructor/grading" element={<ProtectedRoute role="instructor"><InstructorGrading /></ProtectedRoute>} />
           <Route path="/instructor/gradings/:id" element={<ProtectedRoute role="instructor"><InstructorGradingSession /></ProtectedRoute>} />
           {/* Any unknown address falls back to the homepage */}
-          <Route path="*" element={<Home />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </SiteFrame>
       </MembershipAccessProvider>

@@ -212,7 +212,7 @@ export default function StudentProfile() {
               <Field label="Training goal" value={profile.trainingGoal}/>
             </dl></section>
           </div>
-          <section className="stprofile-card stprofile-membership"><div><h2>Membership</h2><p>Plan selected during registration</p></div><div className="stprofile-member-right"><strong>{profile.membershipPlan === "annual" ? "1-year membership" : nice(profile.membershipPlan)}</strong><span className={profile.membershipStatus === "active" ? "stprofile-status active" : "stprofile-status"}>{profile.membershipStatus === "pending_payment" ? "Payment pending" : profile.membershipStatus === "active" ? "Active" : nice(profile.membershipStatus)}</span></div></section>
+          <section className="stprofile-card stprofile-membership"><div><h2>Membership</h2><p>Plan selected during registration</p></div><div className="stprofile-member-right"><strong>{profile.membershipPlan === "annual" ? "1-year membership" : nice(profile.membershipPlan)}</strong><span className={profile.membershipStatus === "active" ? "stprofile-status active" : "stprofile-status"}>{profile.membershipStatus === "active" ? "Active" : profile.membershipStatus === "pending_payment" ? (application?.paymentStatus === "succeeded" ? "Paid · awaiting approval" : "Payment pending") : nice(profile.membershipStatus)}</span></div></section>
           <p className="stprofile-footnote">Your registration status is updated from your application, verified payment and membership records. Membership activation also requires approval and an accepted profile photo. Passwords and uploaded documents are never displayed.</p>
         </>}
       </div>

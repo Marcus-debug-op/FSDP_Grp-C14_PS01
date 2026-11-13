@@ -57,6 +57,8 @@ export async function reapplyForMembership(note) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.message || 'Reconsideration could not be submitted.');
   return data;
+}
+
 // Notices about bookings, payments, lesson changes and 1-on-1s
 // (FSDP-47, 53, 54, 56). { unread, notices: [{ id, type, title, body, read, createdAt }] }
 export const getNotices = () => request("/api/student/notices");
