@@ -88,6 +88,67 @@ const MY_STUDENTS = `
   WHERE cs.instructor_id = $1 AND b.status = 'booked'
     AND cs.session_date >= ${TODAY} - INTERVAL '3 months'`;
 
+// Attendance at the instructor's classes for each of the last 8 weeks
+// (FSDP-71). Week 0 is the 7 days up to yesterday, week 7 the oldest. Today is
+// left out because its classes may not be marked yet. "Expected" is everyone on
+// the roster: booked, or already marked. "Attended" is present or late.
+export async function listWeeklyAttendance(instructorId) {
+  const result = await pool.query(
+    `WITH weeks AS (
+       SELECT k, ${TODAY} - 7 * (k + 1) AS from_date, ${TODAY} - 7 * k - 1 AS to_date
+       FROM generate_series(0, 7) AS k
+     ),
+     my_sessions AS (
+       SELECT cs.id, cs.session_date
+       FROM class_sessions cs
+       WHERE cs.instructor_id = $1 AND cs.status <> 'cancelled'
+         AND cs.session_date BETWEEN ${TODAY} - 56 AND ${TODAY} - 1
+     ),
+     expected AS (
+       SELECT s.session_date, a.status
+       FROM my_sessions s
+       JOIN LATERAL (
+         SELECT b.student_id FROM bookings b WHERE b.session_id = s.id AND b.status = 'booked'
+         UNION
+         SELECT a.student_id FROM attendance a WHERE a.session_id = s.id
+       ) x ON TRUE
+       LEFT JOIN attendance a ON a.session_id = s.id AND a.student_id = x.student_id
+     )
+     SELECT w.k,
+            to_char(w.from_date, 'YYYY-MM-DD') AS from_date,
+            to_char(w.to_date, 'YYYY-MM-DD') AS to_date,
+            (SELECT COUNT(*)::int FROM my_sessions s WHERE s.session_date BETWEEN w.from_date AND w.to_date) AS classes,
+            (SELECT COUNT(*)::int FROM expected e WHERE e.session_date BETWEEN w.from_date AND w.to_date) AS expected,
+            (SELECT COUNT(*)::int FROM expected e
+             WHERE e.session_date BETWEEN w.from_date AND w.to_date AND e.status IN ('present', 'late')) AS attended
+     FROM weeks w
+     ORDER BY w.k DESC`,
+    [instructorId]
+  );
+  return result.rows;
+}
+
+// Classes each of the instructor's students attended (at any dojo) in the last
+// 28 days and the 28 days before that, to spot anyone dropping off (FSDP-71).
+export async function listStudentAttendanceChange(instructorId) {
+  const result = await pool.query(
+    `WITH my_students AS (${MY_STUDENTS})
+     SELECT u.id, u.full_name, hc.name AS home_dojo,
+            COUNT(cs.id) FILTER (WHERE cs.session_date BETWEEN ${TODAY} - 28 AND ${TODAY} - 1)::int AS recent,
+            COUNT(cs.id) FILTER (WHERE cs.session_date BETWEEN ${TODAY} - 56 AND ${TODAY} - 29)::int AS previous,
+            to_char(MAX(cs.session_date), 'YYYY-MM-DD') AS last_attended
+     FROM my_students s
+     JOIN users u ON u.id = s.student_id
+     LEFT JOIN student_profiles sp ON sp.user_id = u.id
+     LEFT JOIN centres hc ON hc.id = sp.home_centre_id
+     LEFT JOIN attendance a ON a.student_id = u.id AND a.status IN ('present', 'late')
+     LEFT JOIN class_sessions cs ON cs.id = a.session_id AND cs.status <> 'cancelled' AND cs.session_date < ${TODAY}
+     GROUP BY u.id, u.full_name, hc.name`,
+    [instructorId]
+  );
+  return result.rows;
+}
+
 // Applications that still count. Withdrawn and rejected ones do not.
 const LIVE_APPLICATION = "ga.status NOT IN ('withdrawn', 'rejected')";
 
