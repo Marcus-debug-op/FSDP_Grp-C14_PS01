@@ -23,6 +23,7 @@ import AdminStudents from "./pages/admin/AdminStudents.jsx";
 import AdminMembershipApplications from "./pages/admin/AdminMembershipApplications.jsx";
 import AdminStudentProfile from "./pages/admin/AdminStudentProfile.jsx";
 import AdminPrivateLessons from "./pages/admin/AdminPrivateLessons.jsx";
+import AdminCoverRequests from "./pages/admin/AdminCoverRequests.jsx";
 import AdminGrading from "./pages/admin/AdminGrading.jsx";
 import AdminGradingApplications from "./pages/admin/AdminGradingApplications.jsx";
 import BeltProgress from "./pages/student/BeltProgress.jsx";
@@ -83,6 +84,7 @@ export default function App() {
           <Route path="/admin/students" element={<ProtectedRoute role="admin"><AdminStudents /></ProtectedRoute>} />
           <Route path="/admin/students/:id" element={<ProtectedRoute role="admin"><AdminStudentProfile /></ProtectedRoute>} />
           <Route path="/admin/private-lessons" element={<ProtectedRoute role="admin"><AdminPrivateLessons /></ProtectedRoute>} />
+          <Route path="/admin/cover-requests" element={<ProtectedRoute role="admin"><AdminCoverRequests /></ProtectedRoute>} />
           <Route path="/admin/grading" element={<ProtectedRoute role="admin"><AdminGrading /></ProtectedRoute>} />
           <Route path="/admin/grading/:id" element={<ProtectedRoute role="admin"><AdminGradingApplications /></ProtectedRoute>} />
           <Route path="/belt-progress" element={<ProtectedRoute activeMembership><BeltProgress /></ProtectedRoute>} />

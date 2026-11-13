@@ -11,6 +11,7 @@ const GROUPS = [
     links: [
       { to: "/admin/schedule", label: "Timetable", icon: "timetable" },
       { to: "/admin/private-lessons", label: "Private lessons", icon: "lessons" },
+      { to: "/admin/cover-requests", label: "Cover requests", icon: "cover" },
       { to: "/admin/grading", label: "Grading", icon: "grading" },
     ],
   },

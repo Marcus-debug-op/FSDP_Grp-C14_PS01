@@ -230,7 +230,7 @@
 .lesson-form { max-width: 620px; }
 .lesson-form > *, .lesson-row > * { min-width: 0; }
 .lesson-form select, .lesson-form input { width: 100%; min-width: 0; }
-.lesson-form select, .lesson-cancel input {
+.lesson-form select, .lesson-cancel input, .lesson-cancel select {
   font: inherit; font-weight: 400; padding: 0.75rem 0.9rem;
   background: #fff; color: var(--text); border: 1px solid #8a847c;
 }
@@ -253,6 +253,21 @@
 .lesson-cancel { display: grid; gap: 0.8rem; max-width: 520px; padding: 0.4rem 0 0.8rem; }
 .lesson-cancel p { margin: 0; }
 .lesson-cancel label { display: grid; gap: 0.35rem; font-weight: 600; }
+.offer-row select { width: 100%; min-width: 0; }
+.offer-tag {
+  display: inline-block; padding: 0.15rem 0.55rem; border-radius: 999px;
+  font-size: 0.8rem; font-weight: 600; line-height: 1.5; border: 1px solid transparent; white-space: nowrap;
+}
+.offer-ok { background: #e7f3ea; color: #1f5f32; border-color: #b9dcc3; }
+.offer-wait { background: #fdf3df; color: #7a4d00; border-color: #f0d7a4; }
+.offer-no { background: #fbe9e7; color: #8f2318; border-color: #f1c1bb; }
+.lesson-table .att-name + .offer-tag { margin-top: 0.3rem; }
+.cover-table .att-sub + .att-sub { margin-top: 0.15rem; }
+
+@container adm-main (max-width: 40rem) {
+  .adm-main .att-table td.lesson-actions { flex-wrap: wrap; align-items: center; gap: 0.6rem 1.2rem; padding-top: 0.6rem; }
+  .adm-main .att-table td.lesson-actions > * { margin-left: 0; white-space: nowrap; }
+}
 
 @media (max-width: 800px) {
   .lesson-row { grid-template-columns: 1fr; }
