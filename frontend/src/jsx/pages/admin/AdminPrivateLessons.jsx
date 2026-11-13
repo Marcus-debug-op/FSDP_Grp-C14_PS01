@@ -121,7 +121,7 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
     headingRef.current?.focus();
   }, []);
 
-  const slotReady = date && startTime && endTime && endTime > startTime;
+  const slotReady = centreId && date && startTime && endTime && endTime > startTime;
 
   useEffect(() => {
     if (!slotReady) {
@@ -129,7 +129,7 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
       return undefined;
     }
     let active = true;
-    getInstructorAvailability({ date, startTime, endTime, lessonId: request?.id })
+    getInstructorAvailability({ centreId, date, startTime, endTime, lessonId: request?.id })
       .then((list) => {
         if (!active) return;
         setInstructors(list);
@@ -139,7 +139,7 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
     return () => {
       active = false;
     };
-  }, [date, startTime, endTime, slotReady, request]);
+  }, [centreId, date, startTime, endTime, slotReady, request]);
 
   const cost = request ? request.creditCost : LESSON_COST;
   const short = student && student.credits < cost;
@@ -213,17 +213,22 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
           Instructor
           <select value={instructorId} onChange={(e) => setInstructorId(e.target.value)} disabled={!instructors} required>
             <option value="">
-              {!slotReady ? "Choose a date and time first" : !instructors ? "Checking who is free..." : `Choose an instructor (${freeCount} free)`}
+              {!slotReady ? "Choose a dojo, date and time first" : !instructors ? "Checking who is free..." : `Choose an instructor (${freeCount} free)`}
             </option>
             {(instructors || []).map((i) => (
               <option key={i.id} value={i.id} disabled={!i.isFree}>
                 {i.isFree
                   ? i.name
-                  : `${i.name} - busy, ${i.conflicts[0].label} ${formatTime(i.conflicts[0].startTime)} to ${formatTime(i.conflicts[0].endTime)}`}
+                  : `${i.name} - busy, ${i.conflicts[0].label} ${formatTime(i.conflicts[0].startTime)} to ${formatTime(i.conflicts[0].endTime)}${
+                      i.conflicts[0].travelOnly ? ` at ${i.conflicts[0].centreName}, too close to travel` : ""
+                    }`}
               </option>
             ))}
           </select>
-          <span className="form-hint">Only instructors with no class or private lesson at this time can be picked.</span>
+          <span className="form-hint">
+            Only instructors who are free can be picked. If their lesson before or after is at another dojo, it needs to be at
+            least 3 hours apart.
+          </span>
         </label>
 
         <label>
@@ -540,7 +545,7 @@ export default function AdminPrivateLessons() {
                       prompt={`Give ${l.student.name}'s lesson on ${when(l)} to another instructor. The student is not charged again.`}
                       hint="The new instructor gets a request to accept or decline."
                       loadInstructors={() =>
-                        getInstructorAvailability({ date: l.date, startTime: l.startTime, endTime: l.endTime, lessonId: l.id }).then((list) =>
+                        getInstructorAvailability({ centreId: l.centre.id, date: l.date, startTime: l.startTime, endTime: l.endTime, lessonId: l.id }).then((list) =>
                           list
                             .filter((i) => i.id !== l.instructor.id)
                             .map((i) => ({ ...i, declined: l.offer?.status === "declined" && l.offer.instructor.id === i.id }))

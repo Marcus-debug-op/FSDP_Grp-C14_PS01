@@ -95,50 +95,70 @@ const LATEST_PRIVATE_OFFER = `
   WHERE lo.private_lesson_id = pl.id AND lo.status <> 'withdrawn'
   ORDER BY lo.offered_at DESC, lo.id DESC LIMIT 1`;
 
+export const TRAVEL_GAP_HOURS = 3;
+
+function clashRule(centre, start, end) {
+  const overlaps = `${start} < $3::time AND ${end} > $2::time`;
+  const tooClose = `($1::date + ${start}) < ($1::date + $3::time) + INTERVAL '${TRAVEL_GAP_HOURS} hours'
+      AND ($1::date + ${end}) > ($1::date + $2::time) - INTERVAL '${TRAVEL_GAP_HOURS} hours'`;
+  return {
+    where: `CASE WHEN ${centre} = $6::int THEN ${overlaps} ELSE ${tooClose} END`,
+    travel: `NOT (${overlaps}) AS travel_only`,
+  };
+}
+
+const SESSION_RULE = clashRule("ce.id", "cs.start_time", "cs.end_time");
+const CLASS_RULE = clashRule("ce.id", "c.start_time", "c.end_time");
+const PRIVATE_RULE = clashRule("ce.id", "pl.start_time", "pl.end_time");
+
 const INSTRUCTOR_CONFLICTS = `
   SELECT cs.instructor_id, 'class' AS kind, c.title AS label, ce.name AS centre_name,
-         to_char(cs.start_time, 'HH24:MI') AS start_time, to_char(cs.end_time, 'HH24:MI') AS end_time
+         to_char(cs.start_time, 'HH24:MI') AS start_time, to_char(cs.end_time, 'HH24:MI') AS end_time,
+         ${SESSION_RULE.travel}
   FROM class_sessions cs
   JOIN classes c ON c.id = cs.class_id
   JOIN centres ce ON ce.id = COALESCE(cs.centre_id, c.centre_id)
   WHERE cs.session_date = $1::date AND cs.status <> 'cancelled'
-    AND cs.start_time < $3::time AND cs.end_time > $2::time
+    AND ${SESSION_RULE.where}
   UNION ALL
   SELECT c.instructor_id, 'class', c.title, ce.name,
-         to_char(c.start_time, 'HH24:MI'), to_char(c.end_time, 'HH24:MI')
+         to_char(c.start_time, 'HH24:MI'), to_char(c.end_time, 'HH24:MI'),
+         ${CLASS_RULE.travel}
   FROM classes c
   JOIN centres ce ON ce.id = c.centre_id
   WHERE c.is_active AND c.day_of_week % 7 = EXTRACT(DOW FROM $1::date)
-    AND c.start_time < $3::time AND c.end_time > $2::time
+    AND ${CLASS_RULE.where}
     AND NOT EXISTS (SELECT 1 FROM class_sessions cs2 WHERE cs2.class_id = c.id AND cs2.session_date = $1::date)
   UNION ALL
   SELECT pl.instructor_id, 'private', 'Private lesson', ce.name,
-         to_char(pl.start_time, 'HH24:MI'), to_char(pl.end_time, 'HH24:MI')
+         to_char(pl.start_time, 'HH24:MI'), to_char(pl.end_time, 'HH24:MI'),
+         ${PRIVATE_RULE.travel}
   FROM private_lessons pl
   JOIN centres ce ON ce.id = pl.centre_id
   WHERE pl.status = 'scheduled' AND pl.lesson_date = $1::date
     AND pl.id IS DISTINCT FROM $4::int
-    AND pl.start_time < $3::time AND pl.end_time > $2::time
+    AND ${PRIVATE_RULE.where}
     AND COALESCE((${LATEST_PRIVATE_OFFER}), 'accepted') <> 'declined'
   UNION ALL
   SELECT lo.instructor_id, 'cover', 'Cover offer: ' || c.title, ce.name,
-         to_char(cs.start_time, 'HH24:MI'), to_char(cs.end_time, 'HH24:MI')
+         to_char(cs.start_time, 'HH24:MI'), to_char(cs.end_time, 'HH24:MI'),
+         ${SESSION_RULE.travel}
   FROM lesson_offers lo
   JOIN class_sessions cs ON cs.id = lo.session_id
   JOIN classes c ON c.id = cs.class_id
   JOIN centres ce ON ce.id = COALESCE(cs.centre_id, c.centre_id)
   WHERE lo.status = 'pending' AND cs.session_date = $1::date AND cs.status <> 'cancelled'
     AND cs.id IS DISTINCT FROM $5::int
-    AND cs.start_time < $3::time AND cs.end_time > $2::time`;
+    AND ${SESSION_RULE.where}`;
 
 function toConflict(row) {
-  return { kind: row.kind, label: row.label, centreName: row.centre_name, startTime: row.start_time, endTime: row.end_time };
+  return { kind: row.kind, travelOnly: row.travel_only, label: row.label, centreName: row.centre_name, startTime: row.start_time, endTime: row.end_time };
 }
 
-export async function listInstructorAvailability({ date, startTime, endTime, excludeLessonId = null, excludeSessionId = null }) {
+export async function listInstructorAvailability({ date, startTime, endTime, centreId, excludeLessonId = null, excludeSessionId = null }) {
   const [instructors, conflicts] = await Promise.all([
     pool.query("SELECT id, full_name FROM users WHERE role = 'instructor' ORDER BY full_name"),
-    pool.query(INSTRUCTOR_CONFLICTS, [date, startTime, endTime, excludeLessonId, excludeSessionId]),
+    pool.query(INSTRUCTOR_CONFLICTS, [date, startTime, endTime, excludeLessonId, excludeSessionId, centreId]),
   ]);
   return instructors.rows.map((row) => {
     const busy = conflicts.rows.filter((c) => c.instructor_id === row.id).map(toConflict);
@@ -174,16 +194,22 @@ function describeClash(clash) {
   return clash.label;
 }
 
-export async function findInstructorClash(db, { instructorId, date, startTime, endTime, lessonId = null, sessionId = null }) {
+export async function findInstructorClash(db, { instructorId, centreId, date, startTime, endTime, lessonId = null, sessionId = null }) {
   const busy = await db.query(
-    `SELECT * FROM (${INSTRUCTOR_CONFLICTS}) conflicts WHERE instructor_id = $6 LIMIT 1`,
-    [date, startTime, endTime, lessonId, sessionId, instructorId]
+    `SELECT * FROM (${INSTRUCTOR_CONFLICTS}) conflicts WHERE instructor_id = $7 ORDER BY travel_only LIMIT 1`,
+    [date, startTime, endTime, lessonId, sessionId, centreId, instructorId]
   );
   return busy.rows[0] || null;
 }
 
-export async function assertInstructorFree(db, { instructorId, instructorName, date, startTime, endTime, lessonId = null, sessionId = null }) {
-  const clash = await findInstructorClash(db, { instructorId, date, startTime, endTime, lessonId, sessionId });
+export async function assertInstructorFree(db, { instructorId, instructorName, centreId, date, startTime, endTime, lessonId = null, sessionId = null }) {
+  const clash = await findInstructorClash(db, { instructorId, centreId, date, startTime, endTime, lessonId, sessionId });
+  if (clash?.travel_only) {
+    throw new LessonError(
+      409,
+      `${instructorName} has ${describeClash(clash)} at ${clash.centre_name}, ${formatClock(clash.start_time)} to ${formatClock(clash.end_time)}. Lessons at different dojos need at least ${TRAVEL_GAP_HOURS} hours between them.`
+    );
+  }
   if (clash) {
     throw new LessonError(
       409,
@@ -227,7 +253,7 @@ export async function scheduleLesson({ lessonId = null, studentId, centreId, ins
     await client.query("SELECT pg_advisory_xact_lock(7101, $1)", [instructorId]);
     await client.query("SELECT pg_advisory_xact_lock(7102, $1)", [studentId]);
 
-    await assertInstructorFree(client, { instructorId, instructorName, date, startTime, endTime, lessonId });
+    await assertInstructorFree(client, { instructorId, instructorName, centreId, date, startTime, endTime, lessonId });
 
     const studentClash = await client.query(
       `SELECT 'a private lesson' AS label FROM private_lessons
@@ -293,7 +319,7 @@ export async function scheduleLesson({ lessonId = null, studentId, centreId, ins
 export async function changeInstructor({ lessonId, instructorId, adminId }) {
   return withTransaction(async (client) => {
     const existing = await client.query(
-      `SELECT pl.status, pl.instructor_id, to_char(pl.lesson_date, 'YYYY-MM-DD') AS lesson_date,
+      `SELECT pl.status, pl.instructor_id, pl.centre_id, to_char(pl.lesson_date, 'YYYY-MM-DD') AS lesson_date,
               to_char(pl.start_time, 'HH24:MI') AS start_time, to_char(pl.end_time, 'HH24:MI') AS end_time,
               pl.lesson_date < ${SGT_TODAY} AS is_past,
               (${LATEST_PRIVATE_OFFER.replaceAll("pl.id", "$1")}) AS offer_status
@@ -318,6 +344,7 @@ export async function changeInstructor({ lessonId, instructorId, adminId }) {
     await assertInstructorFree(client, {
       instructorId,
       instructorName: instructor.rows[0].full_name,
+      centreId: lesson.centre_id,
       date: lesson.lesson_date,
       startTime: lesson.start_time,
       endTime: lesson.end_time,

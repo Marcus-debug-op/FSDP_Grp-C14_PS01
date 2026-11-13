@@ -249,7 +249,7 @@ export default function AdminCoverRequests() {
                         hint={
                           pending
                             ? `This takes the offer back from ${r.offer.instructor.name}.`
-                            : "They get a request to accept or decline. Instructors with a class, private lesson or another cover offer at this time can't be picked."
+                            : "They get a request to accept or decline. Busy instructors can't be picked. Lessons at another dojo need 3 hours between them."
                         }
                         loadInstructors={() => getCoverAvailability(r.id)}
                         onOffer={(instructorId) => sendOffer(r, instructorId)}
