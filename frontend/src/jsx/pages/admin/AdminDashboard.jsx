@@ -175,7 +175,7 @@ export default function AdminDashboard() {
   return (
     <section className="section">
       <div className="container">
-        <PageHeader eyebrow="Overview · All dojos" title="Admin Dashboard" lead="How classes and attendance are going across every dojo." />
+        <PageHeader feature eyebrow="Overview · All dojos" title="Admin Dashboard" lead="How classes and attendance are going across every dojo." />
 
         <div className="adm-toolbar">
           <div className="auth-toggle" role="group" aria-label="Dashboard view">
@@ -262,4 +262,4 @@ export default function AdminDashboard() {
       </div>
     </section>
   );
-}
+}

@@ -56,7 +56,7 @@ export default function AdminShell({ children }) {
       <a className="skip-link" href="#main">Skip to content</a>
 
       <header className="adm-topbar">
-        <Link to="/dashboard" className="adm-brand">
+        <Link to="/dashboard" className="adm-brand adm-topbar-brand">
           <img src="/images/logo.png" alt="" width="36" height="36" />
           <span className="adm-brand-text">
             <span className="adm-brand-name">Aikido Shinju-Kai</span>
@@ -73,6 +73,16 @@ export default function AdminShell({ children }) {
           <AdminIcon name={menuOpen ? "close" : "menu"} />
           <span>{menuOpen ? "Close" : "Menu"}</span>
         </button>
+        <div className="adm-topbar-user">
+          <span className="adm-user-text">
+            <span className="adm-user-name">{user?.fullName}</span>
+            <span className="adm-user-role">Admin</span>
+          </span>
+          <span className="adm-avatar" aria-hidden="true">{initial}</span>
+          <button type="button" className="adm-signout" onClick={handleSignOut} aria-label="Sign out" title="Sign out">
+            <AdminIcon name="signOut" size={18} />
+          </button>
+        </div>
       </header>
 
       <aside id="adm-sidebar" className="adm-sidebar" aria-label="Admin">
