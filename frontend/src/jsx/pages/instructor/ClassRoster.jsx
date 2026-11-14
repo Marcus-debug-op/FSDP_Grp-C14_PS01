@@ -4,6 +4,7 @@ import { getRoster, saveAttendance } from "../../../js/services/instructorServic
 import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
 import BackButton from "../../components/BackButton.jsx";
+import CantMakeIt from "../../components/CantMakeIt.jsx";
 import "../../../css/auth.css";
 import "../../../css/instructor.css";
 
@@ -93,7 +94,9 @@ export default function ClassRoster() {
 
           {session && (
             <>
-              <p className="eyebrow">{session.canMark ? "Taking attendance" : "Attendance record"}</p>
+              <p className="eyebrow">
+                {session.canMark ? "Taking attendance" : session.isFuture ? "Upcoming class" : "Attendance record"}
+              </p>
               <h1 className="roster-title">{session.title}</h1>
               <p className="lead">
                 {session.centre}, {formatTime(session.startTime)} - {formatTime(session.endTime)}
@@ -102,11 +105,15 @@ export default function ClassRoster() {
                 <p className="notice roster-closed">Attendance closed 24 hours after this class ended, so this roster is view only.</p>
               )}
 
+              {session.isFuture && (
+                <p className="notice roster-closed">Attendance opens on the day of the class.</p>
+              )}
+
               {session.canMark && (
                 <Link to={`/instructor/sessions/${id}/qr`} className="btn btn-primary btn-small roster-qr-btn">Show check-in QR code</Link>
               )}
-              
 
+              <CantMakeIt session={session} onChanged={setSession} />
             </>
           )}
 

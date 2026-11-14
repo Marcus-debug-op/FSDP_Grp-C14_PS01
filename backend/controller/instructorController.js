@@ -2,6 +2,8 @@
 // asks the model for data and sends the response.
 import * as Instructor from "../model/instructorModel.js";
 import { isValidDate } from "../utils/schedule.js";
+import { notify } from "../model/notificationModel.js";
+import { longDate, clock } from "../utils/notices.js";
 
 const ATTENDANCE_STATUSES = ["present", "absent"];
 
@@ -21,7 +23,18 @@ function publicSession(row) {
 // A session plus whether attendance can be changed right now.
 function publicRosterSession(row) {
   const canMark = row.status !== "cancelled" && !row.is_future && !row.attendance_closed;
-  return { ...publicSession(row), canMark };
+  return {
+    ...publicSession(row),
+    canMark,
+    // FSDP-69 "Can't make it": the latest cover request for this class
+    // (open / covered / cancelled, or null), and whether there's still time to ask.
+    coverStatus: row.cover_status,
+    canRequestCover: row.status === "scheduled" && row.can_request_cover && row.cover_status !== "open",
+    // Hasn't started, but it's too close to ask for cover online.
+    coverTooLate: row.status === "scheduled" && row.not_started && !row.can_request_cover && row.cover_status !== "open",
+    coverNoticeHours: Instructor.COVER_NOTICE_HOURS,
+    isFuture: row.is_future,
+  };
 }
 
 function publicRosterStudent(row) {
@@ -496,3 +509,65 @@ export const acceptOffer = (req, res, next) => answerOffer(req, res, next, true)
 
 // POST /api/instructor/offers/:id/decline   body: { reason }
 export const declineOffer = (req, res, next) => answerOffer(req, res, next, false);
+
+// ---------- Can't make it: cover requests (FSDP-69) ----------
+
+// Tells every admin by notice and email, linking to their Cover Requests page.
+async function tellAdminsAboutCover(requestId, session, instructorName, reason) {
+  const when = `${longDate(session.session_date)}, ${clock(session.start_time)} to ${clock(session.end_time)}`;
+  const adminIds = await Instructor.listAdminIds();
+  await Promise.all(adminIds.map((adminId) => notify({
+    userId: adminId,
+    type: "cover_request",
+    title: `Cover needed: ${session.title}, ${longDate(session.session_date)}`,
+    body: `${instructorName} can't teach ${session.title} at ${session.centre} on ${when}. Reason: ${reason}`,
+    dedupeKey: `cover-request:${requestId}:${adminId}`,
+    email: {
+      subject: `Cover needed: ${session.title}, ${longDate(session.session_date)}`,
+      paragraphs: [
+        `${instructorName} can't teach this class and has asked for cover.`,
+        `Class: ${session.title}`,
+        `When: ${when}`,
+        `Where: ${session.centre}`,
+        `Reason: ${reason}`,
+        "Please offer it to another instructor, or cancel it if nobody can take it.",
+      ],
+      button: { label: "Open Cover Requests", path: "/admin/cover-requests" },
+    },
+  })));
+}
+
+// POST /api/instructor/sessions/:id/cover-request   body: { reason }
+// The instructor can't teach this class. The lesson stays on for students; the
+// admin offers it to another instructor, who accepts it from their bell.
+export async function requestCover(req, res, next) {
+  try {
+    const session = await findOwnSession(req, res);
+    if (!session) return;
+
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    if (reason.length < 3) return res.status(400).json({ message: "Please say briefly why you can't make it." });
+    if (reason.length > 300) return res.status(400).json({ message: "Please keep the reason under 300 characters." });
+
+    if (session.status !== "scheduled") return res.status(400).json({ message: "This class is no longer scheduled." });
+    if (session.cover_status === "open") {
+      return res.status(409).json({ message: "You've already asked for cover. The admin is finding someone." });
+    }
+    if (!session.can_request_cover) {
+      return res.status(400).json({
+        message: `Cover must be asked for at least ${Instructor.COVER_NOTICE_HOURS} hours before the class starts. Please contact the dojo directly.`,
+      });
+    }
+
+    const requestId = await Instructor.createCoverRequest(session.id, req.user.id, reason);
+    if (!requestId) return res.status(409).json({ message: "Cover has already been asked for this class." });
+
+    const instructorName = await Instructor.findUserName(req.user.id);
+    await tellAdminsAboutCover(requestId, session, instructorName, reason);
+
+    const updated = await Instructor.findSession(session.id, req.user.id);
+    res.status(201).json({ session: publicRosterSession(updated) });
+  } catch (err) {
+    next(err);
+  }
+}

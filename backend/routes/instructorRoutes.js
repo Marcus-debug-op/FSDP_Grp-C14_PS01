@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import {
   listClasses, getCalendar, getGradingReadiness, listUpcomingGradings, getGradingApplicants, setApplicantApproval,
   getRoster, saveAttendance, getAttendanceTrends, listOffers, acceptOffer, declineOffer,
-  markPrivateLessonAttendance,
+  markPrivateLessonAttendance, requestCover,
 } from "../controller/instructorController.js";
 import { createQr } from "../controller/checkInController.js";
 
@@ -21,6 +21,7 @@ router.get("/gradings/:id/applicants", getGradingApplicants);
 router.put("/gradings/:id/applicants/:studentId/approval", setApplicantApproval);
 router.get("/sessions/:id/roster", getRoster);
 router.put("/sessions/:id/attendance", saveAttendance);
+router.post("/sessions/:id/cover-request", requestCover);   // FSDP-69: Can't make it
 router.post("/sessions/:id/qr", createQr);   // QR check-in code for this class
 router.put("/private-lessons/:id/attendance", markPrivateLessonAttendance);
 router.get("/offers", listOffers);           // FSDP-69: lessons the admin asked you to take

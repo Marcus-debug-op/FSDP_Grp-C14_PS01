@@ -39,6 +39,9 @@ export const getUpcomingGradings = () => request("/gradings").then((d) => d.grad
 export const getGradingApplicants = (gradingId) => request(`/gradings/${gradingId}/applicants`);
 export const setApplicantApproval = (gradingId, studentId, approved) =>
   request(`/gradings/${gradingId}/applicants/${studentId}/approval`, { method: "PUT", body: { approved } });
-export const getRoster = (sessionId) => request(`/sessions/${sessionId}/roster`);
+// FSDP-69 "Can't make it": returns the updated roster session.
+export const requestCover = (sessionId, reason) =>
+  request(`/sessions/${sessionId}/cover-request`, { method: "POST", body: { reason } }).then((d) => d.session);
+export const getRoster =(sessionId) => request(`/sessions/${sessionId}/roster`);
 export const saveAttendance = (sessionId, records) =>
   request(`/sessions/${sessionId}/attendance`, { method: "PUT", body: { records } });
