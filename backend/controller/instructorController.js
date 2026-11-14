@@ -17,6 +17,10 @@ function publicSession(row) {
     endTime: row.end_time,
     status: row.status,
     attendanceClosed: row.attendance_closed,
+    // Moved to another dojo for this day only (centre is already the new dojo).
+    venueChanged: row.venue_changed,
+    usualCentre: row.usual_centre,
+    changeNote: row.change_note,
   };
 }
 

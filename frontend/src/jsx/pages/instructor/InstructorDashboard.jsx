@@ -5,6 +5,7 @@ import { getToday } from "../../../js/services/instructorService.js";
 import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
 import PrivateLessonCard from "../../components/PrivateLessonCard.jsx";
+import MovedNote from "../../components/MovedNote.jsx";
 import ScrollReveal from "../../components/ScrollReveal.jsx";
 import useHeroScrollFade from "../../../js/hooks/useHeroScrollFade.js";
 import "../../../css/auth.css";
@@ -86,6 +87,7 @@ export default function InstructorDashboard() {
                       <div><dt>Booked</dt><dd>{item.booked}</dd></div>
                       <div><dt>Marked</dt><dd>{item.marked}</dd></div>
                     </dl>
+                    <MovedNote session={item} />
                     <Link to={`/instructor/classes/${item.id}`} className="btn btn-outline btn-small">
                       Take Attendance
                     </Link>

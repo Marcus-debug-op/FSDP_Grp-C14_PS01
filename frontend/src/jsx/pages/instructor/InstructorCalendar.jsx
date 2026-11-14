@@ -4,6 +4,7 @@ import { getCalendar } from "../../../js/services/instructorService.js";
 import { addDays, formatTime, todayString } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
 import PrivateLessonCard from "../../components/PrivateLessonCard.jsx";
+import MovedNote from "../../components/MovedNote.jsx";
 import "../../../css/auth.css";
 import "../../../css/instructor.css";
 
@@ -172,6 +173,7 @@ export default function InstructorCalendar() {
                       <div><dt>Booked</dt><dd>{item.booked}</dd></div>
                       <div><dt>Marked</dt><dd>{item.marked}</dd></div>
                     </dl>
+                    <MovedNote session={item} />
                     {item.date <= today ? (
                       <Link to={`/instructor/classes/${item.id}`} className="btn btn-outline btn-small">
                         {item.attendanceClosed ? "View Attendance" : "Take Attendance"}

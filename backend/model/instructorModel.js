@@ -9,6 +9,16 @@ const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 const ATTENDANCE_CLOSED =
   "NOW() > ((cs.session_date + cs.end_time) AT TIME ZONE 'Asia/Singapore' + INTERVAL '24 hours')";
 
+// Where a class session is held. An admin can move one session to another dojo
+// for the day (migration 011: class_sessions.centre_id, NULL = the class's usual
+// dojo), so `ce` is the dojo for that day and `usual` the class's normal one.
+const SESSION_DOJO_JOIN = `
+     JOIN centres ce ON ce.id = COALESCE(cs.centre_id, cl.centre_id)
+     JOIN centres usual ON usual.id = cl.centre_id`;
+const MOVED_FIELDS = `
+            (cs.centre_id IS NOT NULL AND cs.centre_id <> cl.centre_id) AS venue_changed,
+            usual.name AS usual_centre, cs.change_note`;
+
 // The instructor's classes on a date, or today if no date is given.
 export async function listClassesOn(instructorId, date) {
   const result = await pool.query(
@@ -16,14 +26,13 @@ export async function listClassesOn(instructorId, date) {
             to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
-            cs.status,
+            cs.status,${MOVED_FIELDS},
             ${ATTENDANCE_CLOSED} AS attendance_closed,
             (SELECT COUNT(*)::int FROM bookings b
              WHERE b.session_id = cs.id AND b.status = 'booked') AS booked,
             (SELECT COUNT(*)::int FROM attendance a WHERE a.session_id = cs.id) AS marked
      FROM class_sessions cs
-     JOIN classes cl ON cl.id = cs.class_id
-     JOIN centres ce ON ce.id = cl.centre_id
+     JOIN classes cl ON cl.id = cs.class_id${SESSION_DOJO_JOIN}
      WHERE cs.instructor_id = $1
        AND cs.session_date = COALESCE($2::date, ${TODAY})
        AND cs.status <> 'cancelled'
@@ -40,14 +49,13 @@ export async function listClassesBetween(instructorId, from, to) {
             to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
-            cs.status,
+            cs.status,${MOVED_FIELDS},
             ${ATTENDANCE_CLOSED} AS attendance_closed,
             (SELECT COUNT(*)::int FROM bookings b
              WHERE b.session_id = cs.id AND b.status = 'booked') AS booked,
             (SELECT COUNT(*)::int FROM attendance a WHERE a.session_id = cs.id) AS marked
      FROM class_sessions cs
-     JOIN classes cl ON cl.id = cs.class_id
-     JOIN centres ce ON ce.id = cl.centre_id
+     JOIN classes cl ON cl.id = cs.class_id${SESSION_DOJO_JOIN}
      WHERE cs.instructor_id = $1
        AND cs.session_date BETWEEN $2::date AND $3::date
        AND cs.status <> 'cancelled'
@@ -382,7 +390,7 @@ export async function findSession(sessionId, instructorId) {
             to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
-            cs.status,
+            cs.status,${MOVED_FIELDS},
             ${ATTENDANCE_CLOSED} AS attendance_closed,
             cs.session_date > ${TODAY} AS is_future,
             ${COVER_STILL_ALLOWED} AS can_request_cover,
@@ -391,8 +399,7 @@ export async function findSession(sessionId, instructorId) {
              WHERE cr.session_id = cs.id AND cr.instructor_id = $2
              ORDER BY cr.requested_at DESC, cr.id DESC LIMIT 1) AS cover_status
      FROM class_sessions cs
-     JOIN classes cl ON cl.id = cs.class_id
-     JOIN centres ce ON ce.id = cl.centre_id
+     JOIN classes cl ON cl.id = cs.class_id${SESSION_DOJO_JOIN}
      WHERE cs.id = $1 AND cs.instructor_id = $2`,
     [sessionId, instructorId]
   );

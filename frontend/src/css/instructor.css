@@ -117,6 +117,11 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
 .roster-footer .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .roster-footer + .notice { margin-top: 1.2rem; }
 
+/* A class moved to another dojo for one day. */
+.moved-note { margin: 0.8rem 0 0; padding: 0.5rem 0.75rem; border-left: 3px solid var(--accent); background: var(--bad-soft); font-size: 0.9rem; color: var(--text); }
+.moved-note strong { color: var(--accent-text); }
+.roster-panel ~ .moved-note, .lead + .moved-note { max-width: 46rem; }
+
 /* ---------- Students list (FSDP-72) ---------- */
 .student-list { margin-top: 0.8rem; }
 .student-row {
