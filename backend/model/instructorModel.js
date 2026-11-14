@@ -224,7 +224,8 @@ const LIVE_APPLICATION = "ga.status NOT IN ('withdrawn', 'rejected')";
 
 // Grading progress for the instructor's students. Classes are counted the same
 // way as the student's own grading page (gradingModel.findTrainingSinceBelt):
-// present or late, after the belt was awarded, plus external sessions.
+// present or late, after the belt was awarded, plus external sessions, plus
+// private (1-on-1) lessons the instructor marked Present (status 'completed').
 export async function listGradingProgress(instructorId) {
   const result = await pool.query(
     `WITH my_students AS (${MY_STUDENTS})
@@ -240,7 +241,11 @@ export async function listGradingProgress(instructorId) {
                AND cs.status <> 'cancelled' AND cs.session_date > sp.belt_awarded_on)
             + (SELECT COUNT(*)::int
                FROM external_attendance e
-               WHERE e.student_id = u.id AND e.attended_on > sp.belt_awarded_on) AS classes_since_belt,
+               WHERE e.student_id = u.id AND e.attended_on > sp.belt_awarded_on)
+            + (SELECT COUNT(*)::int
+               FROM private_lessons pl
+               WHERE pl.student_id = u.id AND pl.status = 'completed'
+                 AND pl.lesson_date > sp.belt_awarded_on) AS classes_since_belt,
             EXISTS (SELECT 1 FROM memberships m
                     WHERE m.student_id = u.id AND m.status = 'active'
                       AND m.end_date >= ${TODAY}) AS membership_active,
