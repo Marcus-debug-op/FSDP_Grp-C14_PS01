@@ -159,3 +159,40 @@
 .signup-plan-includes li::before { content:"\2713"; position:absolute; left:0; color:var(--accent); font-weight:700; }
 .signup-plan-foot { margin:1rem 0 0; font-size:.82rem; color:var(--muted); }
 @media (max-width:520px) { .signup-plan-price { text-align:left; } }
+
+/* Sign in: split layout. Left = animated dojo panel, right = form. */
+.auth-split { display: grid; grid-template-columns: 1.1fr 1fr; min-height: calc(100vh - 73px); }
+.auth-visual { position: relative; overflow: hidden; background: #1d1714; color: #fff; display: flex; align-items: center; justify-content: center; }
+.auth-slides { position: absolute; inset: 0; }
+.auth-slide { position: absolute; inset: 0; opacity: 0; transition: opacity 1.4s ease; }
+.auth-slide.is-active { opacity: 1; }
+.auth-slide img, .auth-slide video { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(.35) brightness(.45); }
+.auth-slide.is-photo.is-active img { animation: auth-kenburns 12s ease-out forwards; }
+.auth-visual::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 45%, rgba(168,63,49,.18), rgba(20,14,12,.75) 70%); }
+.auth-visual-content { position: relative; z-index: 1; text-align: center; padding: 2rem; }
+.auth-mark { position: relative; width: min(320px, 70vw); aspect-ratio: 1; margin: 0 auto 1.6rem; display: grid; place-items: center; }
+.auth-enso { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.auth-enso path { fill: none; stroke: #c9573f; stroke-width: 9; stroke-linecap: round; stroke-dasharray: 460; stroke-dashoffset: 460; animation: auth-enso-draw 2.4s cubic-bezier(.6,.05,.3,1) .3s forwards, auth-enso-breathe 6s ease-in-out 3s infinite; transform-origin: 100px 100px; opacity: .9; }
+.auth-visual-kanji { font-family: var(--font-kanji); font-size: clamp(2.2rem, 3.6vw, 3.3rem); letter-spacing: .08em; margin: 0; position: relative; opacity: 0; animation: auth-fade-up 1.2s ease 1.4s forwards; }
+.auth-visual-line { font-family: var(--font-heading); font-size: 1.5rem; margin: 0 0 .4rem; opacity: 0; animation: auth-fade-up 1s ease 2s forwards; }
+.auth-visual-sub { font-size: .8rem; letter-spacing: .25em; text-transform: uppercase; color: #e9d6cf; margin: 0; opacity: 0; animation: auth-fade-up 1s ease 2.4s forwards; }
+.auth-panel { display: flex; flex-direction: column; justify-content: center; padding: 3.5rem clamp(1.5rem, 6vw, 5rem); background: var(--bg); }
+.auth-panel .auth-form { max-width: 440px; }
+.auth-panel .auth-toggle { align-self: flex-start; }
+.auth-panel-note { margin-top: 1.5rem; color: var(--muted); font-size: .95rem; }
+@keyframes auth-enso-draw { to { stroke-dashoffset: 18; } }
+@keyframes auth-enso-breathe { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.03) rotate(4deg); } }
+@keyframes auth-kenburns { from { transform: scale(1); } to { transform: scale(1.12) translate(-1.5%, -1%); } }
+@keyframes auth-fade-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (max-width: 860px) {
+  .auth-split { grid-template-columns: 1fr; min-height: 0; }
+  .auth-visual { min-height: 230px; }
+  .auth-mark { width: 170px; margin-bottom: 1rem; }
+  .auth-visual-kanji { font-size: 2rem; }
+  .auth-visual-line { font-size: 1.15rem; }
+  .auth-panel { padding: 2.5rem 1.25rem 3.5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-enso path, .auth-visual-kanji, .auth-visual-line, .auth-visual-sub { animation: none; opacity: 1; stroke-dashoffset: 18; }
+}
+
