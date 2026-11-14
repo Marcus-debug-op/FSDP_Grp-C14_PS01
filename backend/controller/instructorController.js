@@ -48,6 +48,56 @@ async function findOwnSession(req, res) {
   return session;
 }
 
+// Today's date in Singapore as YYYY-MM-DD ("en-CA" writes dates that way).
+const singaporeToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" });
+
+// A 1-on-1 lesson the instructor has accepted. status is scheduled, completed
+// or no_show (the admin records the last two after the lesson).
+function publicPrivateLesson(row) {
+  return {
+    id: row.id,
+    status: row.status,
+    studentName: row.student_name,
+    centre: row.centre,
+    date: row.lesson_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    studentNote: row.student_note,
+    canMark: row.can_mark,
+  };
+}
+
+// PUT /api/instructor/private-lessons/:id/attendance
+// Body: { status: "present" | "absent" | null }. null clears a mistaken mark.
+const PRIVATE_STATUS_FOR = { present: "completed", absent: "no_show" };
+const PRIVATE_MARK_ERRORS = {
+  not_found: [404, "Private lesson not found."],
+  closed: [409, "This lesson was cancelled."],
+  future: [400, "Attendance can only be marked on or after the lesson date."],
+  window_closed: [400, "Attendance closed 24 hours after this lesson ended."],
+};
+
+export async function markPrivateLessonAttendance(req, res, next) {
+  try {
+    const lessonId = parseId(req.params.id);
+    const choice = req.body?.status;
+    if (!lessonId) return res.status(404).json({ message: "Private lesson not found." });
+    if (choice !== null && !(choice in PRIVATE_STATUS_FOR)) {
+      return res.status(400).json({ message: "Status must be present, absent or empty." });
+    }
+
+    const status = choice === null ? "scheduled" : PRIVATE_STATUS_FOR[choice];
+    const result = await Instructor.markPrivateLesson(lessonId, req.user.id, status);
+    if (result.error) {
+      const [code, message] = PRIVATE_MARK_ERRORS[result.error];
+      return res.status(code).json({ message });
+    }
+    res.json({ lesson: publicPrivateLesson(result.lesson) });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/instructor/classes?date=YYYY-MM-DD  (date is optional, default is today)
 export async function listClasses(req, res, next) {
   try {
@@ -56,9 +106,14 @@ export async function listClasses(req, res, next) {
       return res.status(400).json({ message: "Date must be a valid date." });
     }
 
-    const rows = await Instructor.listClassesOn(req.user.id, date);
+    const day = date || singaporeToday();
+    const [rows, privateRows] = await Promise.all([
+      Instructor.listClassesOn(req.user.id, date),
+      Instructor.listPrivateLessonsBetween(req.user.id, day, day),
+    ]);
     res.json({
       classes: rows.map((row) => ({ ...publicSession(row), booked: row.booked, marked: row.marked })),
+      privateLessons: privateRows.map(publicPrivateLesson),
     });
   } catch (err) {
     next(err);
@@ -78,13 +133,15 @@ export async function getCalendar(req, res, next) {
     const from = `${month}-01`;
     const to = `${month}-${String(lastDay).padStart(2, "0")}`;
 
-    const [classes, gradings] = await Promise.all([
+    const [classes, gradings, privateRows] = await Promise.all([
       Instructor.listClassesBetween(req.user.id, from, to),
       Instructor.listGradingsBetween(req.user.id, from, to),
+      Instructor.listPrivateLessonsBetween(req.user.id, from, to),
     ]);
 
     res.json({
       classes: classes.map((row) => ({ ...publicSession(row), booked: row.booked, marked: row.marked })),
+      privateLessons: privateRows.map(publicPrivateLesson),
       gradings: gradings.map((row) => ({
         id: row.id,
         centre: row.centre,
@@ -385,3 +442,57 @@ export async function saveAttendance(req, res, next) {
     next(err);
   }
 }
+
+// ---------- Lesson offers (FSDP-69) ----------
+
+function publicOffer(row) {
+  return {
+    id: row.id,
+    kind: row.kind, // "private" or "cover"
+    title: row.title,
+    studentName: row.student_name,
+    coveringFor: row.covering_for,
+    centre: row.centre,
+    date: row.lesson_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    offeredOn: row.offered_on,
+  };
+}
+
+// GET /api/instructor/offers
+// Lessons the admin has asked this instructor to take, waiting for an answer.
+export async function listOffers(req, res, next) {
+  try {
+    const rows = await Instructor.listPendingOffers(req.user.id);
+    res.json({ offers: rows.map(publicOffer) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function answerOffer(req, res, next, accept) {
+  try {
+    const offerId = parseId(req.params.id);
+    if (!offerId) return res.status(404).json({ message: "Request not found." });
+
+    let note = null;
+    if (!accept) {
+      note = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+      if (note.length < 3) return res.status(400).json({ message: "Please say briefly why you can't take this lesson." });
+      if (note.length > 300) return res.status(400).json({ message: "Please keep the reason under 300 characters." });
+    }
+
+    await Instructor.respondToOffer(offerId, req.user.id, accept, note);
+    res.json({ message: accept ? "Lesson accepted." : "Lesson declined. The admin will find someone else." });
+  } catch (err) {
+    if (err instanceof Instructor.OfferError) return res.status(err.status).json({ message: err.message });
+    next(err);
+  }
+}
+
+// POST /api/instructor/offers/:id/accept
+export const acceptOffer = (req, res, next) => answerOffer(req, res, next, true);
+
+// POST /api/instructor/offers/:id/decline   body: { reason }
+export const declineOffer = (req, res, next) => answerOffer(req, res, next, false);

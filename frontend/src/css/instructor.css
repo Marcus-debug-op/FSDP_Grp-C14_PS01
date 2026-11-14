@@ -23,6 +23,51 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
   .instructor-phone-actions .btn { padding: 0.45rem 0.7rem; letter-spacing: 0.08em; white-space: nowrap; }
 }
 
+/* ---------- Requests bell (FSDP-69) ---------- */
+/* The bell sits next to the name on desktop and next to Sign Out on phones. */
+.offer-bell { position: relative; }
+.offer-bell-button {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; padding: 0; border: 1px solid transparent; border-radius: 50%;
+  background: none; color: var(--text); cursor: pointer;
+}
+.offer-bell-button:hover, .offer-bell-button[aria-expanded="true"] { border-color: var(--line); background: var(--surface); }
+/* Red count circle, like a phone app icon. */
+.offer-badge {
+  position: absolute; top: -2px; right: -4px; min-width: 20px; height: 20px; padding: 0 5px;
+  border: 2px solid var(--bg); border-radius: 999px; background: var(--accent); color: #fff;
+  font-size: 0.7rem; font-weight: 700; line-height: 16px; text-align: center;
+}
+
+.offer-panel {
+  display: none; position: absolute; top: calc(100% + 0.6rem); right: 0; z-index: 60;
+  width: 22rem; max-height: 70vh; overflow-y: auto; padding: 1rem 1.1rem;
+  border: 1px solid var(--line); background: var(--bg); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  text-align: left; text-transform: none; letter-spacing: normal;
+}
+.offer-panel.open { display: block; }
+.offer-panel-title { margin: 0 0 0.6rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.offer-empty { margin: 0; color: var(--muted); }
+.offer-done { margin: 0 0 0.8rem; padding: 0.5rem 0.7rem; border: 1px solid var(--ok-line); background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+.offer-error { margin: 0.6rem 0 0; color: var(--accent-text); font-weight: 600; }
+
+.offer-list { list-style: none; margin: 0; padding: 0; }
+.offer-item { padding: 0.9rem 0; border-top: 1px solid var(--line); }
+.offer-item:first-child { border-top: 0; padding-top: 0.2rem; }
+.offer-title { margin: 0.6rem 0 0.2rem; font-weight: 700; color: var(--text); }
+.offer-when, .offer-where, .offer-extra { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.offer-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+.offer-actions .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.offer-decline { margin-top: 0.8rem; }
+.offer-decline label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text); }
+.offer-decline textarea { width: 100%; margin-top: 0.3rem; padding: 0.5rem 0.6rem; border: 1px solid #8a847c; font: inherit; font-size: 0.9rem; resize: vertical; }
+
+@media (max-width: 1100px) {
+  /* The desktop bell lives in the menu that folds away on phones; the phone one shows instead. */
+  .instructor-desktop-bell { display: none; }
+  .offer-panel { position: fixed; top: 76px; left: 16px; right: 16px; width: auto; }
+}
+
 /* Large faint character behind a section. It is decoration only. */
 .instructor-kanji-section { position: relative; overflow: hidden; min-height: 34rem; }
 .instructor-kanji-section .container { position: relative; }
@@ -83,6 +128,12 @@ button.calendar-day:hover { background: var(--surface); }
 .calendar-day.is-today .calendar-date { padding: 0 0.45rem; background: var(--accent); color: #fff; }
 .calendar-chip { display: block; width: 100%; padding: 0.05rem 0.3rem; border-left: 3px solid var(--muted); background: var(--surface); font-size: 0.75rem; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .calendar-chip-grading { border-left-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+/* Private (1-on-1) lessons: dark marker, so they stand apart from group classes and gradings. */
+.calendar-chip-private { border-left-color: var(--text); font-weight: 600; }
+.instructor-portal .private-lesson-card { border-top: 3px solid var(--text); }
+.private-lesson-note { margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--muted); font-style: italic; }
+.private-lesson-options { margin-top: 1rem; }
+.private-lesson-options .roster-option { flex: 1; }
 .calendar-more { font-size: 0.75rem; color: var(--muted); }
 .calendar-count { display: none; }
 

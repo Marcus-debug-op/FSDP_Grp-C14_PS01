@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getOffers } from "../../js/services/instructorService.js";
+import OfferBell from "./OfferBell.jsx";
+
+// How often the bell checks for new requests while a page is open.
+const OFFER_REFRESH_MS = 60 * 1000;
 
 // Instructor links. Each page is added here once it exists.
 const links = [
@@ -20,6 +25,21 @@ export default function InstructorNavbar() {
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef(null);
   const close = () => { setOpen(false); setAccountOpen(false); };
+
+  // Lesson offers for the bell (FSDP-69), shared by the desktop and phone bells.
+  const [offers, setOffers] = useState(null);
+  const [offersError, setOffersError] = useState("");
+  const loadOffers = useCallback(() => {
+    getOffers()
+      .then((list) => { setOffers(list); setOffersError(""); })
+      .catch((err) => setOffersError(err.message));
+  }, []);
+
+  useEffect(() => {
+    loadOffers();
+    const timer = setInterval(loadOffers, OFFER_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [loadOffers]);
 
   // Close both menus whenever the page changes.
   useEffect(() => { close(); }, [pathname]);
@@ -65,6 +85,7 @@ export default function InstructorNavbar() {
 
         {/* Phones: always visible beside the logo */}
         <div className="instructor-phone-actions">
+          <OfferBell id="offer-panel-phone" offers={offers} loadError={offersError} onChanged={loadOffers} />
           <button type="button" className="btn btn-outline btn-small" onClick={handleSignOut}>Sign Out</button>
           <span className="instructor-avatar" title={user.fullName}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -81,7 +102,11 @@ export default function InstructorNavbar() {
             </NavLink>
           ))}
 
-          {/* Desktop: name opens a small menu */}
+          {/* Desktop: requests bell, then the name opens a small menu */}
+          <div className="instructor-desktop-bell">
+            <OfferBell id="offer-panel-desktop" offers={offers} loadError={offersError} onChanged={loadOffers} />
+          </div>
+
           <div className="account" ref={accountRef}>
             <button
               type="button"

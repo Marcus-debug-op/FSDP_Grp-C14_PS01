@@ -57,6 +57,76 @@ export async function listClassesBetween(instructorId, from, to) {
   return result.rows;
 }
 
+// The instructor's private (1-on-1) lessons between two dates, for the
+// calendar and today's classes. A lesson counts once they've accepted the
+// admin's offer; lessons scheduled before offers existed have none and count too.
+// Pending offers show in the requests bell instead.
+const PRIVATE_ACCEPTED = `
+  COALESCE((SELECT lo.status FROM lesson_offers lo
+            WHERE lo.private_lesson_id = pl.id AND lo.status <> 'withdrawn'
+            ORDER BY lo.offered_at DESC, lo.id DESC LIMIT 1), 'accepted') = 'accepted'`;
+
+// Attendance for a private lesson follows the group class rule: from the day of
+// the lesson until 24 hours after it ends.
+const PRIVATE_CAN_MARK = `(pl.lesson_date <= ${TODAY}
+  AND NOW() <= ((pl.lesson_date + pl.end_time) AT TIME ZONE 'Asia/Singapore' + INTERVAL '24 hours'))`;
+
+const PRIVATE_LESSON_FIELDS = `
+  pl.id, pl.status, st.full_name AS student_name, ce.name AS centre,
+  to_char(pl.lesson_date, 'YYYY-MM-DD') AS lesson_date,
+  to_char(pl.start_time, 'HH24:MI') AS start_time,
+  to_char(pl.end_time, 'HH24:MI') AS end_time,
+  pl.student_note,
+  ${PRIVATE_CAN_MARK} AS can_mark`;
+
+export async function listPrivateLessonsBetween(instructorId, from, to) {
+  const result = await pool.query(
+    `SELECT ${PRIVATE_LESSON_FIELDS}
+     FROM private_lessons pl
+     JOIN users st ON st.id = pl.student_id
+     JOIN centres ce ON ce.id = pl.centre_id
+     WHERE pl.instructor_id = $1
+       AND pl.status IN ('scheduled', 'completed', 'no_show')
+       AND pl.lesson_date BETWEEN $2::date AND $3::date
+       AND ${PRIVATE_ACCEPTED}
+     ORDER BY pl.lesson_date, pl.start_time`,
+    [instructorId, from, to]
+  );
+  return result.rows;
+}
+
+// Records whether the student came to a private lesson (FSDP-15 for 1-on-1s).
+// It's saved as the lesson's status, the same values the admin's Completed /
+// No-show buttons use: 'completed' (present), 'no_show' (absent), or back to
+// 'scheduled' to clear a mistake. Returns the lesson, or a reason it can't change.
+export async function markPrivateLesson(lessonId, instructorId, status) {
+  const result = await pool.query(
+    `UPDATE private_lessons pl SET status = $3
+     WHERE pl.id = $1 AND pl.instructor_id = $2
+       AND pl.status IN ('scheduled', 'completed', 'no_show')
+       AND ${PRIVATE_ACCEPTED}
+       AND ${PRIVATE_CAN_MARK}
+     RETURNING pl.id`,
+    [lessonId, instructorId, status]
+  );
+  const found = await pool.query(
+    `SELECT ${PRIVATE_LESSON_FIELDS}, pl.instructor_id, ${PRIVATE_ACCEPTED} AS accepted,
+            pl.lesson_date > ${TODAY} AS is_future
+     FROM private_lessons pl
+     JOIN users st ON st.id = pl.student_id
+     JOIN centres ce ON ce.id = pl.centre_id
+     WHERE pl.id = $1`,
+    [lessonId]
+  );
+  const lesson = found.rows[0];
+  if (!lesson || lesson.instructor_id !== instructorId || !lesson.accepted) return { error: "not_found" };
+  if (result.rowCount === 0) {
+    if (!["scheduled", "completed", "no_show"].includes(lesson.status)) return { error: "closed" };
+    return { error: lesson.is_future ? "future" : "window_closed" };
+  }
+  return { lesson };
+}
+
 // Gradings this instructor is examining between two dates.
 export async function listGradingsBetween(instructorId, from, to) {
   const result = await pool.query(
@@ -154,7 +224,8 @@ const LIVE_APPLICATION = "ga.status NOT IN ('withdrawn', 'rejected')";
 
 // Grading progress for the instructor's students. Classes are counted the same
 // way as the student's own grading page (gradingModel.findTrainingSinceBelt):
-// present or late, after the belt was awarded, plus external sessions.
+// present or late, after the belt was awarded, plus external sessions, plus
+// private (1-on-1) lessons the instructor marked Present (status 'completed').
 export async function listGradingProgress(instructorId) {
   const result = await pool.query(
     `WITH my_students AS (${MY_STUDENTS})
@@ -170,7 +241,11 @@ export async function listGradingProgress(instructorId) {
                AND cs.status <> 'cancelled' AND cs.session_date > sp.belt_awarded_on)
             + (SELECT COUNT(*)::int
                FROM external_attendance e
-               WHERE e.student_id = u.id AND e.attended_on > sp.belt_awarded_on) AS classes_since_belt,
+               WHERE e.student_id = u.id AND e.attended_on > sp.belt_awarded_on)
+            + (SELECT COUNT(*)::int
+               FROM private_lessons pl
+               WHERE pl.student_id = u.id AND pl.status = 'completed'
+                 AND pl.lesson_date > sp.belt_awarded_on) AS classes_since_belt,
             EXISTS (SELECT 1 FROM memberships m
                     WHERE m.student_id = u.id AND m.status = 'active'
                       AND m.end_date >= ${TODAY}) AS membership_active,
@@ -317,4 +392,110 @@ export async function saveAttendance(sessionId, instructorId, records) {
      DO UPDATE SET status = EXCLUDED.status, method = 'manual', recorded_by = EXCLUDED.recorded_by`,
     [sessionId, instructorId, marked.map((r) => r.studentId), marked.map((r) => r.status), cleared]
   );
+}
+
+// ---------------------------------------------------------------------
+// Lesson offers (FSDP-69). The admin offers the instructor a lesson in
+// lesson_offers (Matthew's migration 012): a private lesson they scheduled, or
+// a group class whose usual instructor asked for cover. The instructor
+// accepts or declines it from the bell in the navbar.
+// ---------------------------------------------------------------------
+
+// When the offered lesson starts, as a timestamp.
+const OFFER_STARTS_AT = `((COALESCE(cs.session_date, pl.lesson_date) + COALESCE(cs.start_time, pl.start_time))
+                          AT TIME ZONE 'Asia/Singapore')`;
+
+const OFFER_FROM = `
+  FROM lesson_offers lo
+  LEFT JOIN class_sessions cs ON cs.id = lo.session_id
+  LEFT JOIN classes cl ON cl.id = cs.class_id
+  LEFT JOIN private_lessons pl ON pl.id = lo.private_lesson_id`;
+
+// Offers waiting for this instructor's answer, for lessons that are still going
+// ahead and haven't started yet. Soonest lesson first.
+export async function listPendingOffers(instructorId) {
+  const result = await pool.query(
+    `SELECT lo.id,
+            CASE WHEN lo.session_id IS NULL THEN 'private' ELSE 'cover' END AS kind,
+            COALESCE(cl.title, 'Private lesson') AS title,
+            st.full_name AS student_name,
+            orig.full_name AS covering_for,
+            ce.name AS centre,
+            to_char(COALESCE(cs.session_date, pl.lesson_date), 'YYYY-MM-DD') AS lesson_date,
+            to_char(COALESCE(cs.start_time, pl.start_time), 'HH24:MI') AS start_time,
+            to_char(COALESCE(cs.end_time, pl.end_time), 'HH24:MI') AS end_time,
+            to_char(lo.offered_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS offered_on
+     ${OFFER_FROM}
+     LEFT JOIN users st ON st.id = pl.student_id
+     -- A moved class keeps its own dojo for the day.
+     LEFT JOIN centres ce ON ce.id = COALESCE(cs.centre_id, cl.centre_id, pl.centre_id)
+     LEFT JOIN cover_requests cr ON cr.session_id = cs.id AND cr.status = 'open'
+     LEFT JOIN users orig ON orig.id = cr.instructor_id
+     WHERE lo.instructor_id = $1 AND lo.status = 'pending'
+       AND COALESCE(cs.status, pl.status) = 'scheduled'
+       AND ${OFFER_STARTS_AT} > NOW()
+     ORDER BY ${OFFER_STARTS_AT}, lo.id`,
+    [instructorId]
+  );
+  return result.rows;
+}
+
+export class OfferError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+// Accepts or declines one offer, as one transaction.
+// Accepting a private lesson only records the answer: the admin already put the
+// instructor on it when they offered it. Accepting a cover moves that one class
+// to this instructor and closes the cover request, as migration 012 asks the
+// instructor side to do. Declining sends it back to the admin to offer to
+// someone else (their Private Lessons and Cover Requests pages show the reason).
+export async function respondToOffer(offerId, instructorId, accept, note) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const found = await client.query(
+      `SELECT lo.id, lo.status, lo.session_id, lo.offered_by,
+              COALESCE(cs.status, pl.status) AS lesson_status,
+              pl.instructor_id AS private_instructor_id,
+              ${OFFER_STARTS_AT} > NOW() AS is_upcoming
+       ${OFFER_FROM}
+       WHERE lo.id = $1 AND lo.instructor_id = $2
+       FOR UPDATE OF lo`,
+      [offerId, instructorId]
+    );
+    const offer = found.rows[0];
+    if (!offer) throw new OfferError(404, "Request not found.");
+    if (offer.status === "withdrawn") throw new OfferError(409, "The admin has withdrawn this request.");
+    if (offer.status !== "pending") throw new OfferError(409, "You've already answered this request.");
+    if (offer.lesson_status !== "scheduled") throw new OfferError(409, "This lesson is no longer going ahead.");
+    if (!offer.is_upcoming) throw new OfferError(409, "This lesson has already started.");
+    if (!offer.session_id && offer.private_instructor_id !== instructorId) {
+      throw new OfferError(409, "The admin has given this lesson to another instructor.");
+    }
+
+    await client.query(
+      `UPDATE lesson_offers SET status = $2, response_note = $3, responded_at = NOW() WHERE id = $1`,
+      [offerId, accept ? "accepted" : "declined", note]
+    );
+
+    if (accept && offer.session_id) {
+      await client.query("UPDATE class_sessions SET instructor_id = $2 WHERE id = $1", [offer.session_id, instructorId]);
+      await client.query(
+        `UPDATE cover_requests SET status = 'covered', resolved_at = NOW(), resolved_by = $2
+         WHERE session_id = $1 AND status = 'open'`,
+        [offer.session_id, offer.offered_by]
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }

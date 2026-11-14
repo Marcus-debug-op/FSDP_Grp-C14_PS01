@@ -24,9 +24,16 @@ async function request(path, { method = "GET", body } = {}) {
   return data;
 }
 
-export const getTodaysClasses = () => request("/classes").then((d) => d.classes);
+// Today's group classes and accepted private lessons: { classes, privateLessons }.
+export const getToday = () => request("/classes");
 export const getCalendar = (month) => request(`/calendar?month=${month}`);
-export const getAttendanceTrends = () => request("/attendance-trends");
+// status: "present" | "absent" | null (clears the mark)
+export const markPrivateLesson = (lessonId, status) =>
+  request(`/private-lessons/${lessonId}/attendance`, { method: "PUT", body: { status } }).then((d) => d.lesson);
+export const getOffers =() => request("/offers").then((d) => d.offers);
+export const acceptOffer = (offerId) => request(`/offers/${offerId}/accept`, { method: "POST" });
+export const declineOffer = (offerId, reason) => request(`/offers/${offerId}/decline`, { method: "POST", body: { reason } });
+export const getAttendanceTrends =() => request("/attendance-trends");
 export const getGradingReadiness =() => request("/grading-readiness").then((d) => d.students);
 export const getUpcomingGradings = () => request("/gradings").then((d) => d.gradings);
 export const getGradingApplicants = (gradingId) => request(`/gradings/${gradingId}/applicants`);

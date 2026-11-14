@@ -3,7 +3,8 @@ import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import {
   listClasses, getCalendar, getGradingReadiness, listUpcomingGradings, getGradingApplicants, setApplicantApproval,
-  getRoster, saveAttendance, getAttendanceTrends,
+  getRoster, saveAttendance, getAttendanceTrends, listOffers, acceptOffer, declineOffer,
+  markPrivateLessonAttendance,
 } from "../controller/instructorController.js";
 import { createQr } from "../controller/checkInController.js";
 
@@ -21,5 +22,9 @@ router.put("/gradings/:id/applicants/:studentId/approval", setApplicantApproval)
 router.get("/sessions/:id/roster", getRoster);
 router.put("/sessions/:id/attendance", saveAttendance);
 router.post("/sessions/:id/qr", createQr);   // QR check-in code for this class
+router.put("/private-lessons/:id/attendance", markPrivateLessonAttendance);
+router.get("/offers", listOffers);           // FSDP-69: lessons the admin asked you to take
+router.post("/offers/:id/accept", acceptOffer);
+router.post("/offers/:id/decline", declineOffer);
 
 export default router;
