@@ -177,7 +177,13 @@ export default function InstructorCalendar() {
                         {item.attendanceClosed ? "View Attendance" : "Take Attendance"}
                       </Link>
                     ) : (
-                      <p className="calendar-upcoming">Attendance opens on the day of the class.</p>
+                      <>
+                        {/* Future classes: see who's booked, or ask for cover (FSDP-69) */}
+                        <Link to={`/instructor/classes/${item.id}`} className="btn btn-outline btn-small">
+                          View Class
+                        </Link>
+                        <p className="calendar-upcoming">Attendance opens on the day of the class.</p>
+                      </>
                     )}
                   </article>
                 ))}

@@ -107,6 +107,16 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
 .roster-footer .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .roster-footer + .notice { margin-top: 1.2rem; }
 
+/* ---------- Can't make it (FSDP-69) ---------- */
+.cover-box { max-width: 46rem; margin-top: 1.2rem; }
+.cover-start { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.2rem; }
+.cover-start p { margin: 0; flex: 1 1 18rem; font-size: 0.9rem; color: var(--muted); }
+.cover-form { padding: 1.2rem 1.4rem; border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--bg); }
+.cover-title { margin: 0; font-size: 1.3rem; }
+.cover-help { margin: 0.4rem 0 1rem; color: var(--muted); font-size: 0.95rem; }
+.cover-form label { display: block; font-weight: 600; font-size: 0.9rem; }
+.cover-form textarea { width: 100%; margin-top: 0.3rem; padding: 0.6rem 0.7rem; border: 1px solid #8a847c; font: inherit; resize: vertical; }
+
 /* ---------- Calendar ---------- */
 .instructor-kanji-low { top: auto; bottom: 1rem; transform: none; }
 

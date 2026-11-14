@@ -338,6 +338,42 @@ export async function setApplicationApproval(applicationId, instructorId) {
   );
 }
 
+// Cover requests (FSDP-69): an instructor who can't teach a class must ask at
+// least this many hours before it starts, so the admin has time to find someone.
+export const COVER_NOTICE_HOURS = 12;
+const COVER_STILL_ALLOWED = `(((cs.session_date + cs.start_time) AT TIME ZONE 'Asia/Singapore')
+  - INTERVAL '${COVER_NOTICE_HOURS} hours' > NOW())`;
+
+// Asks the admin to find someone to cover one of the instructor's classes.
+// Saved in cover_requests (Matthew's migration 012), which the admin's Cover
+// Requests page lists. The lesson stays on for students. Returns the new
+// request id, or null if the class can't take a request (the caller says why):
+// not theirs, not scheduled, too close to the start, or already asked.
+export async function createCoverRequest(sessionId, instructorId, reason) {
+  const result = await pool.query(
+    `INSERT INTO cover_requests (session_id, instructor_id, reason)
+     SELECT cs.id, $2, $3
+     FROM class_sessions cs
+     WHERE cs.id = $1 AND cs.instructor_id = $2 AND cs.status = 'scheduled'
+       AND ${COVER_STILL_ALLOWED}
+     ON CONFLICT DO NOTHING
+     RETURNING id`,
+    [sessionId, instructorId, reason]
+  );
+  return result.rows[0]?.id ?? null;
+}
+
+// Everyone who should hear about a new cover request.
+export async function listAdminIds() {
+  const result = await pool.query("SELECT id FROM users WHERE role = 'admin'");
+  return result.rows.map((row) => row.id);
+}
+
+export async function findUserName(userId) {
+  const result = await pool.query("SELECT full_name FROM users WHERE id = $1", [userId]);
+  return result.rows[0]?.full_name ?? "An instructor";
+}
+
 // One session, only if this instructor teaches it.
 export async function findSession(sessionId, instructorId) {
   const result = await pool.query(
@@ -347,7 +383,12 @@ export async function findSession(sessionId, instructorId) {
             to_char(cs.end_time, 'HH24:MI') AS end_time,
             cs.status,
             ${ATTENDANCE_CLOSED} AS attendance_closed,
-            cs.session_date > ${TODAY} AS is_future
+            cs.session_date > ${TODAY} AS is_future,
+            ${COVER_STILL_ALLOWED} AS can_request_cover,
+            ((cs.session_date + cs.start_time) AT TIME ZONE 'Asia/Singapore') > NOW() AS not_started,
+            (SELECT cr.status FROM cover_requests cr
+             WHERE cr.session_id = cs.id AND cr.instructor_id = $2
+             ORDER BY cr.requested_at DESC, cr.id DESC LIMIT 1) AS cover_status
      FROM class_sessions cs
      JOIN classes cl ON cl.id = cs.class_id
      JOIN centres ce ON ce.id = cl.centre_id

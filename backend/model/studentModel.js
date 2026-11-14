@@ -44,7 +44,10 @@ export async function countClassesSince(studentId, sinceDate) {
 // whether cancelling it now would give the credit back (FSDP-55).
 export async function getNextBookedClass(studentId) {
   const result = await pool.query(
-    `SELECT cs.id AS session_id, cl.title, ce.name AS centre, u.full_name AS instructor,
+    `SELECT cs.id AS session_id, cl.title, ce.name AS centre,
+            -- While the instructor has asked for cover (FSDP-69), the teacher isn't known yet.
+            CASE WHEN EXISTS (SELECT 1 FROM cover_requests cr WHERE cr.session_id = cs.id AND cr.status = 'open')
+                 THEN 'Instructor TBC' ELSE u.full_name END AS instructor,
             to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             ((cs.session_date + cs.start_time - make_interval(hours => $2::int))
