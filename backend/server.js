@@ -26,7 +26,13 @@ if (!process.env.JWT_SECRET) {
 const app = express();
 
 // Only the frontend is allowed to call this API from a browser.
-app.use(cors({ origin: process.env.FRONTEND_URL || "http://localhost:5173" }));
+// Optional EXTRA_CORS_ORIGINS (comma-separated) lets a second address in while
+// testing, e.g. your laptop's Wi-Fi address for phone testing. Leave it unset normally.
+const allowedOrigins = [
+  process.env.FRONTEND_URL || "http://localhost:5173",
+  ...(process.env.EXTRA_CORS_ORIGINS || "").split(",").map((o) => o.trim()).filter(Boolean),
+];
+app.use(cors({ origin: allowedOrigins }));
 // Stripe webhook needs the raw body to check its signature, so it must come before express.json().
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), stripeWebhook);
 // Two optional 2 MB files may arrive as base64 (approximately 5.4 MB total).

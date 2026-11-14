@@ -99,7 +99,7 @@ export default function About() {
                 className="ab-tab"
                 onClick={() => select(t.id)}
               >
-                <span className="ab-tab-kanji" aria-hidden="true">{t.kanji}</span>
+                <span className="ab-tab-kanji" lang="ja" aria-hidden="true">{t.kanji}</span>
                 {t.label}
               </button>
             ))}
