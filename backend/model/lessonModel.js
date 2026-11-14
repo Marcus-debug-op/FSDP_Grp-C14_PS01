@@ -60,7 +60,10 @@ export async function listUpcoming(studentId, rankOrder, filters = {}) {
               ce.id AS centre_id, ce.name AS centre,
               (cs.centre_id IS NOT NULL AND cs.centre_id <> cl.centre_id) AS venue_changed,
               cs.change_note,
-              u.id AS instructor_id, u.full_name AS instructor,
+              u.id AS instructor_id,
+              -- While the instructor has asked for cover (FSDP-69), the teacher isn't known yet.
+              CASE WHEN EXISTS (SELECT 1 FROM cover_requests cr WHERE cr.session_id = cs.id AND cr.status = 'open')
+                   THEN 'Instructor TBC' ELSE u.full_name END AS instructor,
               to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
               to_char(cs.start_time, 'HH24:MI') AS start_time,
               to_char(cs.end_time, 'HH24:MI') AS end_time,

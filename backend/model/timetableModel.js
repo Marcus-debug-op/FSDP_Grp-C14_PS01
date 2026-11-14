@@ -26,7 +26,10 @@ export async function getWeek(studentId, weekStart) {
               usual.name AS usual_centre,
               (cs.centre_id IS NOT NULL AND cs.centre_id <> cl.centre_id) AS venue_changed,
               cs.status AS session_status, cs.change_note,
-              u.full_name AS instructor, cl.credit_cost,
+              -- While the instructor has asked for cover (FSDP-69), the teacher isn't known yet.
+              CASE WHEN EXISTS (SELECT 1 FROM cover_requests cr WHERE cr.session_id = cs.id AND cr.status = 'open')
+                   THEN 'Instructor TBC' ELSE u.full_name END AS instructor,
+              cl.credit_cost,
               ((cs.session_date + cs.start_time) AT TIME ZONE 'Asia/Singapore') <= NOW() AS has_started,
               ((cs.session_date + cs.start_time - make_interval(hours => $3::int))
                  AT TIME ZONE 'Asia/Singapore') > NOW() AS free_cancel,
