@@ -61,26 +61,70 @@ export async function listClassesBetween(instructorId, from, to) {
 // calendar and today's classes. A lesson counts once they've accepted the
 // admin's offer; lessons scheduled before offers existed have none and count too.
 // Pending offers show in the requests bell instead.
+const PRIVATE_ACCEPTED = `
+  COALESCE((SELECT lo.status FROM lesson_offers lo
+            WHERE lo.private_lesson_id = pl.id AND lo.status <> 'withdrawn'
+            ORDER BY lo.offered_at DESC, lo.id DESC LIMIT 1), 'accepted') = 'accepted'`;
+
+// Attendance for a private lesson follows the group class rule: from the day of
+// the lesson until 24 hours after it ends.
+const PRIVATE_CAN_MARK = `(pl.lesson_date <= ${TODAY}
+  AND NOW() <= ((pl.lesson_date + pl.end_time) AT TIME ZONE 'Asia/Singapore' + INTERVAL '24 hours'))`;
+
+const PRIVATE_LESSON_FIELDS = `
+  pl.id, pl.status, st.full_name AS student_name, ce.name AS centre,
+  to_char(pl.lesson_date, 'YYYY-MM-DD') AS lesson_date,
+  to_char(pl.start_time, 'HH24:MI') AS start_time,
+  to_char(pl.end_time, 'HH24:MI') AS end_time,
+  pl.student_note,
+  ${PRIVATE_CAN_MARK} AS can_mark`;
+
 export async function listPrivateLessonsBetween(instructorId, from, to) {
   const result = await pool.query(
-    `SELECT pl.id, pl.status, st.full_name AS student_name, ce.name AS centre,
-            to_char(pl.lesson_date, 'YYYY-MM-DD') AS lesson_date,
-            to_char(pl.start_time, 'HH24:MI') AS start_time,
-            to_char(pl.end_time, 'HH24:MI') AS end_time,
-            pl.student_note
+    `SELECT ${PRIVATE_LESSON_FIELDS}
      FROM private_lessons pl
      JOIN users st ON st.id = pl.student_id
      JOIN centres ce ON ce.id = pl.centre_id
      WHERE pl.instructor_id = $1
        AND pl.status IN ('scheduled', 'completed', 'no_show')
        AND pl.lesson_date BETWEEN $2::date AND $3::date
-       AND COALESCE((SELECT lo.status FROM lesson_offers lo
-                     WHERE lo.private_lesson_id = pl.id AND lo.status <> 'withdrawn'
-                     ORDER BY lo.offered_at DESC, lo.id DESC LIMIT 1), 'accepted') = 'accepted'
+       AND ${PRIVATE_ACCEPTED}
      ORDER BY pl.lesson_date, pl.start_time`,
     [instructorId, from, to]
   );
   return result.rows;
+}
+
+// Records whether the student came to a private lesson (FSDP-15 for 1-on-1s).
+// It's saved as the lesson's status, the same values the admin's Completed /
+// No-show buttons use: 'completed' (present), 'no_show' (absent), or back to
+// 'scheduled' to clear a mistake. Returns the lesson, or a reason it can't change.
+export async function markPrivateLesson(lessonId, instructorId, status) {
+  const result = await pool.query(
+    `UPDATE private_lessons pl SET status = $3
+     WHERE pl.id = $1 AND pl.instructor_id = $2
+       AND pl.status IN ('scheduled', 'completed', 'no_show')
+       AND ${PRIVATE_ACCEPTED}
+       AND ${PRIVATE_CAN_MARK}
+     RETURNING pl.id`,
+    [lessonId, instructorId, status]
+  );
+  const found = await pool.query(
+    `SELECT ${PRIVATE_LESSON_FIELDS}, pl.instructor_id, ${PRIVATE_ACCEPTED} AS accepted,
+            pl.lesson_date > ${TODAY} AS is_future
+     FROM private_lessons pl
+     JOIN users st ON st.id = pl.student_id
+     JOIN centres ce ON ce.id = pl.centre_id
+     WHERE pl.id = $1`,
+    [lessonId]
+  );
+  const lesson = found.rows[0];
+  if (!lesson || lesson.instructor_id !== instructorId || !lesson.accepted) return { error: "not_found" };
+  if (result.rowCount === 0) {
+    if (!["scheduled", "completed", "no_show"].includes(lesson.status)) return { error: "closed" };
+    return { error: lesson.is_future ? "future" : "window_closed" };
+  }
+  return { lesson };
 }
 
 // Gradings this instructor is examining between two dates.

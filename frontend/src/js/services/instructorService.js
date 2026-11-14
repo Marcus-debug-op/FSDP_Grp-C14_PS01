@@ -27,7 +27,10 @@ async function request(path, { method = "GET", body } = {}) {
 // Today's group classes and accepted private lessons: { classes, privateLessons }.
 export const getToday = () => request("/classes");
 export const getCalendar = (month) => request(`/calendar?month=${month}`);
-export const getOffers = () => request("/offers").then((d) => d.offers);
+// status: "present" | "absent" | null (clears the mark)
+export const markPrivateLesson = (lessonId, status) =>
+  request(`/private-lessons/${lessonId}/attendance`, { method: "PUT", body: { status } }).then((d) => d.lesson);
+export const getOffers =() => request("/offers").then((d) => d.offers);
 export const acceptOffer = (offerId) => request(`/offers/${offerId}/accept`, { method: "POST" });
 export const declineOffer = (offerId, reason) => request(`/offers/${offerId}/decline`, { method: "POST", body: { reason } });
 export const getAttendanceTrends =() => request("/attendance-trends");

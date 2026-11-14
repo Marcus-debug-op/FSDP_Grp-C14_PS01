@@ -63,7 +63,39 @@ function publicPrivateLesson(row) {
     startTime: row.start_time,
     endTime: row.end_time,
     studentNote: row.student_note,
+    canMark: row.can_mark,
   };
+}
+
+// PUT /api/instructor/private-lessons/:id/attendance
+// Body: { status: "present" | "absent" | null }. null clears a mistaken mark.
+const PRIVATE_STATUS_FOR = { present: "completed", absent: "no_show" };
+const PRIVATE_MARK_ERRORS = {
+  not_found: [404, "Private lesson not found."],
+  closed: [409, "This lesson was cancelled."],
+  future: [400, "Attendance can only be marked on or after the lesson date."],
+  window_closed: [400, "Attendance closed 24 hours after this lesson ended."],
+};
+
+export async function markPrivateLessonAttendance(req, res, next) {
+  try {
+    const lessonId = parseId(req.params.id);
+    const choice = req.body?.status;
+    if (!lessonId) return res.status(404).json({ message: "Private lesson not found." });
+    if (choice !== null && !(choice in PRIVATE_STATUS_FOR)) {
+      return res.status(400).json({ message: "Status must be present, absent or empty." });
+    }
+
+    const status = choice === null ? "scheduled" : PRIVATE_STATUS_FOR[choice];
+    const result = await Instructor.markPrivateLesson(lessonId, req.user.id, status);
+    if (result.error) {
+      const [code, message] = PRIVATE_MARK_ERRORS[result.error];
+      return res.status(code).json({ message });
+    }
+    res.json({ lesson: publicPrivateLesson(result.lesson) });
+  } catch (err) {
+    next(err);
+  }
 }
 
 // GET /api/instructor/classes?date=YYYY-MM-DD  (date is optional, default is today)

@@ -132,6 +132,8 @@ button.calendar-day:hover { background: var(--surface); }
 .calendar-chip-private { border-left-color: var(--text); font-weight: 600; }
 .instructor-portal .private-lesson-card { border-top: 3px solid var(--text); }
 .private-lesson-note { margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--muted); font-style: italic; }
+.private-lesson-options { margin-top: 1rem; }
+.private-lesson-options .roster-option { flex: 1; }
 .calendar-more { font-size: 0.75rem; color: var(--muted); }
 .calendar-count { display: none; }
 
