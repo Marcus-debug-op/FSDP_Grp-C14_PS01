@@ -26,7 +26,10 @@ async function request(path, { method = "GET", body } = {}) {
 
 export const getTodaysClasses = () => request("/classes").then((d) => d.classes);
 export const getCalendar = (month) => request(`/calendar?month=${month}`);
-export const getAttendanceTrends = () => request("/attendance-trends");
+export const getOffers = () => request("/offers").then((d) => d.offers);
+export const acceptOffer = (offerId) => request(`/offers/${offerId}/accept`, { method: "POST" });
+export const declineOffer = (offerId, reason) => request(`/offers/${offerId}/decline`, { method: "POST", body: { reason } });
+export const getAttendanceTrends =() => request("/attendance-trends");
 export const getGradingReadiness =() => request("/grading-readiness").then((d) => d.students);
 export const getUpcomingGradings = () => request("/gradings").then((d) => d.gradings);
 export const getGradingApplicants = (gradingId) => request(`/gradings/${gradingId}/applicants`);

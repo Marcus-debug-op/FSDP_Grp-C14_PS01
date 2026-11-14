@@ -385,3 +385,57 @@ export async function saveAttendance(req, res, next) {
     next(err);
   }
 }
+
+// ---------- Lesson offers (FSDP-69) ----------
+
+function publicOffer(row) {
+  return {
+    id: row.id,
+    kind: row.kind, // "private" or "cover"
+    title: row.title,
+    studentName: row.student_name,
+    coveringFor: row.covering_for,
+    centre: row.centre,
+    date: row.lesson_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    offeredOn: row.offered_on,
+  };
+}
+
+// GET /api/instructor/offers
+// Lessons the admin has asked this instructor to take, waiting for an answer.
+export async function listOffers(req, res, next) {
+  try {
+    const rows = await Instructor.listPendingOffers(req.user.id);
+    res.json({ offers: rows.map(publicOffer) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function answerOffer(req, res, next, accept) {
+  try {
+    const offerId = parseId(req.params.id);
+    if (!offerId) return res.status(404).json({ message: "Request not found." });
+
+    let note = null;
+    if (!accept) {
+      note = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+      if (note.length < 3) return res.status(400).json({ message: "Please say briefly why you can't take this lesson." });
+      if (note.length > 300) return res.status(400).json({ message: "Please keep the reason under 300 characters." });
+    }
+
+    await Instructor.respondToOffer(offerId, req.user.id, accept, note);
+    res.json({ message: accept ? "Lesson accepted." : "Lesson declined. The admin will find someone else." });
+  } catch (err) {
+    if (err instanceof Instructor.OfferError) return res.status(err.status).json({ message: err.message });
+    next(err);
+  }
+}
+
+// POST /api/instructor/offers/:id/accept
+export const acceptOffer = (req, res, next) => answerOffer(req, res, next, true);
+
+// POST /api/instructor/offers/:id/decline   body: { reason }
+export const declineOffer = (req, res, next) => answerOffer(req, res, next, false);

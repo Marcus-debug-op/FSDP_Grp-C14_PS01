@@ -318,3 +318,109 @@ export async function saveAttendance(sessionId, instructorId, records) {
     [sessionId, instructorId, marked.map((r) => r.studentId), marked.map((r) => r.status), cleared]
   );
 }
+
+// ---------------------------------------------------------------------
+// Lesson offers (FSDP-69). The admin offers the instructor a lesson in
+// lesson_offers (Matthew's migration 012): a private lesson they scheduled, or
+// a group class whose usual instructor asked for cover. The instructor
+// accepts or declines it from the bell in the navbar.
+// ---------------------------------------------------------------------
+
+// When the offered lesson starts, as a timestamp.
+const OFFER_STARTS_AT = `((COALESCE(cs.session_date, pl.lesson_date) + COALESCE(cs.start_time, pl.start_time))
+                          AT TIME ZONE 'Asia/Singapore')`;
+
+const OFFER_FROM = `
+  FROM lesson_offers lo
+  LEFT JOIN class_sessions cs ON cs.id = lo.session_id
+  LEFT JOIN classes cl ON cl.id = cs.class_id
+  LEFT JOIN private_lessons pl ON pl.id = lo.private_lesson_id`;
+
+// Offers waiting for this instructor's answer, for lessons that are still going
+// ahead and haven't started yet. Soonest lesson first.
+export async function listPendingOffers(instructorId) {
+  const result = await pool.query(
+    `SELECT lo.id,
+            CASE WHEN lo.session_id IS NULL THEN 'private' ELSE 'cover' END AS kind,
+            COALESCE(cl.title, 'Private lesson') AS title,
+            st.full_name AS student_name,
+            orig.full_name AS covering_for,
+            ce.name AS centre,
+            to_char(COALESCE(cs.session_date, pl.lesson_date), 'YYYY-MM-DD') AS lesson_date,
+            to_char(COALESCE(cs.start_time, pl.start_time), 'HH24:MI') AS start_time,
+            to_char(COALESCE(cs.end_time, pl.end_time), 'HH24:MI') AS end_time,
+            to_char(lo.offered_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS offered_on
+     ${OFFER_FROM}
+     LEFT JOIN users st ON st.id = pl.student_id
+     -- A moved class keeps its own dojo for the day.
+     LEFT JOIN centres ce ON ce.id = COALESCE(cs.centre_id, cl.centre_id, pl.centre_id)
+     LEFT JOIN cover_requests cr ON cr.session_id = cs.id AND cr.status = 'open'
+     LEFT JOIN users orig ON orig.id = cr.instructor_id
+     WHERE lo.instructor_id = $1 AND lo.status = 'pending'
+       AND COALESCE(cs.status, pl.status) = 'scheduled'
+       AND ${OFFER_STARTS_AT} > NOW()
+     ORDER BY ${OFFER_STARTS_AT}, lo.id`,
+    [instructorId]
+  );
+  return result.rows;
+}
+
+export class OfferError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+// Accepts or declines one offer, as one transaction.
+// Accepting a private lesson only records the answer: the admin already put the
+// instructor on it when they offered it. Accepting a cover moves that one class
+// to this instructor and closes the cover request, as migration 012 asks the
+// instructor side to do. Declining sends it back to the admin to offer to
+// someone else (their Private Lessons and Cover Requests pages show the reason).
+export async function respondToOffer(offerId, instructorId, accept, note) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const found = await client.query(
+      `SELECT lo.id, lo.status, lo.session_id, lo.offered_by,
+              COALESCE(cs.status, pl.status) AS lesson_status,
+              pl.instructor_id AS private_instructor_id,
+              ${OFFER_STARTS_AT} > NOW() AS is_upcoming
+       ${OFFER_FROM}
+       WHERE lo.id = $1 AND lo.instructor_id = $2
+       FOR UPDATE OF lo`,
+      [offerId, instructorId]
+    );
+    const offer = found.rows[0];
+    if (!offer) throw new OfferError(404, "Request not found.");
+    if (offer.status === "withdrawn") throw new OfferError(409, "The admin has withdrawn this request.");
+    if (offer.status !== "pending") throw new OfferError(409, "You've already answered this request.");
+    if (offer.lesson_status !== "scheduled") throw new OfferError(409, "This lesson is no longer going ahead.");
+    if (!offer.is_upcoming) throw new OfferError(409, "This lesson has already started.");
+    if (!offer.session_id && offer.private_instructor_id !== instructorId) {
+      throw new OfferError(409, "The admin has given this lesson to another instructor.");
+    }
+
+    await client.query(
+      `UPDATE lesson_offers SET status = $2, response_note = $3, responded_at = NOW() WHERE id = $1`,
+      [offerId, accept ? "accepted" : "declined", note]
+    );
+
+    if (accept && offer.session_id) {
+      await client.query("UPDATE class_sessions SET instructor_id = $2 WHERE id = $1", [offer.session_id, instructorId]);
+      await client.query(
+        `UPDATE cover_requests SET status = 'covered', resolved_at = NOW(), resolved_by = $2
+         WHERE session_id = $1 AND status = 'open'`,
+        [offer.session_id, offer.offered_by]
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
