@@ -280,11 +280,34 @@ function gradingProgress(row) {
 }
 
 // GET /api/instructor/grading-readiness
+// Used by the Students page (FSDP-72, FSDP-21): each student with their
+// readiness checks, classes since their last belt against what's needed (for
+// the progress bar), and whether their attendance is dropping (FSDP-71).
+// Ready first, then whoever is closest to ready.
 export async function getGradingReadiness(req, res, next) {
   try {
-    const rows = await Instructor.listGradingProgress(req.user.id);
+    const [rows, changeRows] = await Promise.all([
+      Instructor.listGradingProgress(req.user.id),
+      Instructor.listStudentAttendanceChange(req.user.id),
+    ]);
+    const changeById = new Map(changeRows.map((row) => [row.id, row]));
     const order = { ready: 0, not_yet: 1, top_belt: 2, no_profile: 3 };
-    const students = rows.map(gradingProgress).sort((a, b) => order[a.status] - order[b.status]);
+    // Share of the class requirement met, capped at 1. No minimum counts as met.
+    const classShare = (s) => (s.classes && s.classes.need > 0 ? Math.min(s.classes.have / s.classes.need, 1) : 1);
+
+    const students = rows
+      .map((row) => {
+        const change = changeById.get(row.id);
+        return {
+          ...gradingProgress(row),
+          classes: row.next_belt ? { have: row.classes_since_belt, need: row.min_classes_at_rank ?? 0 } : null,
+          droppedOff: change ? droppedOff(change) : false,
+        };
+      })
+      .sort((a, b) =>
+        order[a.status] - order[b.status]
+        || classShare(b) - classShare(a)
+        || a.fullName.localeCompare(b.fullName));
     res.json({ students });
   } catch (err) {
     next(err);
@@ -567,6 +590,54 @@ export async function requestCover(req, res, next) {
 
     const updated = await Instructor.findSession(session.id, req.user.id);
     res.status(201).json({ session: publicRosterSession(updated) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------- Student training progress (FSDP-21) ----------
+
+// GET /api/instructor/students/:id/progress
+// One of the instructor's students: belt, readiness for the next belt, how
+// often they've come lately, and their recent lessons with this instructor.
+// Students who haven't trained with or booked this instructor in the last
+// 3 months look the same as students who don't exist.
+export async function getStudentProgress(req, res, next) {
+  try {
+    const studentId = parseId(req.params.id);
+    if (!studentId) return res.status(404).json({ message: "Student not found." });
+
+    const [progressRows, changeRows, lessons] = await Promise.all([
+      Instructor.listGradingProgress(req.user.id),
+      Instructor.listStudentAttendanceChange(req.user.id),
+      Instructor.listRecentLessonsWithMe(req.user.id, studentId),
+    ]);
+    const row = progressRows.find((r) => r.id === studentId);
+    if (!row) return res.status(404).json({ message: "Student not found." });
+    const change = changeRows.find((r) => r.id === studentId);
+
+    res.json({
+      student: {
+        ...gradingProgress(row),
+        beltAwardedOn: row.belt_awarded_on,
+        monthsAtBelt: row.months_at_belt,
+      },
+      attendance: {
+        recent: change?.recent ?? 0,
+        previous: change?.previous ?? 0,
+        lastAttended: change?.last_attended ?? null,
+        droppedOff: change ? droppedOff(change) : false,
+      },
+      recentLessons: lessons.map((lesson) => ({
+        kind: lesson.kind,
+        id: lesson.id,
+        title: lesson.title,
+        centre: lesson.centre,
+        date: lesson.lesson_date,
+        startTime: lesson.start_time,
+        status: lesson.status,
+      })),
+    });
   } catch (err) {
     next(err);
   }

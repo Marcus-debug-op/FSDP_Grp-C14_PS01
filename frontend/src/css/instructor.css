@@ -67,6 +67,16 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
   .instructor-desktop-bell { display: none; }
   .offer-panel { position: fixed; top: 76px; left: 16px; right: 16px; width: auto; }
 }
+@media (max-width: 420px) {
+  /* Small phones: keep menu, logo, bell, Sign Out and profile on one line. */
+  .navbar.instructor-navbar .navbar-inner { gap: 0 0.45rem; }
+  .navbar.instructor-navbar .brand img { width: 36px; height: 36px; }
+  .instructor-phone-actions { gap: 0.3rem; }
+  .instructor-phone-actions .btn { padding: 0.4rem 0.55rem; }
+  .instructor-avatar { width: 34px; height: 34px; }
+  .offer-bell-button { width: 32px; height: 32px; }
+  .offer-bell-button svg { width: 20px; height: 20px; }
+}
 
 /* Large faint character behind a section. It is decoration only. */
 .instructor-kanji-section { position: relative; overflow: hidden; min-height: 34rem; }
@@ -106,6 +116,44 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
 .roster-footer p { margin: 0; color: var(--muted); }
 .roster-footer .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .roster-footer + .notice { margin-top: 1.2rem; }
+
+/* ---------- Students list (FSDP-72) ---------- */
+.student-list { margin-top: 0.8rem; }
+.student-row {
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) auto; align-items: center; gap: 0.6rem 1.5rem;
+  padding: 1.1rem 1.4rem;
+}
+.student-row + .student-row { border-top: 1px solid var(--line); }
+.student-row-name a { font-weight: 700; font-size: 1.05rem; color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+.student-dropping { display: inline-block; margin-top: 0.35rem; font-size: 0.8rem; font-weight: 600; color: var(--accent-text); }
+.student-bar { height: 10px; background: var(--surface); overflow: hidden; }
+.student-bar span { display: block; height: 100%; background: var(--accent); }
+.student-bar.is-met span { background: var(--ok); }
+.student-checks { margin: 0.45rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.student-checks .is-met { color: var(--ok); }
+.student-checks .is-unmet { color: var(--accent-text); }
+.student-row .readiness-status { margin-top: 0; white-space: nowrap; }
+.readiness-status-top_belt, .readiness-status-no_profile { white-space: nowrap; }
+.filters select { font: inherit; text-transform: none; letter-spacing: normal; padding: 0.6rem 0.8rem; background: #fff; color: var(--text); border: 1px solid #8a847c; }
+.grading-students-link { margin-top: 2rem; }
+
+@media (max-width: 800px) {
+  .student-row { grid-template-columns: 1fr auto; padding: 1rem; }
+  .student-row-progress { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* ---------- Student progress (FSDP-21) ---------- */
+.progress-page { max-width: 64rem; }
+.progress-page .readiness-list { margin-top: 1.2rem; }
+.trends-summary.is-warning { border-left-color: var(--accent); background: var(--bad-soft); }
+.readiness-student strong a { color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+.check-on-row strong a { color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+
+.lesson-history-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.4rem 1rem; padding: 1rem 1.2rem; }
+.lesson-history-row + .lesson-history-row { border-top: 1px solid var(--line); }
+.lesson-status { padding: 0.15rem 0.7rem; border: 1px solid var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.lesson-status-present, .lesson-status-late { border-color: var(--ok); background: var(--ok-soft); color: var(--ok); }
+.lesson-status-absent { border-color: var(--accent); background: var(--bad-soft); color: var(--accent-text); }
 
 /* ---------- Can't make it (FSDP-69) ---------- */
 .cover-box { max-width: 46rem; margin-top: 1.2rem; }

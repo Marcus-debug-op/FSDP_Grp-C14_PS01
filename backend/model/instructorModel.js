@@ -231,6 +231,7 @@ export async function listGradingProgress(instructorId) {
     `WITH my_students AS (${MY_STUDENTS})
      SELECT u.id, u.full_name, hc.name AS home_dojo,
             cb.name AS current_belt, nb.name AS next_belt,
+            to_char(sp.belt_awarded_on, 'YYYY-MM-DD') AS belt_awarded_on,
             nb.min_months_at_rank, nb.min_classes_at_rank,
             (EXTRACT(YEAR FROM age(${TODAY}, sp.belt_awarded_on)) * 12
              + EXTRACT(MONTH FROM age(${TODAY}, sp.belt_awarded_on)))::int AS months_at_belt,
@@ -539,4 +540,43 @@ export async function respondToOffer(offerId, instructorId, accept, note) {
   } finally {
     client.release();
   }
+}
+
+// ---------------------------------------------------------------------
+// Student training progress (FSDP-21)
+// ---------------------------------------------------------------------
+
+// A student's most recent lessons with this instructor, newest first: group
+// classes they booked or were marked for, and private lessons that were marked.
+// status: present / late / absent / excused, or not_marked for a booked class
+// nobody marked.
+export async function listRecentLessonsWithMe(instructorId, studentId, limit = 10) {
+  const result = await pool.query(
+    `SELECT * FROM (
+       SELECT 'class' AS kind, cs.id, cl.title, ce.name AS centre,
+              cs.session_date AS day, to_char(cs.session_date, 'YYYY-MM-DD') AS lesson_date,
+              to_char(cs.start_time, 'HH24:MI') AS start_time,
+              COALESCE(a.status, 'not_marked') AS status
+       FROM class_sessions cs
+       JOIN classes cl ON cl.id = cs.class_id
+       -- A class moved to another dojo for the day keeps its own centre_id.
+       JOIN centres ce ON ce.id = COALESCE(cs.centre_id, cl.centre_id)
+       LEFT JOIN attendance a ON a.session_id = cs.id AND a.student_id = $2
+       WHERE cs.instructor_id = $1 AND cs.status <> 'cancelled' AND cs.session_date < ${TODAY}
+         AND (a.id IS NOT NULL OR EXISTS (SELECT 1 FROM bookings b
+              WHERE b.session_id = cs.id AND b.student_id = $2 AND b.status = 'booked'))
+       UNION ALL
+       SELECT 'private', pl.id, 'Private lesson', ce.name,
+              pl.lesson_date, to_char(pl.lesson_date, 'YYYY-MM-DD'),
+              to_char(pl.start_time, 'HH24:MI'),
+              CASE pl.status WHEN 'completed' THEN 'present' ELSE 'absent' END
+       FROM private_lessons pl
+       JOIN centres ce ON ce.id = pl.centre_id
+       WHERE pl.instructor_id = $1 AND pl.student_id = $2 AND pl.status IN ('completed', 'no_show')
+     ) lessons
+     ORDER BY day DESC, start_time DESC
+     LIMIT $3`,
+    [instructorId, studentId, limit]
+  );
+  return result.rows;
 }
