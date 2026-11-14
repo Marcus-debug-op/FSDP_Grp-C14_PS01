@@ -24,7 +24,8 @@ async function request(path, { method = "GET", body } = {}) {
   return data;
 }
 
-export const getTodaysClasses = () => request("/classes").then((d) => d.classes);
+// Today's group classes and accepted private lessons: { classes, privateLessons }.
+export const getToday = () => request("/classes");
 export const getCalendar = (month) => request(`/calendar?month=${month}`);
 export const getOffers = () => request("/offers").then((d) => d.offers);
 export const acceptOffer = (offerId) => request(`/offers/${offerId}/accept`, { method: "POST" });

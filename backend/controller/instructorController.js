@@ -48,6 +48,24 @@ async function findOwnSession(req, res) {
   return session;
 }
 
+// Today's date in Singapore as YYYY-MM-DD ("en-CA" writes dates that way).
+const singaporeToday = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Singapore" });
+
+// A 1-on-1 lesson the instructor has accepted. status is scheduled, completed
+// or no_show (the admin records the last two after the lesson).
+function publicPrivateLesson(row) {
+  return {
+    id: row.id,
+    status: row.status,
+    studentName: row.student_name,
+    centre: row.centre,
+    date: row.lesson_date,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    studentNote: row.student_note,
+  };
+}
+
 // GET /api/instructor/classes?date=YYYY-MM-DD  (date is optional, default is today)
 export async function listClasses(req, res, next) {
   try {
@@ -56,9 +74,14 @@ export async function listClasses(req, res, next) {
       return res.status(400).json({ message: "Date must be a valid date." });
     }
 
-    const rows = await Instructor.listClassesOn(req.user.id, date);
+    const day = date || singaporeToday();
+    const [rows, privateRows] = await Promise.all([
+      Instructor.listClassesOn(req.user.id, date),
+      Instructor.listPrivateLessonsBetween(req.user.id, day, day),
+    ]);
     res.json({
       classes: rows.map((row) => ({ ...publicSession(row), booked: row.booked, marked: row.marked })),
+      privateLessons: privateRows.map(publicPrivateLesson),
     });
   } catch (err) {
     next(err);
@@ -78,13 +101,15 @@ export async function getCalendar(req, res, next) {
     const from = `${month}-01`;
     const to = `${month}-${String(lastDay).padStart(2, "0")}`;
 
-    const [classes, gradings] = await Promise.all([
+    const [classes, gradings, privateRows] = await Promise.all([
       Instructor.listClassesBetween(req.user.id, from, to),
       Instructor.listGradingsBetween(req.user.id, from, to),
+      Instructor.listPrivateLessonsBetween(req.user.id, from, to),
     ]);
 
     res.json({
       classes: classes.map((row) => ({ ...publicSession(row), booked: row.booked, marked: row.marked })),
+      privateLessons: privateRows.map(publicPrivateLesson),
       gradings: gradings.map((row) => ({
         id: row.id,
         centre: row.centre,

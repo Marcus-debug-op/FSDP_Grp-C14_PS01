@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getCalendar } from "../../../js/services/instructorService.js";
 import { addDays, formatTime, todayString } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
+import PrivateLessonCard from "../../components/PrivateLessonCard.jsx";
 import "../../../css/auth.css";
 import "../../../css/instructor.css";
 
@@ -67,8 +68,11 @@ export default function InstructorCalendar() {
 
   const classesOn = (date) => calendar?.classes.filter((item) => item.date === date) || [];
   const gradingsOn = (date) => calendar?.gradings.filter((item) => item.date === date) || [];
+  const privatesOn = (date) => calendar?.privateLessons.filter((item) => item.date === date) || [];
   const selectedClasses = classesOn(selected);
   const selectedGradings = gradingsOn(selected);
+  const selectedPrivates = privatesOn(selected);
+  const nothingSelected = selectedClasses.length === 0 && selectedGradings.length === 0 && selectedPrivates.length === 0;
 
   return (
     <div className="instructor-portal">
@@ -79,7 +83,7 @@ export default function InstructorCalendar() {
         <div className="container">
           <p className="eyebrow">Your schedule</p>
           <h1 className="roster-title">Calendar</h1>
-          <p className="lead">The classes and gradings assigned to you.</p>
+          <p className="lead">The classes, private lessons and gradings assigned to you.</p>
 
           <div className="calendar-head">
             <h2 className="calendar-month" aria-live="polite">{monthTitle(month)}</h2>
@@ -100,9 +104,17 @@ export default function InstructorCalendar() {
 
               const classes = classesOn(date);
               const gradings = gradingsOn(date);
-              const count = classes.length + gradings.length;
-              const hidden = classes.length - CHIPS_PER_DAY;
-              const label = `${dayTitle(date)}, ${plural(classes.length, "class", "classes")}${gradings.length ? `, ${plural(gradings.length, "grading")}` : ""}`;
+              const privates = privatesOn(date);
+              const count = classes.length + gradings.length + privates.length;
+              // Private lessons first (there are few), then classes, up to CHIPS_PER_DAY chips.
+              const lessonChips = [
+                ...privates.map((item) => ({ key: `p${item.id}`, text: `${formatTime(item.startTime)} 1-on-1`, isPrivate: true })),
+                ...classes.map((item) => ({ key: item.id, text: `${formatTime(item.startTime)} ${item.title}` })),
+              ];
+              const hidden = lessonChips.length - CHIPS_PER_DAY;
+              const label = `${dayTitle(date)}, ${plural(classes.length, "class", "classes")}`
+                + `${privates.length ? `, ${plural(privates.length, "private lesson")}` : ""}`
+                + `${gradings.length ? `, ${plural(gradings.length, "grading")}` : ""}`;
 
               return (
                 <button
@@ -115,8 +127,8 @@ export default function InstructorCalendar() {
                 >
                   <span className="calendar-date">{Number(date.slice(8))}</span>
                   {gradings.map((item) => <span className="calendar-chip calendar-chip-grading" key={item.id}>Grading</span>)}
-                  {classes.slice(0, CHIPS_PER_DAY).map((item) => (
-                    <span className="calendar-chip" key={item.id}>{formatTime(item.startTime)} {item.title}</span>
+                  {lessonChips.slice(0, CHIPS_PER_DAY).map((chip) => (
+                    <span className={chip.isPrivate ? "calendar-chip calendar-chip-private" : "calendar-chip"} key={chip.key}>{chip.text}</span>
                   ))}
                   {hidden > 0 && <span className="calendar-more">+{hidden} more</span>}
                   {count > 0 && <span className="calendar-count">{count}</span>}
@@ -130,11 +142,11 @@ export default function InstructorCalendar() {
           <div className="calendar-list" ref={listRef}>
             <h2 className="calendar-list-title">{dayTitle(selected)}</h2>
 
-            {calendar && selectedClasses.length === 0 && selectedGradings.length === 0 && (
+            {calendar && nothingSelected && (
               <p className="notice">Nothing is assigned to you on this day.</p>
             )}
 
-            {(selectedClasses.length > 0 || selectedGradings.length > 0) && (
+            {!nothingSelected && (
               <div className="grid instructor-classes">
                 {selectedGradings.map((item) => (
                   <article className="card" key={`grading-${item.id}`}>
@@ -148,6 +160,8 @@ export default function InstructorCalendar() {
                     </Link>
                   </article>
                 ))}
+
+                {selectedPrivates.map((item) => <PrivateLessonCard lesson={item} key={`private-${item.id}`} />)}
 
                 {selectedClasses.map((item) => (
                   <article className="card" key={item.id}>

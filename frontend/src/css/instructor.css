@@ -128,6 +128,10 @@ button.calendar-day:hover { background: var(--surface); }
 .calendar-day.is-today .calendar-date { padding: 0 0.45rem; background: var(--accent); color: #fff; }
 .calendar-chip { display: block; width: 100%; padding: 0.05rem 0.3rem; border-left: 3px solid var(--muted); background: var(--surface); font-size: 0.75rem; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .calendar-chip-grading { border-left-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+/* Private (1-on-1) lessons: dark marker, so they stand apart from group classes and gradings. */
+.calendar-chip-private { border-left-color: var(--text); font-weight: 600; }
+.instructor-portal .private-lesson-card { border-top: 3px solid var(--text); }
+.private-lesson-note { margin: 0.8rem 0 0; font-size: 0.9rem; color: var(--muted); font-style: italic; }
 .calendar-more { font-size: 0.75rem; color: var(--muted); }
 .calendar-count { display: none; }
 

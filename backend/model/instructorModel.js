@@ -57,6 +57,32 @@ export async function listClassesBetween(instructorId, from, to) {
   return result.rows;
 }
 
+// The instructor's private (1-on-1) lessons between two dates, for the
+// calendar and today's classes. A lesson counts once they've accepted the
+// admin's offer; lessons scheduled before offers existed have none and count too.
+// Pending offers show in the requests bell instead.
+export async function listPrivateLessonsBetween(instructorId, from, to) {
+  const result = await pool.query(
+    `SELECT pl.id, pl.status, st.full_name AS student_name, ce.name AS centre,
+            to_char(pl.lesson_date, 'YYYY-MM-DD') AS lesson_date,
+            to_char(pl.start_time, 'HH24:MI') AS start_time,
+            to_char(pl.end_time, 'HH24:MI') AS end_time,
+            pl.student_note
+     FROM private_lessons pl
+     JOIN users st ON st.id = pl.student_id
+     JOIN centres ce ON ce.id = pl.centre_id
+     WHERE pl.instructor_id = $1
+       AND pl.status IN ('scheduled', 'completed', 'no_show')
+       AND pl.lesson_date BETWEEN $2::date AND $3::date
+       AND COALESCE((SELECT lo.status FROM lesson_offers lo
+                     WHERE lo.private_lesson_id = pl.id AND lo.status <> 'withdrawn'
+                     ORDER BY lo.offered_at DESC, lo.id DESC LIMIT 1), 'accepted') = 'accepted'
+     ORDER BY pl.lesson_date, pl.start_time`,
+    [instructorId, from, to]
+  );
+  return result.rows;
+}
+
 // Gradings this instructor is examining between two dates.
 export async function listGradingsBetween(instructorId, from, to) {
   const result = await pool.query(
