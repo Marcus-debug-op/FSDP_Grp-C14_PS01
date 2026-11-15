@@ -48,6 +48,7 @@ router.get("/cover-requests", admin.listCoverRequests);
 router.get("/cover-requests/:id/availability", admin.getCoverAvailability);
 router.post("/cover-requests/:id/offer", admin.offerCover);
 router.post("/cover-requests/:id/cancel", admin.cancelCoverLesson);
+router.post("/cover-requests/:id/close", admin.closeCoverRequest);
 
 router.get("/grading-sessions", admin.listGradingSessions);
 router.post("/grading-sessions", admin.createGradingSession);
