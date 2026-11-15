@@ -45,19 +45,33 @@ export default function InstructorGrading() {
                   <span className="tag">
                     {grading.registrationOpen ? `Applications close ${shortDate(grading.closesOn)}` : "Applications closed"}
                   </span>
+                  {grading.isExaminer && <span className="tag examiner-tag">You're the examiner</span>}
                   <h3 className="instructor-card-title">{gradingDay(grading.date)}</h3>
                   <dl className="details">
                     <div><dt>Time</dt><dd>{formatTime(grading.startTime)}</dd></div>
                     <div><dt>Dojo</dt><dd>{grading.centre}</dd></div>
+                    {grading.isExaminer && (
+                      <div>
+                        <dt>Candidates</dt>
+                        <dd>{grading.allApplicants} applied, {grading.allApproved} approved</dd>
+                      </div>
+                    )}
                     <div><dt>Applied</dt><dd>{grading.myApplicants} of your students</dd></div>
                     <div>
                       <dt>To approve</dt>
                       <dd className={grading.myAwaiting > 0 ? "awaiting-count" : undefined}>{grading.myAwaiting}</dd>
                     </div>
                   </dl>
-                  <Link to={`/instructor/gradings/${grading.id}`} className="btn btn-outline btn-small">
-                    View Applicants
-                  </Link>
+                  <div className="offer-actions">
+                    {grading.isExaminer && (
+                      <Link to={`/instructor/gradings/${grading.id}/assess`} className="btn btn-primary btn-small">
+                        Assess Candidates
+                      </Link>
+                    )}
+                    <Link to={`/instructor/gradings/${grading.id}`} className="btn btn-outline btn-small">
+                      {grading.isExaminer ? "View All Applicants" : "View Your Applicants"}
+                    </Link>
+                  </div>
                 </article>
               ))}
             </div>

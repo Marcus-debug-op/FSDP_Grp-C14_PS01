@@ -37,7 +37,12 @@ export const getAttendanceTrends =() => request("/attendance-trends");
 export const getStudentProgress = (studentId) => request(`/students/${studentId}/progress`);
 export const getGradingReadiness =() => request("/grading-readiness").then((d) => d.students);
 export const getUpcomingGradings = () => request("/gradings").then((d) => d.gradings);
-export const getGradingApplicants = (gradingId) => request(`/gradings/${gradingId}/applicants`);
+// FSDP-18 / FSDP-75: the examiner's candidates, and saving one assessment.
+// body: { result: "pass" | "fail" | null, feedback, signature, submit }
+export const getAssessments = (gradingId) => request(`/gradings/${gradingId}/assessments`);
+export const saveAssessment = (gradingId, applicationId, body) =>
+  request(`/gradings/${gradingId}/assessments/${applicationId}`, { method: "PUT", body }).then((d) => d.candidate);
+export const getGradingApplicants =(gradingId) => request(`/gradings/${gradingId}/applicants`);
 export const setApplicantApproval = (gradingId, studentId, approved) =>
   request(`/gradings/${gradingId}/applicants/${studentId}/approval`, { method: "PUT", body: { approved } });
 // FSDP-69 "Can't make it": returns the updated roster session.
