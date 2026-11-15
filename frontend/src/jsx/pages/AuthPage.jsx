@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getApplicationStatus } from "../../js/services/studentService.js";
 import SignInForm from "../components/SignInForm.jsx";
 import SignUpForm from "../components/SignUpForm.jsx";
+import AuthSlideshow from "../components/AuthSlideshow.jsx";
 import "../../css/auth.css";
 import usePageTitle from "../../js/hooks/usePageTitle.js";
 
@@ -62,6 +63,41 @@ export default function AuthPage() {
   }
 
   const isSignUp = pathname === "/signup";
+
+  // Sign in: two columns, an animated dojo panel on the left and the form on the right.
+  // Sign up keeps the single wide column because its four-step form needs the space.
+  if (!isSignUp) {
+    return (
+      <section className="auth-split">
+        <aside className="auth-visual" aria-hidden="true">
+          <AuthSlideshow />
+          <div className="auth-visual-content">
+            {/* Ensō: the brush-drawn circle of Zen, echoing Aikido's circular movement */}
+            <div className="auth-mark">
+              <svg className="auth-enso" viewBox="0 0 200 200">
+                <path d="M141 41 A72 72 0 1 0 171 87" />
+              </svg>
+              <p className="auth-visual-kanji" lang="ja">合気道</p>
+            </div>
+            <p className="auth-visual-line">The way of harmony</p>
+            <p className="auth-visual-sub">Training together in Singapore since 1988</p>
+          </div>
+        </aside>
+        <div className="auth-panel">
+          <p className="eyebrow">Welcome back</p>
+          <h1>Sign In</h1>
+          <p className="lead">Students, instructors and administrators sign in here.</p>
+          <div className="auth-toggle" role="group" aria-label="Choose sign in or sign up">
+            <button type="button" aria-pressed="true" onClick={() => navigate("/signin", { replace: true })}>Sign In</button>
+            <button type="button" aria-pressed="false" onClick={() => navigate("/signup", { replace: true })}>Sign Up</button>
+          </div>
+          <SignInForm key="in" />
+          <p className="auth-panel-note">New to Aikido Shinju-Kai? <Link to="/join">See how to join</Link></p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="section">
       <div className="container narrow">

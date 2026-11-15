@@ -31,11 +31,12 @@ function useHeroScrollFade(heroRef) {
 }
 
 
-// Steps shown in "Getting started". The faint kanji are the numbers 1, 2, 3.
+// Steps shown in "Getting started". Each faint word is Japanese for that step:
+// 入門 (nyūmon) joining a dojo, 稽古 (keiko) training, 上達 (jōtatsu) progress.
 const steps = [
-  { kanji: "一", title: "Register an account", text: "Create your student account in a minute." },
-  { kanji: "二", title: "Find suitable classes", text: "Browse classes by dojo and day." },
-  { kanji: "三", title: "Track your progress", text: "Follow your training journey over time." },
+  { kanji: "入門", title: "Register an account", text: "Create your student account in a minute." },
+  { kanji: "稽古", title: "Find suitable classes", text: "Browse classes by dojo and day." },
+  { kanji: "上達", title: "Track your progress", text: "Follow your training journey over time." },
 ];
 
 // Key facts about the school.
@@ -74,7 +75,7 @@ function HomePage() {
         <div className={`container hs-grid hero-scroll-content ${photoOk ? "" : "no-photo"}`}>
           <div className="hs-copy">
             <p className="eyebrow">Aikido Shinju-Kai &mdash; Singapore</p>
-            <p className="hero-kanji" aria-hidden="true">合気道</p>
+            <p className="hero-kanji" lang="ja" aria-hidden="true">合気道</p>
             <h1>Begin Your Aikido Journey</h1>
             <span className="rule" aria-hidden="true"></span>
             <p className="hero-text">
@@ -123,10 +124,24 @@ function HomePage() {
           </div>
           </ScrollReveal>
           <ScrollReveal delay={150} className="visual-reveal">
-          <div className="panel" aria-hidden="true">
-            <span className="panel-kanji">武道</span>
-            <span className="panel-tag">The martial way</span>
-          </div>
+          {/* The video from the official ASK homepage, embedded from YouTube.
+              youtube-nocookie.com avoids tracking cookies until the visitor presses play. */}
+          <figure className="panel panel-video">
+            <div className="panel-video-frame">
+              <iframe
+                src="https://www.youtube-nocookie.com/embed/r7540s8uU4I?rel=0"
+                title="Aikido Shinju-Kai video"
+                loading="lazy"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+            </div>
+            <figcaption className="panel-video-caption">
+              <span className="panel-video-kanji" lang="ja" aria-hidden="true">武道</span>
+              The martial way · see Aikido Shinju-Kai in action
+            </figcaption>
+          </figure>
           </ScrollReveal>
         </div>
       </section>
@@ -141,7 +156,7 @@ function HomePage() {
           <ol className="steps">
             {steps.map((s) => (
               <ScrollReveal key={s.title} as="li" className="step" delay={steps.indexOf(s) * 110}>
-                <span className="step-kanji" aria-hidden="true">{s.kanji}</span>
+                <span className="step-kanji" lang="ja" aria-hidden="true">{s.kanji}</span>
                 <h3>{s.title}</h3>
                 <p>{s.text}</p>
               </ScrollReveal>
@@ -163,7 +178,7 @@ function HomePage() {
           <ul className="meaning">
             {meaning.map((m) => (
               <ScrollReveal key={m.name} as="li" delay={meaning.indexOf(m) * 120}>
-                <span className="meaning-kanji" aria-hidden="true">{m.kanji}</span>
+                <span className="meaning-kanji" lang="ja" aria-hidden="true">{m.kanji}</span>
                 <span><strong>{m.name}</strong><br />{m.text}</span>
               </ScrollReveal>
             ))}
