@@ -78,6 +78,73 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
   .offer-bell-button svg { width: 20px; height: 20px; }
 }
 
+/* ---------- Dashboard hero: "your day at a glance" ---------- */
+/* Same idea as the student hero: a faded dojo photo, the day on the left,
+   quick links on the right. */
+.ihero {
+  padding: 4.5rem 0 4rem; border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, rgba(250, 249, 247, 0.96) 0%, rgba(250, 249, 247, 0.9) 55%, rgba(250, 249, 247, 0.78) 100%),
+    url("/images/hero.jpg") center / cover no-repeat;
+}
+.ihero-inner { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 2.5rem 4rem; align-items: center; }
+.ihero-title { margin: 0.3rem 0 0.5rem; font-size: clamp(2rem, 4vw, 3rem); color: var(--text); }
+.ihero-lead { margin: 0; font-size: 1.1rem; color: var(--muted); }
+
+/* Today's classes as a track: done, next (pulsing), later, then tomorrow. */
+.today-track { position: relative; list-style: none; display: flex; justify-content: space-between; gap: 1rem; max-width: 36rem; margin: 2.2rem 0 0; padding: 0; }
+.today-track::before { content: ""; position: absolute; left: 8px; right: 8px; top: 9px; height: 2px; background: var(--line); }
+.today-stop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; min-width: 0; text-align: center; }
+.today-stop:first-child { align-items: flex-start; text-align: left; }
+.today-stop:last-child { align-items: flex-end; text-align: right; }
+.today-dot { width: 20px; height: 20px; display: grid; place-items: center; }
+.today-dot::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--line); }
+.today-stop.is-done .today-dot::before { background: var(--accent); border-color: var(--accent); }
+.today-stop.is-next .today-dot::before { width: 20px; height: 20px; background: var(--accent); border-color: var(--accent); animation: next-pulse 2.2s ease-out infinite; }
+.today-stop.is-tomorrow .today-dot::before { border-style: dashed; border-color: var(--muted); }
+.today-time { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text); white-space: nowrap; }
+.today-state { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.today-stop.is-next .today-time, .today-stop.is-next .today-state { color: var(--accent-text); }
+@keyframes next-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(168, 63, 49, 0.35); }
+  70% { box-shadow: 0 0 0 10px rgba(168, 63, 49, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(168, 63, 49, 0); }
+}
+
+.ihero-stats { list-style: none; display: flex; flex-wrap: wrap; gap: 1.2rem 2.6rem; margin: 2rem 0 0; padding: 1.2rem 0 0; border-top: 1px solid var(--line); }
+.ihero-stats strong { display: block; font-family: var(--font-heading); font-size: 2.2rem; font-weight: 400; line-height: 1.1; color: var(--accent-text); }
+.ihero-stats li > span { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+/* Quick-action cards, like the student's Grading / Payments cards. */
+.ihero-actions { display: flex; flex-direction: column; gap: 0.8rem; }
+.quick-card {
+  display: flex; align-items: center; gap: 1rem; padding: 1.05rem 1.2rem; border-radius: 14px;
+  background: #2b2421; color: #fff; text-decoration: none; transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.quick-card.is-primary { background: var(--accent); }
+.quick-card:hover, .quick-card:focus-visible { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(38, 35, 31, 0.22); color: #fff; }
+.quick-kanji { flex-shrink: 0; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: rgba(255, 255, 255, 0.14); font-family: var(--font-kanji); font-size: 1.35rem; }
+.quick-text { flex: 1; min-width: 0; font-weight: 700; }
+.quick-sub { display: block; margin-top: 0.15rem; font-size: 0.85rem; font-weight: 400; opacity: 0.82; }
+.quick-arrow { font-size: 1.2rem; transition: transform 200ms ease; }
+.quick-card:hover .quick-arrow { transform: translateX(4px); }
+
+/* Today's class cards lift a little on hover. */
+.instructor-class-card { transition: transform 200ms ease, box-shadow 200ms ease; }
+.instructor-class-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(38, 35, 31, 0.12); }
+
+@media (max-width: 900px) {
+  .ihero { padding: 3rem 0; }
+  .ihero-inner { grid-template-columns: 1fr; }
+  .ihero-stats { gap: 1rem 1.6rem; }
+  .ihero-stats li { flex: 1 1 40%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .today-stop.is-next .today-dot::before { animation: none; }
+  .quick-card, .quick-arrow, .instructor-class-card { transition: none; }
+  .quick-card:hover, .instructor-class-card:hover { transform: none; }
+}
+
 /* Large faint character behind a section. It is decoration only. */
 .instructor-kanji-section { position: relative; overflow: hidden; min-height: 34rem; }
 .instructor-kanji-section .container { position: relative; }
