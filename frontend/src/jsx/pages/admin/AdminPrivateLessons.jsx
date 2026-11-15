@@ -227,7 +227,7 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
           </select>
           <span className="form-hint">
             Only instructors who are free can be picked. If their lesson before or after is at another dojo, it needs to be at
-            least 3 hours apart.
+            least 1 hour 30 minutes apart.
           </span>
         </label>
 

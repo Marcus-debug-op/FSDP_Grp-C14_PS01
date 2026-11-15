@@ -180,6 +180,22 @@ export async function offerCover({ requestId, instructorId, adminId }) {
   return { offerId, request: await findCoverRequest(requestId) };
 }
 
+export async function closeCoverRequest({ requestId, user }) {
+  await withTransaction(async (client) => {
+    const request = await lockOpenRequest(client, requestId);
+    if (request.session_status === "scheduled" && !request.has_started) {
+      throw new LessonError(409, "This lesson hasn't started yet. Find cover or cancel the lesson instead.");
+    }
+    await withdrawPendingOffers({ sessionId: request.session_id }, client);
+    await client.query(
+      `UPDATE cover_requests SET status = 'cancelled', resolved_at = NOW(), resolved_by = $2
+       WHERE id = $1 AND status = 'open'`,
+      [requestId, user.id]
+    );
+  });
+  return findCoverRequest(requestId);
+}
+
 export async function cancelCoverLesson({ requestId, user, reason }) {
   const request = await withTransaction((client) => lockOpenRequest(client, requestId));
 
