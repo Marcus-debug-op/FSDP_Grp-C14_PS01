@@ -327,15 +327,23 @@ function publicGrading(row) {
     closesOn: row.closes_on,
     registrationOpen: row.registration_open,
     isUpcoming: row.is_upcoming,
+    // FSDP-18: true when the admin picked this instructor as the examiner.
+    isExaminer: Boolean(row.is_examiner),
   };
 }
 
-// GET /api/instructor/gradings  (upcoming only)
+// GET /api/instructor/gradings  (upcoming, plus the last 14 days of ones you examine)
 export async function listUpcomingGradings(req, res, next) {
   try {
     const rows = await Instructor.listUpcomingGradings(req.user.id);
     res.json({
-      gradings: rows.map((row) => ({ ...publicGrading(row), myApplicants: row.my_applicants, myAwaiting: row.my_awaiting })),
+      gradings: rows.map((row) => ({
+        ...publicGrading(row),
+        myApplicants: row.my_applicants,
+        myAwaiting: row.my_awaiting,
+        // Whole-grading counts, only for the examiner.
+        ...(row.is_examiner ? { allApplicants: row.all_applicants, allApproved: row.all_approved } : {}),
+      })),
     });
   } catch (err) {
     next(err);
@@ -372,8 +380,31 @@ export async function getGradingApplicants(req, res, next) {
     const grading = gradingId && (await Instructor.findGrading(gradingId));
     if (!grading) return res.status(404).json({ message: "Grading not found." });
 
-    const applicants = await loadApplicants(req.user.id, grading.id);
-    res.json({ grading: publicGrading(grading), applicants });
+    // FSDP-18: the examiner sees every applicant in the grading, with their
+    // stats, so they know who they're grading. They can still only approve
+    // their own students; everyone else is approved by their own instructor.
+    if (grading.examiner_id === req.user.id) {
+      const [rows, myRows] = await Promise.all([
+        Instructor.listCandidates(grading.id, { approvedOnly: false }),
+        Instructor.listGradingProgress(req.user.id),
+      ]);
+      const mine = new Set(myRows.map((row) => row.id));
+      const applicants = rows.map((row) => ({
+        ...gradingProgress(row),
+        applicationId: row.application_id,
+        applicationStatus: row.application_status,
+        targetBelt: row.target_belt,
+        appliedOn: row.applied_on,
+        isMine: mine.has(row.id),
+        approval: row.approved_on
+          ? { by: row.approved_by, byYou: row.approved_by_id === req.user.id, on: row.approved_on }
+          : null,
+      }));
+      return res.json({ grading: { ...publicGrading(grading), isExaminer: true }, isExaminer: true, applicants });
+    }
+
+    const applicants = (await loadApplicants(req.user.id, grading.id)).map((a) => ({ ...a, isMine: true }));
+    res.json({ grading: publicGrading(grading), isExaminer: false, applicants });
   } catch (err) {
     next(err);
   }
@@ -642,6 +673,119 @@ export async function getStudentProgress(req, res, next) {
         status: lesson.status,
       })),
     });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------- Assessing students at a grading (FSDP-18, FSDP-75) ----------
+
+// FOR TESTING ONLY: add GRADING_TEST_MODE=true to backend/.env to let the
+// examiner assess before the grading day. Never set it on the live site.
+const gradingTestMode = () => process.env.GRADING_TEST_MODE === "true";
+const SIGNATURE_PREFIX = "data:image/png;base64,";
+const MAX_SIGNATURE_LENGTH = 300_000; // about 220 KB of PNG, far more than a signature needs
+const MAX_FEEDBACK_LENGTH = 2000;
+
+function publicCandidate(row) {
+  const progress = gradingProgress(row);
+  return {
+    applicationId: row.application_id,
+    ...progress,
+    monthsAtBelt: row.months_at_belt,
+    assessment: row.assessment_id
+      ? {
+          status: row.assessment_status, // draft or submitted
+          result: row.result,
+          feedback: row.feedback,
+          signature: row.signature_data,
+          signedAt: row.signed_at,
+          monthsAtRank: row.months_at_rank,
+          assessedBy: row.assessed_by,
+        }
+      : null,
+  };
+}
+
+// The grading, if this instructor is its examiner. Sends 404 or 403 otherwise.
+async function findExaminedGrading(req, res) {
+  const gradingId = parseId(req.params.id);
+  const grading = gradingId && (await Instructor.findGrading(gradingId));
+  if (!grading) {
+    res.status(404).json({ message: "Grading not found." });
+    return null;
+  }
+  if (grading.examiner_id !== req.user.id) {
+    res.status(403).json({ message: "Only the examiner the admin chose for this grading can assess it." });
+    return null;
+  }
+  return grading;
+}
+
+const canAssess = (grading) => grading.status !== "cancelled" && (grading.has_started || gradingTestMode());
+
+// GET /api/instructor/gradings/:id/assessments
+export async function getAssessments(req, res, next) {
+  try {
+    const grading = await findExaminedGrading(req, res);
+    if (!grading) return;
+    const rows = await Instructor.listCandidates(grading.id);
+    res.json({
+      grading: { ...publicGrading(grading), isExaminer: true },
+      canAssess: canAssess(grading),
+      testMode: gradingTestMode() && !grading.has_started,
+      candidates: rows.map(publicCandidate),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /api/instructor/gradings/:id/assessments/:applicationId
+// Body: { result: "pass" | "fail" | null, feedback, signature (PNG data URL) | null, submit: boolean }
+// A draft can be saved half-done. Submitting needs a result, feedback and a
+// signature, and locks the assessment.
+export async function saveAssessment(req, res, next) {
+  try {
+    const grading = await findExaminedGrading(req, res);
+    if (!grading) return;
+    if (!canAssess(grading)) {
+      return res.status(400).json({
+        message: grading.status === "cancelled" ? "This grading was cancelled." : "Assessments open on the grading day.",
+      });
+    }
+
+    const applicationId = parseId(req.params.applicationId);
+    const body = req.body || {};
+    const submit = body.submit === true;
+    const result = body.result ?? null;
+    const feedback = typeof body.feedback === "string" && body.feedback.trim() ? body.feedback.trim() : null;
+    const signature = typeof body.signature === "string" && body.signature ? body.signature : null;
+
+    if (!applicationId) return res.status(404).json({ message: "Candidate not found." });
+    if (result !== null && result !== "pass" && result !== "fail") {
+      return res.status(400).json({ message: "Result must be Pass or Fail." });
+    }
+    if (feedback && feedback.length > MAX_FEEDBACK_LENGTH) {
+      return res.status(400).json({ message: `Please keep feedback under ${MAX_FEEDBACK_LENGTH} characters.` });
+    }
+    if (signature && (!signature.startsWith(SIGNATURE_PREFIX) || signature.length > MAX_SIGNATURE_LENGTH)) {
+      return res.status(400).json({ message: "The signature couldn't be read. Please clear it and sign again." });
+    }
+    if (submit) {
+      if (!result) return res.status(400).json({ message: "Choose Pass or Fail before submitting." });
+      if (!feedback || feedback.length < 3) return res.status(400).json({ message: "Add some feedback before submitting." });
+      if (!signature) return res.status(400).json({ message: "Sign the assessment before submitting." });
+    }
+
+    const saved = await Instructor.saveAssessment(grading.id, applicationId, req.user.id, { result, feedback, signature, submit });
+    if (saved.error === "not_candidate") return res.status(404).json({ message: "Candidate not found." });
+    if (saved.error === "submitted") {
+      return res.status(409).json({ message: "This assessment has already been submitted, so it can't be changed." });
+    }
+
+    const row = (await Instructor.listCandidates(grading.id)).find((r) => r.application_id === applicationId);
+    res.json({ candidate: publicCandidate(row) });
   } catch (err) {
     next(err);
   }

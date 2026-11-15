@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { getGradingApplicants, setApplicantApproval } from "../../../js/services/instructorService.js";
 import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
@@ -19,6 +19,14 @@ const APPLICATION_LABEL = {
 // Approval for one applicant: approved (with undo), approvable, or why not.
 function ApprovalBox({ applicant, canChange, busy, onChange }) {
   const { approval } = applicant;
+
+  // The examiner sees other instructors' students too, but only their own
+  // instructor can approve them.
+  if (!applicant.isMine) {
+    return approval
+      ? <p className="approval approval-done"><span aria-hidden="true">✓ </span>Approved by {approval.by} on {shortDate(approval.on)}</p>
+      : <p className="approval approval-blocked">Waiting for their own instructor to approve.</p>;
+  }
 
   if (approval) {
     return (
@@ -64,7 +72,11 @@ export default function InstructorGradingSession() {
     setError("");
     try {
       const { applicant } = await setApplicantApproval(id, studentId, approved);
-      setData({ ...data, applicants: data.applicants.map((a) => (a.studentId === studentId ? applicant : a)) });
+      // Keep the row's own fields (such as applicationId) and mark it as yours: only your own students can be approved.
+      setData({
+        ...data,
+        applicants: data.applicants.map((a) => (a.studentId === studentId ? { ...a, ...applicant, isMine: true } : a)),
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -75,6 +87,7 @@ export default function InstructorGradingSession() {
   const grading = data?.grading;
   const applicants = data?.applicants || [];
   const approvedCount = applicants.filter((a) => a.approval).length;
+  const isExaminer = Boolean(data?.isExaminer);
 
   return (
     <div className="instructor-portal">
@@ -87,7 +100,7 @@ export default function InstructorGradingSession() {
 
           {grading && (
             <>
-              <p className="eyebrow">Grading applicants</p>
+              <p className="eyebrow">{isExaminer ? "You're the examiner · all applicants" : "Your applicants"}</p>
               <h1 className="roster-title">{gradingDay(grading.date)}</h1>
               <p className="lead">
                 {grading.centre}, {formatTime(grading.startTime)}.{" "}
@@ -101,16 +114,27 @@ export default function InstructorGradingSession() {
           {error && <p className="form-error" role="alert">{error}</p>}
 
           {data && applicants.length === 0 && (
-            <p className="notice">None of your students have applied for this grading yet.</p>
+            <p className="notice">
+              {isExaminer ? "Nobody has applied for this grading yet." : "None of your students have applied for this grading yet."}
+            </p>
           )}
 
           {applicants.length > 0 && (
             <>
               <ul className="stats roster-stats">
-                <li><strong>{applicants.length}</strong><span>Your applicants</span></li>
+                <li><strong>{applicants.length}</strong><span>{isExaminer ? "All applicants" : "Your applicants"}</span></li>
                 <li className="stat-ready"><strong>{approvedCount}</strong><span>Approved</span></li>
-                <li className="stat-not-yet"><strong>{applicants.length - approvedCount}</strong><span>Waiting for you</span></li>
+                <li className="stat-not-yet">
+                  <strong>{applicants.length - approvedCount}</strong>
+                  <span>{isExaminer ? "Waiting for approval" : "Waiting for you"}</span>
+                </li>
               </ul>
+              {isExaminer && (
+                <p className="trends-note">
+                  As the examiner you can see everyone in this grading. You can only approve your own students.{" "}
+                  <Link to={`/instructor/gradings/${grading.id}/assess`}>Go to Assess Candidates</Link>
+                </p>
+              )}
 
               <ul className="readiness-list">
                 {applicants.map((applicant) => (
@@ -119,6 +143,7 @@ export default function InstructorGradingSession() {
                       Applied for {applicant.targetBelt} on {shortDate(applicant.appliedOn)}:{" "}
                       {APPLICATION_LABEL[applicant.applicationStatus] || applicant.applicationStatus}
                     </span>
+                    {isExaminer && applicant.isMine && <span className="your-student-tag">Your student</span>}
                     <ApprovalBox
                       applicant={applicant}
                       canChange={grading.isUpcoming}

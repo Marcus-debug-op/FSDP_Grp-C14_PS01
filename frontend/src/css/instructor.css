@@ -117,6 +117,36 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
 .roster-footer .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .roster-footer + .notice { margin-top: 1.2rem; }
 
+/* ---------- Assessing at a grading (FSDP-18, FSDP-75) ---------- */
+.instructor-portal .tag.examiner-tag { display: inline-block; margin-top: 0.5rem; background: var(--accent); color: #fff; }
+.candidate-list { margin-top: 1.5rem; }
+.your-student-tag { display: inline-block; margin-top: 0.3rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-text); }
+.candidate-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 0.5rem 1.2rem; padding: 1rem 1.4rem; }
+.candidate-row + .candidate-row { border-top: 1px solid var(--line); }
+.candidate-row.is-open { box-shadow: inset 4px 0 0 var(--accent); }
+.candidate-state { font-size: 0.85rem; font-weight: 600; white-space: nowrap; }
+.candidate-state.is-none { color: var(--muted); }
+.candidate-state.is-draft { color: var(--accent-text); }
+.candidate-state.is-done { color: var(--ok); }
+.assess-anchor { scroll-margin-top: 6rem; }
+.assess-form { margin-top: 2.5rem; padding: 1.6rem; border: 1px solid var(--line); border-top: 3px solid var(--accent); background: var(--bg); }
+.assess-name { margin: 0; font-size: clamp(1.6rem, 3vw, 2.2rem); }
+.assess-form .readiness-list { margin-top: 1rem; }
+.assess-label { display: block; margin: 1.5rem 0 0.4rem; font-weight: 700; }
+.assess-results .roster-option { flex: 0 1 9rem; }
+.assess-feedback { width: 100%; padding: 0.7rem 0.8rem; border: 1px solid #8a847c; font: inherit; resize: vertical; }
+.assess-actions { margin-top: 1.5rem; }
+.assess-submitted p { margin: 0.6rem 0 0; }
+.assess-signature-img { display: block; max-width: 22rem; width: 100%; margin-top: 0.8rem; border: 1px solid var(--line); background: #fff; }
+.signature-canvas { display: block; width: 100%; max-width: 32rem; height: 9rem; border: 1px dashed #8a847c; background: #fff; touch-action: none; cursor: crosshair; }
+.signature-foot { display: flex; justify-content: space-between; max-width: 32rem; margin-top: 0.3rem; font-size: 0.85rem; color: var(--muted); }
+
+@media (max-width: 800px) {
+  .candidate-row { grid-template-columns: 1fr auto; padding: 1rem; }
+  .candidate-state { grid-column: 1; grid-row: 2; }
+  .assess-form { padding: 1.1rem; }
+}
+
 /* A class moved to another dojo for one day. */
 .moved-note { margin: 0.8rem 0 0; padding: 0.5rem 0.75rem; border-left: 3px solid var(--accent); background: var(--bad-soft); font-size: 0.9rem; color: var(--text); }
 .moved-note strong { color: var(--accent-text); }
