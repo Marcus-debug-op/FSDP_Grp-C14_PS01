@@ -242,7 +242,7 @@ export async function listGradingProgress(instructorId) {
   const result = await pool.query(
     `WITH my_students AS (${MY_STUDENTS})
      SELECT u.id, u.full_name, hc.name AS home_dojo,
-            cb.name AS current_belt, nb.name AS next_belt,
+            cb.name AS current_belt, nb.name AS next_belt, cb.rank_order AS current_rank,
             to_char(sp.belt_awarded_on, 'YYYY-MM-DD') AS belt_awarded_on,
             nb.min_months_at_rank, nb.min_classes_at_rank,
             (EXTRACT(YEAR FROM age(${TODAY}, sp.belt_awarded_on)) * 12
@@ -724,4 +724,84 @@ export async function saveAssessment(gradingId, applicationId, examinerId, { res
   } finally {
     client.release();
   }
+}
+
+// ---------------------------------------------------------------------
+// More analytics for the Analytics page (FSDP-71)
+// All for the last 28 days up to yesterday, like the "last 4 weeks" figures,
+// except "coming up", which is today and the next 6 days.
+// ---------------------------------------------------------------------
+
+// The instructor's sessions in the last 28 days, and everyone on each roster
+// (booked, or already marked), with whether they came and how they checked in.
+const RECENT_ROSTER = `
+  recent AS (
+    SELECT cs.id, cs.class_id, cs.session_date, COALESCE(cs.centre_id, cl.centre_id) AS centre_id
+    FROM class_sessions cs
+    JOIN classes cl ON cl.id = cs.class_id
+    WHERE cs.instructor_id = $1 AND cs.status <> 'cancelled'
+      AND cs.session_date BETWEEN ${TODAY} - 28 AND ${TODAY} - 1
+  ),
+  roster AS (
+    SELECT r.id AS session_id, r.class_id, r.session_date, a.status, a.method
+    FROM recent r
+    JOIN LATERAL (
+      SELECT b.student_id FROM bookings b WHERE b.session_id = r.id AND b.status = 'booked'
+      UNION
+      SELECT a.student_id FROM attendance a WHERE a.session_id = r.id
+    ) x ON TRUE
+    LEFT JOIN attendance a ON a.session_id = r.id AND a.student_id = x.student_id
+  )`;
+
+export async function getAnalyticsExtras(instructorId) {
+  const [taught, upcoming, byClass, byWeekday, checkIns] = await Promise.all([
+    pool.query(
+      `WITH ${RECENT_ROSTER}
+       SELECT COUNT(*)::int AS classes, COUNT(DISTINCT centre_id)::int AS dojos FROM recent`,
+      [instructorId]
+    ),
+    pool.query(
+      `SELECT COUNT(*)::int AS classes,
+              COALESCE(SUM((SELECT COUNT(*) FROM bookings b WHERE b.session_id = cs.id AND b.status = 'booked')), 0)::int AS booked
+       FROM class_sessions cs
+       WHERE cs.instructor_id = $1 AND cs.status = 'scheduled'
+         AND cs.session_date BETWEEN ${TODAY} AND ${TODAY} + 6`,
+      [instructorId]
+    ),
+    // Turnout for each weekly class: who came out of everyone on the roster.
+    pool.query(
+      `WITH ${RECENT_ROSTER}
+       SELECT cl.id, cl.title, ce.name AS centre, cl.day_of_week,
+              to_char(cl.start_time, 'HH24:MI') AS start_time,
+              COUNT(*)::int AS expected,
+              COUNT(*) FILTER (WHERE ro.status IN ('present', 'late'))::int AS attended
+       FROM roster ro
+       JOIN classes cl ON cl.id = ro.class_id
+       JOIN centres ce ON ce.id = cl.centre_id
+       GROUP BY cl.id, cl.title, ce.name, cl.day_of_week, cl.start_time`,
+      [instructorId]
+    ),
+    // Students who came, by day of the week (0 = Sunday, like JavaScript).
+    pool.query(
+      `WITH ${RECENT_ROSTER}
+       SELECT EXTRACT(DOW FROM session_date)::int AS day,
+              COUNT(*) FILTER (WHERE status IN ('present', 'late'))::int AS attended
+       FROM roster GROUP BY 1`,
+      [instructorId]
+    ),
+    pool.query(
+      `WITH ${RECENT_ROSTER}
+       SELECT COUNT(*) FILTER (WHERE status IN ('present', 'late'))::int AS attended,
+              COUNT(*) FILTER (WHERE status IN ('present', 'late') AND method = 'qr')::int AS by_qr
+       FROM roster`,
+      [instructorId]
+    ),
+  ]);
+  return {
+    taught: taught.rows[0],
+    upcoming: upcoming.rows[0],
+    byClass: byClass.rows,
+    byWeekday: byWeekday.rows,
+    checkIns: checkIns.rows[0],
+  };
 }
