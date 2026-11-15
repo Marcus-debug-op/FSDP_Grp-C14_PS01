@@ -39,6 +39,8 @@ import Grading from "./pages/student/Grading.jsx";
 import StudentProfile from "./pages/student/StudentProfile.jsx";
 import PersonalSettings from "./pages/student/PersonalSettings.jsx";
 import ClassRoster from "./pages/instructor/ClassRoster.jsx";
+import StudentProgress from "./pages/instructor/StudentProgress.jsx";
+import InstructorStudents from "./pages/instructor/InstructorStudents.jsx";
 import InstructorCalendar from "./pages/instructor/InstructorCalendar.jsx";
 import InstructorGrading from "./pages/instructor/InstructorGrading.jsx";
 import InstructorAnalytics from "./pages/instructor/InstructorAnalytics.jsx";
@@ -101,6 +103,8 @@ export default function App() {
           <Route path="/instructor/sessions/:id/qr" element={<ProtectedRoute role="instructor"><CheckInQr /></ProtectedRoute>} />
           <Route path="/instructor/calendar" element={<ProtectedRoute role="instructor"><InstructorCalendar /></ProtectedRoute>} />
           <Route path="/instructor/analytics" element={<ProtectedRoute role="instructor"><InstructorAnalytics /></ProtectedRoute>} />
+          <Route path="/instructor/students" element={<ProtectedRoute role="instructor"><InstructorStudents /></ProtectedRoute>} />
+          <Route path="/instructor/students/:id" element={<ProtectedRoute role="instructor"><StudentProgress /></ProtectedRoute>} />
           <Route path="/instructor/grading" element={<ProtectedRoute role="instructor"><InstructorGrading /></ProtectedRoute>} />
           <Route path="/instructor/gradings/:id" element={<ProtectedRoute role="instructor"><InstructorGradingSession /></ProtectedRoute>} />
           {/* Any unknown address falls back to the homepage */}

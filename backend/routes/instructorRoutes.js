@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
 import {
   listClasses, getCalendar, getGradingReadiness, listUpcomingGradings, getGradingApplicants, setApplicantApproval,
   getRoster, saveAttendance, getAttendanceTrends, listOffers, acceptOffer, declineOffer,
-  markPrivateLessonAttendance, requestCover,
+  markPrivateLessonAttendance, requestCover, getStudentProgress,
 } from "../controller/instructorController.js";
 import { createQr } from "../controller/checkInController.js";
 
@@ -15,6 +15,7 @@ router.use(requireAuth, requireRole("instructor"));
 router.get("/classes", listClasses);
 router.get("/calendar", getCalendar);
 router.get("/attendance-trends", getAttendanceTrends);
+router.get("/students/:id/progress", getStudentProgress);   // FSDP-21
 router.get("/grading-readiness", getGradingReadiness);
 router.get("/gradings", listUpcomingGradings);
 router.get("/gradings/:id/applicants", getGradingApplicants);

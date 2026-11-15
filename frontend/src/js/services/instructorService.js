@@ -34,6 +34,7 @@ export const getOffers =() => request("/offers").then((d) => d.offers);
 export const acceptOffer = (offerId) => request(`/offers/${offerId}/accept`, { method: "POST" });
 export const declineOffer = (offerId, reason) => request(`/offers/${offerId}/decline`, { method: "POST", body: { reason } });
 export const getAttendanceTrends =() => request("/attendance-trends");
+export const getStudentProgress = (studentId) => request(`/students/${studentId}/progress`);
 export const getGradingReadiness =() => request("/grading-readiness").then((d) => d.students);
 export const getUpcomingGradings = () => request("/gradings").then((d) => d.gradings);
 export const getGradingApplicants = (gradingId) => request(`/gradings/${gradingId}/applicants`);
