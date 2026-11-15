@@ -14,6 +14,7 @@ router.get("/applications/hq-alerts", hqAlerts.list);
 router.patch("/applications/hq-alerts/:alertId/ack", hqAlerts.acknowledge);
 router.get("/applications/:id", applications.detail);
 router.get("/applications/:id/photo", applications.photo);
+router.get("/applications/:id/evidence", applications.evidence);
 router.patch("/applications/:id/decision", applications.decide);
 router.patch("/applications/:id/book", membershipBook.advance);
 router.patch("/applications/:id/photo/request", applications.requestPhoto);

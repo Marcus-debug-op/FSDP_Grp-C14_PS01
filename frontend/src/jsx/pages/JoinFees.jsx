@@ -18,7 +18,7 @@ const steps = [
 const faqs = [
   { q: "Do I need any experience?", a: "No. Most of our members started as complete beginners, and every dojo runs classes for newcomers." },
   { q: "I have trained at another dojo. What should I do?", a: "Tick “I have previous Aikido experience” when you sign up and tell us your rank. Our instructors will review it with you; a previous rank isn't carried over automatically." },
-  { q: "When does my membership start?", a: "After your payment is received and the Shihan approves your application. You can follow each step on your profile page." },
+  { q: "When does my membership start?", a: "After your payment is received and the Shihan approves your application. It lasts until 31 December of the year you join, and you renew each year after that. You can follow each step on your profile page." },
   { q: "Can children join?", a: "Yes. We run children's and family classes. See our classes page for the age range of each class." },
   { q: "I am already an ASK member. Do I sign up again?", a: "Please contact our HQ team first so we can help you with your existing membership." },
 ];
