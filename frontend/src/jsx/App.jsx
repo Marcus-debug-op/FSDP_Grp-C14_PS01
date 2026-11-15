@@ -38,6 +38,7 @@ import MyTimetable from "./pages/student/MyTimetable.jsx";
 import Grading from "./pages/student/Grading.jsx";
 import StudentProfile from "./pages/student/StudentProfile.jsx";
 import PersonalSettings from "./pages/student/PersonalSettings.jsx";
+import Inbox from "./pages/student/Inbox.jsx";
 import ClassRoster from "./pages/instructor/ClassRoster.jsx";
 import StudentProgress from "./pages/instructor/StudentProgress.jsx";
 import InstructorStudents from "./pages/instructor/InstructorStudents.jsx";
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/check-in" element={<ProtectedRoute activeMembership role="student"><CheckIn /></ProtectedRoute>} />
           {/* Personal settings is built: contact details editable, belt and membership view-only. FSDP-42 */}
           <Route path="/settings" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
+          <Route path="/inbox" element={<ProtectedRoute role="student"><Inbox /></ProtectedRoute>} />
           <Route path="/grading" element={<ProtectedRoute activeMembership role="student"><Grading /></ProtectedRoute>} />
           <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
           <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
