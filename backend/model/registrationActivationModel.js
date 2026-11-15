@@ -39,17 +39,39 @@ async function activateLockedApplication(client, application) {
     return { activated: false, reason: 'already_active', membershipId: row.id };
   }
 
+  // ASK rule: a new membership lasts until 31 December of the year it starts
+  // (join in March -> ends in December that year, not next March).
   const inserted = await client.query(
     `INSERT INTO memberships (student_id, plan_id, start_date, end_date, status, payment_id)
-     VALUES ($1, $2, ${TODAY}, (${TODAY} + make_interval(months => $3) - INTERVAL '1 day')::date, 'active', $4)
+     VALUES ($1, $2, ${TODAY}, make_date(EXTRACT(YEAR FROM ${TODAY})::int, 12, 31), 'active', $3)
      ON CONFLICT (payment_id) WHERE payment_id IS NOT NULL DO NOTHING RETURNING id`,
-    [application.student_id, application.plan_id, payment.duration_months, payment.id]
+    [application.student_id, application.plan_id, payment.id]
   );
   if (!inserted.rowCount) return { activated: false, reason: 'already_active' };
 
   await client.query(
     "UPDATE student_onboarding SET membership_status = 'active' WHERE user_id=$1",
     [application.student_id]
+  );
+
+  // Give the new member a starting belt so the belt and grading pages work.
+  // Children (12 and under) start on the first children's belt, everyone else
+  // on "Ungraded". A previous rank from another dojo is NOT copied here: it
+  // stays pending until an admin/instructor confirms it.
+  // Skipped if the student already has a belt, or if no belt ladder exists.
+  await client.query(
+    `INSERT INTO student_profiles (user_id, current_belt_id, belt_awarded_on, home_centre_id)
+     SELECT o.user_id, start_belt.id, ${TODAY}, $2
+     FROM student_onboarding o
+     CROSS JOIN LATERAL (
+       SELECT br.id FROM belt_ranks br
+       WHERE br.ladder = CASE WHEN date_part('year', age(${TODAY}, o.date_of_birth)) <= 12
+                              THEN 'children' ELSE 'adult' END
+       ORDER BY br.rank_order LIMIT 1
+     ) start_belt
+     WHERE o.user_id = $1
+     ON CONFLICT (user_id) DO NOTHING`,
+    [application.student_id, application.centre_id]
   );
   return { activated: true, membershipId: inserted.rows[0].id };
 }

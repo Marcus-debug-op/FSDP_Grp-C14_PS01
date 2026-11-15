@@ -85,6 +85,18 @@ export async function getMembershipApplicationPhoto(id, { signal } = {}) {
   return blob;
 }
 
+// Private experience certificate (PDF or image), fetched with the admin JWT.
+export async function getMembershipApplicationEvidence(id) {
+  if (!API_URL) throw new Error('Backend address is not configured.');
+  const res = await fetch(`${API_URL}/api/admin/applications/${encodeURIComponent(id)}/evidence`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) || ''}` },
+    cache: 'no-store',
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Could not load the certificate (${res.status}).`);
+  return res.blob();
+}
+
 export const requestMembershipPhotoResubmission = (id, reason) =>
   request(`/applications/${id}/photo/request`, { method: 'PATCH', body: { reason } });
 export const acceptMembershipApplicationPhoto = (id) =>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { decideMembershipApplication, getMembershipApplication, getMembershipApplicationPhoto, listMembershipApplications, requestMembershipPhotoResubmission, acceptMembershipApplicationPhoto, advanceMembershipBook, listHQAlerts, acknowledgeHQAlert } from "../../../js/services/adminService.js";
+import { decideMembershipApplication, getMembershipApplication, getMembershipApplicationPhoto, getMembershipApplicationEvidence, listMembershipApplications, requestMembershipPhotoResubmission, acceptMembershipApplicationPhoto, advanceMembershipBook, listHQAlerts, acknowledgeHQAlert } from "../../../js/services/adminService.js";
 import "../../../css/admin-applications.css";
 
 const fmt = (date) => date ? new Date(date).toLocaleString('en-SG') : '—';
@@ -37,6 +37,7 @@ export default function AdminMembershipApplications() {
   const [photoUrl, setPhotoUrl] = useState(null);
   const [photoError, setPhotoError] = useState('');
   const [photoReason, setPhotoReason] = useState('');
+  const [evidenceError, setEvidenceError] = useState('');
 
   useEffect(() => {
     if (!detail?.id || !detail.onboarding?.has_photo) {
@@ -71,6 +72,24 @@ export default function AdminMembershipApplications() {
     finally { setLoading(false); }
   }
   useEffect(() => { refresh(); setDetail(null); setConfirmDecision(null); }, [status]);
+  useEffect(() => { setEvidenceError(''); }, [detail?.id]);
+
+  // Opens the uploaded certificate in a new tab. The tab is opened first so the
+  // browser doesn't treat it as a pop-up, then the private file is loaded into it.
+  async function viewEvidence() {
+    setEvidenceError('');
+    const tab = window.open('', '_blank');
+    try {
+      const blob = await getMembershipApplicationEvidence(detail.id);
+      if (!blob) { tab?.close(); setEvidenceError('Certificate not found.'); return; }
+      const url = URL.createObjectURL(blob);
+      if (tab) tab.location.href = url; else window.location.assign(url);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      tab?.close();
+      setEvidenceError(err.message);
+    }
+  }
   useEffect(() => { refreshHQAlerts(); }, []);
 
   async function openDetail(id) {
@@ -205,7 +224,10 @@ export default function AdminMembershipApplications() {
         <div><b>Gender</b><span>{nice(detail.onboarding?.gender)}</span></div>
         <div><b>Experience</b><span>{nice(detail.onboarding?.experience_level)}</span></div>
         <div><b>Previous rank</b><span>{nice(detail.onboarding?.previous_rank)}</span></div>
-        <div><b>Experience evidence</b><span>{nice(detail.onboarding?.evidence_filename)}</span></div>
+        <div><b>Experience evidence</b><span>{detail.onboarding?.has_evidence
+          ? <>{detail.onboarding.evidence_filename}{' '}<button type="button" className="btn btn-outline" onClick={viewEvidence}>View certificate</button></>
+          : nice(detail.onboarding?.evidence_filename)}
+          {evidenceError && <small role="alert" className="form-error">{evidenceError}</small>}</span></div>
         <div><b>Contact</b><span>{nice(detail.onboarding?.phone)}</span></div>
         <div><b>Training goal</b><span>{nice(detail.onboarding?.training_goal)}</span></div>
         <div><b>Experience notes</b><span>{nice(detail.onboarding?.experience_notes)}</span></div>

@@ -79,6 +79,29 @@ export async function photo(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// Admin-only certificate access (FSDP-3: previous rank stays pending until checked).
+// Only the file types accepted at sign-up are ever sent back.
+const EVIDENCE_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+export async function evidence(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return res.status(400).json({ message: 'Invalid application ID.' });
+    }
+    const result = await Applications.findApplicationEvidence(id);
+    if (!result?.evidence_data || !EVIDENCE_TYPES.has(result.evidence_mime)) {
+      return res.status(404).json({ message: 'No certificate uploaded.' });
+    }
+    res.set({
+      'Content-Type': result.evidence_mime,
+      'Content-Disposition': 'inline',
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return res.send(result.evidence_data);
+  } catch (err) { next(err); }
+}
+
 export async function requestPhoto(req, res, next) {
   try {
     const id = Number(req.params.id);
