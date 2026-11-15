@@ -45,13 +45,23 @@ export async function findTrainingSinceBelt(userId) {
        FROM external_attendance e
        JOIN me ON e.student_id = me.user_id
        WHERE e.attended_on > me.belt_awarded_on
+     ),
+     private AS (
+       SELECT
+         COUNT(*)::int AS classes,
+         COALESCE(SUM(pl.end_time - pl.start_time), INTERVAL '0') AS trained
+       FROM private_lessons pl
+       JOIN me ON pl.student_id = me.user_id
+       WHERE pl.status = 'completed'
+         AND pl.lesson_date > me.belt_awarded_on
      )
      SELECT
-       i.classes                                            AS internal_classes,
-       x.classes                                            AS external_classes,
-       (i.classes + x.classes)                              AS classes_attended,
-       ROUND((EXTRACT(EPOCH FROM i.trained) / 3600.0)::numeric, 1) AS hours_attended
-     FROM internal i CROSS JOIN external x`,
+       i.classes                                     AS internal_classes,
+       x.classes                                     AS external_classes,
+       p.classes                                     AS private_classes,
+       (i.classes + x.classes + p.classes)           AS classes_attended,
+       ROUND((EXTRACT(EPOCH FROM i.trained + p.trained) / 3600.0)::numeric, 1) AS hours_attended
+     FROM internal i CROSS JOIN external x CROSS JOIN private p`,
     [userId]
   );
   return result.rows[0];
