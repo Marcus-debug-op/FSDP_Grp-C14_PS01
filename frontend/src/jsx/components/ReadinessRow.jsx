@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { dojos } from "../../js/data/dojos.js";
 
 const STATUS_LABEL = {
@@ -17,13 +18,16 @@ export const regionOf = (dojoName) => REGION_OF.get(simplify(dojoName)) || null;
 // One student checked against the rules for their next belt, with green and
 // red boxes for each rule. Used by the grading readiness and applicants pages.
 // `children` adds extra lines under the student, such as an application status.
-export default function ReadinessRow({ student, children }) {
+// The name links to the student's progress page (FSDP-21) unless linkName is false.
+export default function ReadinessRow({ student, children, linkName = true }) {
   const region = regionOf(student.homeDojo);
 
   return (
     <li className={`readiness-row readiness-row-${student.status}`}>
       <div className="readiness-student">
-        <strong>{student.fullName}</strong>
+        <strong>
+          {linkName ? <Link to={`/instructor/students/${student.studentId}`}>{student.fullName}</Link> : student.fullName}
+        </strong>
         <span className="roster-belt">
           {student.nextBelt ? `${student.currentBelt} to ${student.nextBelt}` : student.currentBelt || "No belt recorded"}
         </span>

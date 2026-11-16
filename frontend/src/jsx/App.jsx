@@ -38,7 +38,11 @@ import MyTimetable from "./pages/student/MyTimetable.jsx";
 import Grading from "./pages/student/Grading.jsx";
 import StudentProfile from "./pages/student/StudentProfile.jsx";
 import PersonalSettings from "./pages/student/PersonalSettings.jsx";
+import Inbox from "./pages/student/Inbox.jsx";
 import ClassRoster from "./pages/instructor/ClassRoster.jsx";
+import StudentProgress from "./pages/instructor/StudentProgress.jsx";
+import InstructorStudents from "./pages/instructor/InstructorStudents.jsx";
+import GradingAssessment from "./pages/instructor/GradingAssessment.jsx";
 import InstructorCalendar from "./pages/instructor/InstructorCalendar.jsx";
 import InstructorGrading from "./pages/instructor/InstructorGrading.jsx";
 import InstructorAnalytics from "./pages/instructor/InstructorAnalytics.jsx";
@@ -84,6 +88,7 @@ export default function App() {
           <Route path="/check-in" element={<ProtectedRoute activeMembership role="student"><CheckIn /></ProtectedRoute>} />
           {/* Personal settings is built: contact details editable, belt and membership view-only. FSDP-42 */}
           <Route path="/settings" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
+          <Route path="/inbox" element={<ProtectedRoute role="student"><Inbox /></ProtectedRoute>} />
           <Route path="/grading" element={<ProtectedRoute activeMembership role="student"><Grading /></ProtectedRoute>} />
           <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><AdminSchedule /></ProtectedRoute>} />
           <Route path="/admin/dojos" element={<ProtectedRoute role="admin"><ManageDojos /></ProtectedRoute>} />
@@ -101,8 +106,11 @@ export default function App() {
           <Route path="/instructor/sessions/:id/qr" element={<ProtectedRoute role="instructor"><CheckInQr /></ProtectedRoute>} />
           <Route path="/instructor/calendar" element={<ProtectedRoute role="instructor"><InstructorCalendar /></ProtectedRoute>} />
           <Route path="/instructor/analytics" element={<ProtectedRoute role="instructor"><InstructorAnalytics /></ProtectedRoute>} />
+          <Route path="/instructor/students" element={<ProtectedRoute role="instructor"><InstructorStudents /></ProtectedRoute>} />
+          <Route path="/instructor/students/:id" element={<ProtectedRoute role="instructor"><StudentProgress /></ProtectedRoute>} />
           <Route path="/instructor/grading" element={<ProtectedRoute role="instructor"><InstructorGrading /></ProtectedRoute>} />
           <Route path="/instructor/gradings/:id" element={<ProtectedRoute role="instructor"><InstructorGradingSession /></ProtectedRoute>} />
+          <Route path="/instructor/gradings/:id/assess" element={<ProtectedRoute role="instructor"><GradingAssessment /></ProtectedRoute>} />
           {/* Any unknown address falls back to the homepage */}
           <Route path="*" element={<NotFound />} />
         </Routes>

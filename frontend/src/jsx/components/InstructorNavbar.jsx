@@ -11,6 +11,7 @@ const OFFER_REFRESH_MS = 60 * 1000;
 const links = [
   { to: "/dashboard", label: "My Classes" },
   { to: "/instructor/calendar", label: "Calendar" },
+  { to: "/instructor/students", label: "Students" },
   { to: "/instructor/grading", label: "Grading" },
   { to: "/instructor/analytics", label: "Analytics" },
 ];

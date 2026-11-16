@@ -1,23 +1,64 @@
 .grad-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
 
-.grad-status { gap: 0.6rem; }
+.grad-status { gap: 0.95rem; padding: 1.5rem 1.6rem; }
 
 .grad-status.is-ok { border-color: #bfe2cc; background: linear-gradient(180deg, #f6fcf8, #fff); }
 
-.grad-status-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
-
-.grad-status-title { margin: 0.2rem 0 0; font-size: clamp(1.4rem, 3vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; }
-
-.grad-path { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin: 0; font-size: 0.9rem; font-weight: 600; }
-
-.grad-path-step {
-  display: inline-flex; align-items: center; gap: 0.45rem;
-  padding: 0.3rem 0.7rem; border-radius: 999px; background: var(--prog-soft);
+.grad-status-top {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 0.75rem 1rem; flex-wrap: wrap;
 }
 
-.grad-path-step.is-next { background: var(--prog-card); box-shadow: inset 0 0 0 1px var(--prog-line); }
+.grad-status-title {
+  margin: 0; font-size: clamp(1.45rem, 3vw, 1.85rem); font-weight: 700;
+  letter-spacing: -0.02em; line-height: 1.15;
+}
 
-.grad-path-arrow { color: var(--prog-muted); }
+/* Belt journey chips: Current -> Next. The two grades can share a belt colour
+   (e.g. 6th and 5th Kyu are both "blue"), so the chips and dots are styled to
+   tell them apart -- the current belt is a soft outlined chip with a pale,
+   ringed dot, the next belt an accented "goal" chip with a solid, haloed dot. */
+.grad-path { display: flex; align-items: center; flex-wrap: wrap; gap: 0.55rem; margin: 0; }
+
+.grad-path-step {
+  display: inline-flex; align-items: center; gap: 0.6rem;
+  padding: 0.45rem 0.9rem 0.45rem 0.6rem; border-radius: 12px;
+  background: var(--prog-soft); box-shadow: inset 0 0 0 1px var(--prog-line);
+}
+
+.grad-path-step.is-next {
+  background: var(--prog-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prog-accent) 32%, transparent);
+}
+
+.grad-path-dot { flex: 0 0 auto; width: 1.15rem; height: 1.15rem; border-radius: 50%; }
+
+/* Current belt: pale, outlined -- "where you are now". */
+.grad-path-step.is-from .grad-path-dot {
+  background: color-mix(in srgb, var(--belt) 22%, #fff);
+  box-shadow: inset 0 0 0 2px var(--belt);
+}
+
+/* Next belt: solid and lifted with a soft accent halo -- "where you're heading". */
+.grad-path-step.is-next .grad-path-dot {
+  background: var(--belt);
+  box-shadow: 0 0 0 3px #fff,
+              0 0 0 4px color-mix(in srgb, var(--prog-accent) 45%, transparent),
+              0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.grad-path-info { display: inline-flex; flex-direction: column; gap: 0.05rem; line-height: 1.15; }
+
+.grad-path-cap {
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--prog-muted);
+}
+
+.grad-path-step.is-next .grad-path-cap { color: var(--prog-accent); }
+
+.grad-path-name { font-size: 0.95rem; font-weight: 650; color: var(--prog-text); }
+
+.grad-path-arrow { color: var(--prog-muted); font-size: 1.05rem; line-height: 1; }
 
 .grad-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.2rem 0 0; padding: 0; }
 
@@ -26,7 +67,21 @@
   background: var(--prog-accent-soft); color: var(--prog-accent);
 }
 
-.grad-stat { gap: 0.55rem; }
+.grad-stat {
+  gap: 0.55rem; position: relative; isolation: isolate; overflow: hidden;
+}
+
+/* Faint dot-grid texture behind each stat tile. Kept very light (theme line
+   colour) and fading toward the bottom so it never competes with the value or
+   note text sitting on top. */
+.grad-stat::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(var(--prog-line) 1.1px, transparent 1.2px);
+  background-size: 13px 13px; background-position: -2px -2px;
+  -webkit-mask-image: linear-gradient(160deg, #000 0%, rgba(0, 0, 0, 0.35) 55%, transparent 100%);
+          mask-image: linear-gradient(160deg, #000 0%, rgba(0, 0, 0, 0.35) 55%, transparent 100%);
+  opacity: 0.8;
+}
 
 .grad-stat-value { margin: 0; font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
 
@@ -77,16 +132,19 @@
 
 .grad-apply-note { margin: 0; padding-top: 0.75rem; border-top: 1px solid var(--prog-line); font-size: 0.88rem; color: var(--prog-muted); }
 
-/* Show about four techniques, then scroll the rest -- keeps the card short so
-   the "Next grading" card beside it isn't left with a long empty gap. */
 .grad-syllabus {
-  list-style: none; counter-reset: syl; margin: 0; padding: 0 0.4rem 0 0;
+  list-style: none; counter-reset: syl; margin: 0; padding: 0;
   display: flex; flex-direction: column; gap: 0.4rem;
-  max-height: 16.5rem; overflow-y: auto; overscroll-behavior: contain;
+  /* Show about 4 techniques, then scroll the rest so the card stays short and
+     the "Next grading" card beside it isn't stretched to fill a tall gap. */
+  max-height: 15.5rem; overflow-y: auto; scrollbar-gutter: stable; padding-right: 0.35rem;
 }
 
+/* A slim, unobtrusive scrollbar for the syllabus list. */
 .grad-syllabus::-webkit-scrollbar { width: 8px; }
 .grad-syllabus::-webkit-scrollbar-thumb { background: var(--prog-line); border-radius: 999px; }
+.grad-syllabus::-webkit-scrollbar-thumb:hover { background: var(--prog-muted); }
+.grad-syllabus { scrollbar-width: thin; scrollbar-color: var(--prog-line) transparent; }
 
 .grad-syllabus li {
   counter-increment: syl; display: flex; align-items: flex-start; gap: 0.7rem;
@@ -113,6 +171,65 @@
 .grad-syllabus-note {
   margin: 0; padding: 0.65rem 0.85rem; border-radius: 10px;
   background: var(--prog-soft); font-size: 0.84rem; color: var(--prog-text);
+}
+
+/* ---------- Application status tracker (FSDP-66) ---------- */
+.grad-track { gap: 0.9rem; }
+
+.grad-steps {
+  list-style: none; margin: 0.25rem 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: 0;
+}
+
+.grad-step {
+  display: flex; align-items: flex-start; gap: 0.85rem;
+  padding: 0 0 1.1rem; position: relative;
+}
+
+/* The line linking one step to the next, drawn behind the dots. The last step
+   has nothing below it, so it draws no line. */
+.grad-step:not(:last-child)::before {
+  content: ""; position: absolute; left: 0.85rem; top: 1.75rem; bottom: 0;
+  width: 2px; background: var(--prog-line);
+}
+
+.grad-step.is-done:not(:last-child)::before { background: var(--prog-ok); }
+
+.grad-step:last-child { padding-bottom: 0; }
+
+.grad-step-dot {
+  flex: 0 0 auto; z-index: 1; display: inline-grid; place-items: center;
+  width: 1.7rem; height: 1.7rem; border-radius: 50%;
+  background: var(--prog-soft); color: var(--prog-muted);
+  font-size: 0.8rem; font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--prog-line);
+}
+
+.grad-step.is-done .grad-step-dot {
+  background: var(--prog-ok); color: #fff; box-shadow: none;
+}
+
+.grad-step.is-current .grad-step-dot {
+  background: var(--prog-accent); color: #fff; box-shadow: 0 0 0 4px var(--prog-accent-soft);
+}
+
+.grad-step-text { display: flex; flex-direction: column; gap: 0.1rem; padding-top: 0.15rem; min-width: 0; }
+
+.grad-step-label { font-weight: 600; color: var(--prog-text); }
+
+.grad-step:not(.is-done) .grad-step-label { color: var(--prog-muted); font-weight: 500; }
+
+.grad-step-date { font-size: 0.84rem; color: var(--prog-muted); }
+
+.grad-step-now {
+  align-self: flex-start; margin-top: 0.1rem; padding: 0.1rem 0.5rem; border-radius: 999px;
+  background: var(--prog-accent-soft); color: var(--prog-accent);
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em;
+}
+
+.grad-track-foot {
+  margin: 0; padding-top: 0.75rem; border-top: 1px solid var(--prog-line);
+  font-size: 0.84rem; color: var(--prog-muted);
 }
 
 @media (max-width: 860px) {

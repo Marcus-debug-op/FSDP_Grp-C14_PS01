@@ -9,6 +9,16 @@ const TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 const ATTENDANCE_CLOSED =
   "NOW() > ((cs.session_date + cs.end_time) AT TIME ZONE 'Asia/Singapore' + INTERVAL '24 hours')";
 
+// Where a class session is held. An admin can move one session to another dojo
+// for the day (migration 011: class_sessions.centre_id, NULL = the class's usual
+// dojo), so `ce` is the dojo for that day and `usual` the class's normal one.
+const SESSION_DOJO_JOIN = `
+     JOIN centres ce ON ce.id = COALESCE(cs.centre_id, cl.centre_id)
+     JOIN centres usual ON usual.id = cl.centre_id`;
+const MOVED_FIELDS = `
+            (cs.centre_id IS NOT NULL AND cs.centre_id <> cl.centre_id) AS venue_changed,
+            usual.name AS usual_centre, cs.change_note`;
+
 // The instructor's classes on a date, or today if no date is given.
 export async function listClassesOn(instructorId, date) {
   const result = await pool.query(
@@ -16,14 +26,13 @@ export async function listClassesOn(instructorId, date) {
             to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
-            cs.status,
+            cs.status,${MOVED_FIELDS},
             ${ATTENDANCE_CLOSED} AS attendance_closed,
             (SELECT COUNT(*)::int FROM bookings b
              WHERE b.session_id = cs.id AND b.status = 'booked') AS booked,
             (SELECT COUNT(*)::int FROM attendance a WHERE a.session_id = cs.id) AS marked
      FROM class_sessions cs
-     JOIN classes cl ON cl.id = cs.class_id
-     JOIN centres ce ON ce.id = cl.centre_id
+     JOIN classes cl ON cl.id = cs.class_id${SESSION_DOJO_JOIN}
      WHERE cs.instructor_id = $1
        AND cs.session_date = COALESCE($2::date, ${TODAY})
        AND cs.status <> 'cancelled'
@@ -40,14 +49,13 @@ export async function listClassesBetween(instructorId, from, to) {
             to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
-            cs.status,
+            cs.status,${MOVED_FIELDS},
             ${ATTENDANCE_CLOSED} AS attendance_closed,
             (SELECT COUNT(*)::int FROM bookings b
              WHERE b.session_id = cs.id AND b.status = 'booked') AS booked,
             (SELECT COUNT(*)::int FROM attendance a WHERE a.session_id = cs.id) AS marked
      FROM class_sessions cs
-     JOIN classes cl ON cl.id = cs.class_id
-     JOIN centres ce ON ce.id = cl.centre_id
+     JOIN classes cl ON cl.id = cs.class_id${SESSION_DOJO_JOIN}
      WHERE cs.instructor_id = $1
        AND cs.session_date BETWEEN $2::date AND $3::date
        AND cs.status <> 'cancelled'
@@ -219,6 +227,10 @@ export async function listStudentAttendanceChange(instructorId) {
   return result.rows;
 }
 
+// FSDP-18: how many days after a grading its examiner can still find it to
+// finish assessing.
+const EXAMINER_DAYS_AFTER = 14;
+
 // Applications that still count. Withdrawn and rejected ones do not.
 const LIVE_APPLICATION = "ga.status NOT IN ('withdrawn', 'rejected')";
 
@@ -231,6 +243,7 @@ export async function listGradingProgress(instructorId) {
     `WITH my_students AS (${MY_STUDENTS})
      SELECT u.id, u.full_name, hc.name AS home_dojo,
             cb.name AS current_belt, nb.name AS next_belt,
+            to_char(sp.belt_awarded_on, 'YYYY-MM-DD') AS belt_awarded_on,
             nb.min_months_at_rank, nb.min_classes_at_rank,
             (EXTRACT(YEAR FROM age(${TODAY}, sp.belt_awarded_on)) * 12
              + EXTRACT(MONTH FROM age(${TODAY}, sp.belt_awarded_on)))::int AS months_at_belt,
@@ -280,10 +293,22 @@ export async function listUpcomingGradings(instructorId) {
             (SELECT COUNT(*)::int FROM grading_applications ga
              WHERE ga.grading_session_id = gs.id AND ${LIVE_APPLICATION}
                AND ga.instructor_approved_at IS NULL
-               AND ga.student_id IN (SELECT student_id FROM my_students)) AS my_awaiting
+               AND ga.student_id IN (SELECT student_id FROM my_students)) AS my_awaiting,
+            -- FSDP-18: the admin picked this instructor as the grading's examiner.
+            (gs.examiner_id = $1) AS is_examiner,
+            -- Everyone in the grading, not just this instructor's students (shown to the examiner).
+            (SELECT COUNT(*)::int FROM grading_applications ga
+             WHERE ga.grading_session_id = gs.id AND ${LIVE_APPLICATION}) AS all_applicants,
+            (SELECT COUNT(*)::int FROM grading_applications ga
+             WHERE ga.grading_session_id = gs.id AND ${LIVE_APPLICATION}
+               AND ga.instructor_approved_at IS NOT NULL) AS all_approved,
+            (gs.grading_date >= ${TODAY}) AS is_upcoming
      FROM grading_sessions gs
      JOIN centres ce ON ce.id = gs.centre_id
-     WHERE gs.status = 'scheduled' AND gs.grading_date >= ${TODAY}
+     WHERE gs.status <> 'cancelled'
+       AND (gs.grading_date >= ${TODAY}
+            -- The examiner keeps a grading for ${EXAMINER_DAYS_AFTER} days after it, to finish assessing.
+            OR (gs.examiner_id = $1 AND gs.grading_date >= ${TODAY} - ${EXAMINER_DAYS_AFTER}))
      ORDER BY gs.grading_date, gs.start_time`,
     [instructorId]
   );
@@ -298,7 +323,9 @@ export async function findGrading(gradingId) {
             to_char(gs.start_time, 'HH24:MI') AS start_time,
             to_char(gs.registration_closes_on, 'YYYY-MM-DD') AS closes_on,
             gs.registration_closes_on >= ${TODAY} AS registration_open,
-            (gs.status = 'scheduled' AND gs.grading_date >= ${TODAY}) AS is_upcoming
+            (gs.status = 'scheduled' AND gs.grading_date >= ${TODAY}) AS is_upcoming,
+            gs.examiner_id,
+            (gs.grading_date <= ${TODAY}) AS has_started
      FROM grading_sessions gs
      JOIN centres ce ON ce.id = gs.centre_id
      WHERE gs.id = $1`,
@@ -381,7 +408,7 @@ export async function findSession(sessionId, instructorId) {
             to_char(cs.session_date, 'YYYY-MM-DD') AS session_date,
             to_char(cs.start_time, 'HH24:MI') AS start_time,
             to_char(cs.end_time, 'HH24:MI') AS end_time,
-            cs.status,
+            cs.status,${MOVED_FIELDS},
             ${ATTENDANCE_CLOSED} AS attendance_closed,
             cs.session_date > ${TODAY} AS is_future,
             ${COVER_STILL_ALLOWED} AS can_request_cover,
@@ -390,8 +417,7 @@ export async function findSession(sessionId, instructorId) {
              WHERE cr.session_id = cs.id AND cr.instructor_id = $2
              ORDER BY cr.requested_at DESC, cr.id DESC LIMIT 1) AS cover_status
      FROM class_sessions cs
-     JOIN classes cl ON cl.id = cs.class_id
-     JOIN centres ce ON ce.id = cl.centre_id
+     JOIN classes cl ON cl.id = cs.class_id${SESSION_DOJO_JOIN}
      WHERE cs.id = $1 AND cs.instructor_id = $2`,
     [sessionId, instructorId]
   );
@@ -533,6 +559,165 @@ export async function respondToOffer(offerId, instructorId, accept, note) {
     }
 
     await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// ---------------------------------------------------------------------
+// Student training progress (FSDP-21)
+// ---------------------------------------------------------------------
+
+// A student's most recent lessons with this instructor, newest first: group
+// classes they booked or were marked for, and private lessons that were marked.
+// status: present / late / absent / excused, or not_marked for a booked class
+// nobody marked.
+export async function listRecentLessonsWithMe(instructorId, studentId, limit = 10) {
+  const result = await pool.query(
+    `SELECT * FROM (
+       SELECT 'class' AS kind, cs.id, cl.title, ce.name AS centre,
+              cs.session_date AS day, to_char(cs.session_date, 'YYYY-MM-DD') AS lesson_date,
+              to_char(cs.start_time, 'HH24:MI') AS start_time,
+              COALESCE(a.status, 'not_marked') AS status
+       FROM class_sessions cs
+       JOIN classes cl ON cl.id = cs.class_id
+       -- A class moved to another dojo for the day keeps its own centre_id.
+       JOIN centres ce ON ce.id = COALESCE(cs.centre_id, cl.centre_id)
+       LEFT JOIN attendance a ON a.session_id = cs.id AND a.student_id = $2
+       WHERE cs.instructor_id = $1 AND cs.status <> 'cancelled' AND cs.session_date < ${TODAY}
+         AND (a.id IS NOT NULL OR EXISTS (SELECT 1 FROM bookings b
+              WHERE b.session_id = cs.id AND b.student_id = $2 AND b.status = 'booked'))
+       UNION ALL
+       SELECT 'private', pl.id, 'Private lesson', ce.name,
+              pl.lesson_date, to_char(pl.lesson_date, 'YYYY-MM-DD'),
+              to_char(pl.start_time, 'HH24:MI'),
+              CASE pl.status WHEN 'completed' THEN 'present' ELSE 'absent' END
+       FROM private_lessons pl
+       JOIN centres ce ON ce.id = pl.centre_id
+       WHERE pl.instructor_id = $1 AND pl.student_id = $2 AND pl.status IN ('completed', 'no_show')
+     ) lessons
+     ORDER BY day DESC, start_time DESC
+     LIMIT $3`,
+    [instructorId, studentId, limit]
+  );
+  return result.rows;
+}
+
+// ---------------------------------------------------------------------
+// Assessing students at a grading (FSDP-18, FSDP-75)
+// The grading's examiner (grading_sessions.examiner_id, picked by the admin)
+// assesses every approved candidate. Results go in grading_assessments
+// (migration 003): a draft while they work, then signed and submitted, which
+// locks it. Belts don't change here: result processing is the admin's side.
+// ---------------------------------------------------------------------
+
+// Every approved candidate in a grading (or, with approvedOnly false, every live
+// applicant, for the examiner's applicants page), with what's needed to check them
+// against the belt they're grading for, and their assessment if started.
+// Columns match listGradingProgress, so the controller's gradingProgress()
+// gives the same readiness checks.
+export async function listCandidates(gradingId, { approvedOnly = true } = {}) {
+  const result = await pool.query(
+    `SELECT ga.id AS application_id, u.id, u.full_name, hc.name AS home_dojo,
+            ga.status AS application_status, tb.name AS target_belt,
+            to_char(ga.applied_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS applied_on,
+            ga.instructor_approved_by AS approved_by_id, ap.full_name AS approved_by,
+            to_char(ga.instructor_approved_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS approved_on,
+            cb.name AS current_belt, tb.name AS next_belt,
+            to_char(sp.belt_awarded_on, 'YYYY-MM-DD') AS belt_awarded_on,
+            tb.min_months_at_rank, tb.min_classes_at_rank,
+            (EXTRACT(YEAR FROM age(gs.grading_date, sp.belt_awarded_on)) * 12
+             + EXTRACT(MONTH FROM age(gs.grading_date, sp.belt_awarded_on)))::int AS months_at_belt,
+            (SELECT COUNT(*)::int
+             FROM attendance a
+             JOIN class_sessions cs ON cs.id = a.session_id
+             WHERE a.student_id = u.id AND a.status IN ('present', 'late')
+               AND cs.status <> 'cancelled' AND cs.session_date > sp.belt_awarded_on)
+            + (SELECT COUNT(*)::int
+               FROM external_attendance e
+               WHERE e.student_id = u.id AND e.attended_on > sp.belt_awarded_on)
+            + (SELECT COUNT(*)::int
+               FROM private_lessons pl
+               WHERE pl.student_id = u.id AND pl.status = 'completed'
+                 AND pl.lesson_date > sp.belt_awarded_on) AS classes_since_belt,
+            EXISTS (SELECT 1 FROM memberships m
+                    WHERE m.student_id = u.id AND m.status = 'active'
+                      AND m.start_date <= gs.grading_date AND m.end_date >= gs.grading_date) AS membership_active,
+            (SELECT (EXTRACT(YEAR FROM age(gs.grading_date, MIN(m.start_date))) * 12
+                     + EXTRACT(MONTH FROM age(gs.grading_date, MIN(m.start_date))))::int
+             FROM memberships m
+             WHERE m.student_id = u.id AND m.status IN ('active', 'expired')) AS months_as_member,
+            gas.id AS assessment_id, gas.status AS assessment_status, gas.result, gas.feedback,
+            gas.signature_data, gas.months_at_rank,
+            to_char(gas.signed_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD HH24:MI') AS signed_at,
+            gu.full_name AS assessed_by
+     FROM grading_applications ga
+     JOIN grading_sessions gs ON gs.id = ga.grading_session_id
+     JOIN users u ON u.id = ga.student_id
+     JOIN belt_ranks tb ON tb.id = ga.target_belt_id
+     LEFT JOIN student_profiles sp ON sp.user_id = u.id
+     LEFT JOIN centres hc ON hc.id = sp.home_centre_id
+     LEFT JOIN belt_ranks cb ON cb.id = sp.current_belt_id
+     LEFT JOIN grading_assessments gas ON gas.application_id = ga.id
+     LEFT JOIN users gu ON gu.id = gas.instructor_id
+     LEFT JOIN users ap ON ap.id = ga.instructor_approved_by
+     WHERE ga.grading_session_id = $1
+       AND ($2::boolean IS FALSE OR ga.instructor_approved_at IS NOT NULL)
+       AND ${LIVE_APPLICATION}
+     ORDER BY u.full_name`,
+    [gradingId, approvedOnly]
+  );
+  return result.rows;
+}
+
+// Saves the examiner's assessment of one candidate as a draft, or signs and
+// submits it. Returns { ok: true } or { error } when it can't be saved:
+//   not_candidate - not an approved application in this grading
+//   submitted     - already submitted, so it's locked
+export async function saveAssessment(gradingId, applicationId, examinerId, { result, feedback, signature, submit }) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const application = await client.query(
+      `SELECT ga.id,
+              (EXTRACT(YEAR FROM age(gs.grading_date, sp.belt_awarded_on)) * 12
+               + EXTRACT(MONTH FROM age(gs.grading_date, sp.belt_awarded_on)))::int AS months_at_belt
+       FROM grading_applications ga
+       JOIN grading_sessions gs ON gs.id = ga.grading_session_id
+       LEFT JOIN student_profiles sp ON sp.user_id = ga.student_id
+       WHERE ga.id = $1 AND ga.grading_session_id = $2
+         AND ga.instructor_approved_at IS NOT NULL AND ${LIVE_APPLICATION}
+       FOR UPDATE OF ga`,
+      [applicationId, gradingId]
+    );
+    if (application.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return { error: "not_candidate" };
+    }
+
+    // ON CONFLICT ... WHERE: a submitted assessment is never overwritten.
+    const saved = await client.query(
+      `INSERT INTO grading_assessments
+         (application_id, instructor_id, result, months_at_rank, feedback, signature_data, signed_at, status)
+       VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN NOW() END, CASE WHEN $7 THEN 'submitted' ELSE 'draft' END)
+       ON CONFLICT (application_id) DO UPDATE
+         SET instructor_id = EXCLUDED.instructor_id, result = EXCLUDED.result,
+             months_at_rank = EXCLUDED.months_at_rank, feedback = EXCLUDED.feedback,
+             signature_data = EXCLUDED.signature_data, signed_at = EXCLUDED.signed_at,
+             status = EXCLUDED.status, updated_at = NOW()
+         WHERE grading_assessments.status = 'draft'
+       RETURNING id`,
+      [applicationId, examinerId, result, application.rows[0].months_at_belt, feedback, signature, submit]
+    );
+    if (saved.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return { error: "submitted" };
+    }
+    await client.query("COMMIT");
+    return { ok: true };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { cancelCoverLesson, getCoverAvailability, getCoverRequests, offerCover } from "../../../js/services/adminService.js";
+import { cancelCoverLesson, closeCoverRequest, getCoverAvailability, getCoverRequests, offerCover } from "../../../js/services/adminService.js";
 import { formatShortDate, formatTime } from "../../../js/utils/formatters.js";
 import PageHeader from "../../components/admin/PageHeader.jsx";
 import OfferRow from "../../components/admin/OfferRow.jsx";
@@ -135,8 +135,8 @@ export default function AdminCoverRequests() {
   async function closeRequest(request) {
     setError("");
     try {
-      await cancelCoverLesson(request.id, "Lesson already cancelled");
-      setNotice(`Closed the cover request for ${request.session.title} on ${when(request.session)}.`);
+      await closeCoverRequest(request.id);
+      setNotice(`Closed the cover request for ${request.session.title} on ${when(request.session)}. It is now under Recent.`);
       setReload((n) => n + 1);
     } catch (err) {
       setError(err.message);
@@ -202,6 +202,7 @@ export default function AdminCoverRequests() {
                 const pending = r.offer?.status === "pending";
                 const isCancelled = r.session.status === "cancelled";
                 const canAct = !isCancelled && !r.session.hasStarted && r.offer?.status !== "accepted";
+                const canClose = (isCancelled || r.session.hasStarted) && r.offer?.status !== "accepted";
                 return (
                   <Fragment key={r.id}>
                     <tr>
@@ -230,7 +231,7 @@ export default function AdminCoverRequests() {
                             {pending ? "Offer to someone else" : r.offer ? "Pick Another" : "Find Cover"}
                           </button>
                         )}
-                        {isCancelled && (
+                        {canClose && (
                           <button type="button" className="btn btn-outline btn-small" onClick={() => closeRequest(r)}>
                             Close request
                           </button>
@@ -249,7 +250,7 @@ export default function AdminCoverRequests() {
                         hint={
                           pending
                             ? `This takes the offer back from ${r.offer.instructor.name}.`
-                            : "They get a request to accept or decline. Busy instructors can't be picked. Lessons at another dojo need 3 hours between them."
+                            : "They get a request to accept or decline. Busy instructors can't be picked. Lessons at another dojo need 1 hour 30 minutes between them."
                         }
                         loadInstructors={() => getCoverAvailability(r.id)}
                         onOffer={(instructorId) => sendOffer(r, instructorId)}
@@ -299,7 +300,9 @@ export default function AdminCoverRequests() {
                         <span className="offer-tag offer-ok">Covered by {r.teachingInstructor.name}</span>
                       ) : (
                         <>
-                          <span className="offer-tag offer-no">Lesson cancelled</span>
+                          <span className="offer-tag offer-no">
+                          {r.session.status === "cancelled" ? "Lesson cancelled" : "Closed without cover"}
+                        </span>
                           {r.resolvedBy && <span className="att-sub">By {r.resolvedBy}</span>}
                         </>
                       )}

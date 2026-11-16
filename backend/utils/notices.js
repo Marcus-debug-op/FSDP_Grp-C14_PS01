@@ -166,7 +166,7 @@ export function lessonMoved(studentId, session) {
   });
 }
 
-// FSDP-54: the student asked for a 1-on-1 session (website notice only).
+// FSDP-54: the student asked for a 1-on-1 session (website notice and email).
 export function privateLessonRequested(studentId, request) {
   return notify({
     userId: studentId,
@@ -174,6 +174,16 @@ export function privateLessonRequested(studentId, request) {
     title: "1-on-1 request sent",
     body: `We've got your request for a 1-on-1 session around ${longDate(request.preferredDate)} at ${request.centre}. You'll hear from us once it's scheduled.`,
     dedupeKey: `private-requested:${request.id}`,
+    email: {
+      subject: "We've got your 1-on-1 request",
+      paragraphs: [
+        "Thanks, we've received your request for a 1-on-1 session.",
+        `Preferred date: ${longDate(request.preferredDate)}`,
+        `Dojo: ${request.centre}`,
+        "We'll email you again once it's scheduled with an instructor. No credits are taken until then.",
+      ],
+      button: { label: "View my lessons", path: "/lessons?type=private" },
+    },
   });
 }
 

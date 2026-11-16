@@ -95,12 +95,12 @@ const LATEST_PRIVATE_OFFER = `
   WHERE lo.private_lesson_id = pl.id AND lo.status <> 'withdrawn'
   ORDER BY lo.offered_at DESC, lo.id DESC LIMIT 1`;
 
-export const TRAVEL_GAP_HOURS = 3;
+export const TRAVEL_GAP_MINUTES = 90;
 
 function clashRule(centre, start, end) {
   const overlaps = `${start} < $3::time AND ${end} > $2::time`;
-  const tooClose = `($1::date + ${start}) < ($1::date + $3::time) + INTERVAL '${TRAVEL_GAP_HOURS} hours'
-      AND ($1::date + ${end}) > ($1::date + $2::time) - INTERVAL '${TRAVEL_GAP_HOURS} hours'`;
+  const tooClose = `($1::date + ${start}) < ($1::date + $3::time) + INTERVAL '${TRAVEL_GAP_MINUTES} minutes'
+      AND ($1::date + ${end}) > ($1::date + $2::time) - INTERVAL '${TRAVEL_GAP_MINUTES} minutes'`;
   return {
     where: `CASE WHEN ${centre} = $6::int THEN ${overlaps} ELSE ${tooClose} END`,
     travel: `NOT (${overlaps}) AS travel_only`,
@@ -207,7 +207,7 @@ export async function assertInstructorFree(db, { instructorId, instructorName, c
   if (clash?.travel_only) {
     throw new LessonError(
       409,
-      `${instructorName} has ${describeClash(clash)} at ${clash.centre_name}, ${formatClock(clash.start_time)} to ${formatClock(clash.end_time)}. Lessons at different dojos need at least ${TRAVEL_GAP_HOURS} hours between them.`
+      `${instructorName} has ${describeClash(clash)} at ${clash.centre_name}, ${formatClock(clash.start_time)} to ${formatClock(clash.end_time)}. Lessons at different dojos need at least 1 hour 30 minutes between them for travel.`
     );
   }
   if (clash) {

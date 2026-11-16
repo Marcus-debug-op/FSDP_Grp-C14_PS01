@@ -181,6 +181,81 @@ export async function getEligibility(req, res, next) {
   }
 }
 
+// ---------------------------------------------------------------------
+// FSDP-66: track grading application status
+// ---------------------------------------------------------------------
+
+// The four steps every tracked application moves through, in order. The page
+// draws them as a timeline, so step 1 is always the first and the furthest
+// reached is highlighted. `key` is stable for styling/tests; `label` is what
+// the student reads, worded exactly as the story asks.
+const STATUS_STEPS = [
+  { key: "submitted", label: "Submitted" },
+  { key: "accepted", label: "Accepted" },
+  { key: "assessed", label: "Assessed" },
+  { key: "processing", label: "Submitted for processing" },
+];
+
+// Which step a row has reached, from the two tables findApplicationStatuses
+// reads. Checked furthest-first so the latest stage wins:
+//   4 the assessment has been submitted (or a result exists, which can only
+//     follow submission) -> "Submitted for processing", results stay hidden
+//   3 an assessment row exists but isn't submitted yet          -> "Assessed"
+//   2 an instructor has approved the application                -> "Accepted"
+//   1 nothing beyond applying and paying                        -> "Submitted"
+function stepIndexFor(row) {
+  if (
+    row.assessment_status === "submitted" ||
+    row.application_status === "passed" ||
+    row.application_status === "failed"
+  ) {
+    return 3;
+  }
+  if (row.assessment_status) return 2;              // 'draft'
+  if (row.application_status === "approved" || row.accepted_on) return 1;
+  return 0;
+}
+
+// Shapes one DB row into what the tracker renders. `dates` pins each reached
+// step to the day it happened, where the data has a date for it, so the
+// timeline can show "Accepted · 12 Mar" rather than a bare tick.
+function toApplicationStatus(row) {
+  const i = stepIndexFor(row);
+  const step = STATUS_STEPS[i];
+  return {
+    id: row.id,
+    gradingSessionId: row.grading_session_id,
+    belt: { name: row.belt_name, colour: row.belt_colour },
+    gradingDate: row.grading_date,
+    startTime: row.start_time,
+    centreName: row.centre_name,
+    appliedOn: row.applied_on,
+    acceptedOn: row.accepted_on || null,
+    assessedOn: row.assessed_on || null,
+    // 1-based: the step the application has reached, of STATUS_STEPS.length.
+    step: i + 1,
+    statusKey: step.key,
+    statusLabel: step.label,
+  };
+}
+
+// GET /api/grading/applications/me
+//
+// The student's own grading applications for the status tracker, newest first.
+// `steps` is the fixed four-step journey so the page can draw the whole
+// timeline, including stages not yet reached, without hard-coding the labels.
+export async function getMyApplications(req, res, next) {
+  try {
+    const rows = await Grading.findApplicationStatuses(req.user.id);
+    res.json({
+      steps: STATUS_STEPS,
+      applications: rows.map(toApplicationStatus),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // POST /api/grading/applications   body: { gradingSessionId }
 //
 // The student has decided to apply. Checks everything again, then sends them

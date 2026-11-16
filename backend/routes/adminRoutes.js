@@ -14,6 +14,7 @@ router.get("/applications/hq-alerts", hqAlerts.list);
 router.patch("/applications/hq-alerts/:alertId/ack", hqAlerts.acknowledge);
 router.get("/applications/:id", applications.detail);
 router.get("/applications/:id/photo", applications.photo);
+router.get("/applications/:id/evidence", applications.evidence);
 router.patch("/applications/:id/decision", applications.decide);
 router.patch("/applications/:id/book", membershipBook.advance);
 router.patch("/applications/:id/photo/request", applications.requestPhoto);
@@ -47,6 +48,7 @@ router.get("/cover-requests", admin.listCoverRequests);
 router.get("/cover-requests/:id/availability", admin.getCoverAvailability);
 router.post("/cover-requests/:id/offer", admin.offerCover);
 router.post("/cover-requests/:id/cancel", admin.cancelCoverLesson);
+router.post("/cover-requests/:id/close", admin.closeCoverRequest);
 
 router.get("/grading-sessions", admin.listGradingSessions);
 router.post("/grading-sessions", admin.createGradingSession);

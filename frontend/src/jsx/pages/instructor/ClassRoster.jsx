@@ -5,6 +5,7 @@ import { formatTime } from "../../../js/utils/formatters.js";
 import InstructorNavbar from "../../components/InstructorNavbar.jsx";
 import BackButton from "../../components/BackButton.jsx";
 import CantMakeIt from "../../components/CantMakeIt.jsx";
+import MovedNote from "../../components/MovedNote.jsx";
 import "../../../css/auth.css";
 import "../../../css/instructor.css";
 
@@ -101,6 +102,7 @@ export default function ClassRoster() {
               <p className="lead">
                 {session.centre}, {formatTime(session.startTime)} - {formatTime(session.endTime)}
               </p>
+              <MovedNote session={session} />
               {session.attendanceClosed && (
                 <p className="notice roster-closed">Attendance closed 24 hours after this class ended, so this roster is view only.</p>
               )}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getAttendanceTrends } from "../../js/services/instructorService.js";
 
 // "2026-11-06" -> "6 Nov"
@@ -69,7 +70,7 @@ export default function AttendanceTrends() {
             {checkOn.map((student) => (
               <li key={student.studentId} className="check-on-row">
                 <div>
-                  <strong>{student.fullName}</strong>
+                  <strong><Link to={`/instructor/students/${student.studentId}`}>{student.fullName}</Link></strong>
                   {student.homeDojo && <span className="check-on-dojo">{student.homeDojo}</span>}
                 </div>
                 <p className="check-on-change">

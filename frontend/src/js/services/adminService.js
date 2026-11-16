@@ -63,6 +63,7 @@ export const getCoverAvailability = (id) => request(`/cover-requests/${id}/avail
 export const offerCover = (id, instructorId) =>
   request(`/cover-requests/${id}/offer`, { method: "POST", body: { instructorId } }).then((d) => d.request);
 export const cancelCoverLesson = (id, reason) => request(`/cover-requests/${id}/cancel`, { method: "POST", body: { reason } });
+export const closeCoverRequest = (id) => request(`/cover-requests/${id}/close`, { method: "POST" }).then((d) => d.request);
 
 // New-member application review (admin-only API)
 export const listMembershipApplications = (status = "pending") => request("/applications", { query: { status } }).then((r) => r.applications);
@@ -83,6 +84,18 @@ export async function getMembershipApplicationPhoto(id, { signal } = {}) {
   const blob = await res.blob();
   if (!blob.type.startsWith('image/')) throw new Error('Unexpected photo file type.');
   return blob;
+}
+
+// Private experience certificate (PDF or image), fetched with the admin JWT.
+export async function getMembershipApplicationEvidence(id) {
+  if (!API_URL) throw new Error('Backend address is not configured.');
+  const res = await fetch(`${API_URL}/api/admin/applications/${encodeURIComponent(id)}/evidence`, {
+    headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) || ''}` },
+    cache: 'no-store',
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Could not load the certificate (${res.status}).`);
+  return res.blob();
 }
 
 export const requestMembershipPhotoResubmission = (id, reason) =>

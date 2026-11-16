@@ -68,7 +68,8 @@ export async function findApplication(id) {
     `SELECT to_char(date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
             gender, experience_level, previous_rank, experience_notes,
             evidence_filename, phone, training_goal,
-            (photo_data IS NOT NULL) AS has_photo
+            (photo_data IS NOT NULL) AS has_photo,
+            (evidence_data IS NOT NULL) AS has_evidence
      FROM student_onboarding WHERE user_id = $1`, [row.student_id]
   );
   return { ...row, onboarding: details.rows[0] || null };
@@ -89,6 +90,20 @@ export async function decideApplication({
   });
 }
 
+
+// Experience certificate, fetched only when an admin clicks "View certificate".
+// Same rule as the photo: look it up through the application ID only.
+export async function findApplicationEvidence(applicationId) {
+  const result = await pool.query(
+    `SELECT o.evidence_filename, o.evidence_mime, o.evidence_data
+     FROM membership_applications a
+     JOIN users u ON u.id = a.student_id AND u.role = 'student'
+     JOIN student_onboarding o ON o.user_id = a.student_id
+     WHERE a.id = $1`,
+    [applicationId]
+  );
+  return result.rows[0] || null;
+}
 
 // Retrieve the photo only when an admin explicitly opens an application.
 // Join through the application ID, never accept a student ID from the browser.

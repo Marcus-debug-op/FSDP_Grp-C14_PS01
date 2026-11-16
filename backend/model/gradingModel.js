@@ -9,7 +9,7 @@ const SGT_TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 // 'absent' and 'excused' do not.
 const COUNTS_AS_ATTENDED = "('present', 'late')";
 
-// Hours come from internal sessions and completed private lessons. external_attendance records a date
+// Hours come from internal sessions only. external_attendance records a date
 // but no times, so there is nothing to measure; the UI says so rather than
 // inventing a nominal duration.
 //
@@ -46,9 +46,7 @@ export async function findTrainingSinceBelt(userId) {
        JOIN me ON e.student_id = me.user_id
        WHERE e.attended_on > me.belt_awarded_on
      ),
-     -- Private (1-on-1) lessons the instructor marked Present count as classes
-     -- too, and they have times, so they add to the hours.
-     private_sessions AS (
+     private AS (
        SELECT
          COUNT(*)::int AS classes,
          COALESCE(SUM(pl.end_time - pl.start_time), INTERVAL '0') AS trained
@@ -58,12 +56,12 @@ export async function findTrainingSinceBelt(userId) {
          AND pl.lesson_date > me.belt_awarded_on
      )
      SELECT
-       i.classes                                            AS internal_classes,
-       x.classes                                            AS external_classes,
-       p.classes                                            AS private_classes,
-       (i.classes + x.classes + p.classes)                  AS classes_attended,
+       i.classes                                     AS internal_classes,
+       x.classes                                     AS external_classes,
+       p.classes                                     AS private_classes,
+       (i.classes + x.classes + p.classes)           AS classes_attended,
        ROUND((EXTRACT(EPOCH FROM i.trained + p.trained) / 3600.0)::numeric, 1) AS hours_attended
-     FROM internal i CROSS JOIN external x CROSS JOIN private_sessions p`,
+     FROM internal i CROSS JOIN external x CROSS JOIN private p`,
     [userId]
   );
   return result.rows[0];
@@ -136,7 +134,7 @@ export async function findNextGradingSession(userId) {
 }
 
 // The student's application for one grading session, if any.
-// has already applied, and to enforce "can't apply twice" server-side.
+// has already applied, and FSDP-65 to enforce "can't apply twice" server-side.
 // 'withdrawn' and 'rejected' applications are returned too -- the caller
 // decides whether those should block a fresh attempt.
 export async function findApplicationForSession(userId, gradingSessionId) {
@@ -151,7 +149,7 @@ export async function findApplicationForSession(userId, gradingSessionId) {
 }
 
 // ---------------------------------------------------------------------
-// FSDP-65: apply for grading and pay the exam fee
+// apply for grading and pay the exam fee
 // ---------------------------------------------------------------------
 
 // The exam fee for grading TO a belt, in cents, from the ASK Grading SOP rows
@@ -249,6 +247,62 @@ export async function createApplicationFromPayment(client, { studentId, gradingS
   return result.rowCount === 1
     ? { created: true, applicationId: result.rows[0].id }
     : { created: false, applicationId: null };
+}
+
+// ---------------------------------------------------------------------
+// track grading application status
+// ---------------------------------------------------------------------
+
+// The student's grading applications, newest grading first, for the status
+// tracker. Each row carries just enough to place the application on the
+// four-step journey the story asks for:
+//
+//   Submitted -> Accepted -> Assessed -> Submitted for processing
+//
+// derived from two tables:
+//   * grading_applications.instructor_approved_at  -- an instructor has
+//     accepted the student onto the grading (migration 010)
+//   * grading_assessments.status                   -- the assessment recorded
+//     on the day: 'draft' once started, 'submitted' once the instructor
+//     submits it (migration 003)
+//
+// Only live applications are tracked. 'withdrawn' and 'rejected' are left out:
+// they are not stages on the way to a grading, and the student starts fresh if
+// they apply again.
+//
+// Grading results and belt promotions are deliberately NOT selected here. The
+// brief puts them out of scope, so a submitted assessment is reported only as
+// "Submitted for processing" -- never pass or fail. result/signature columns
+// on grading_assessments are not read at all.
+//
+// LEFT JOIN on grading_assessments: most applications have no assessment row
+// yet, and that is the normal "Submitted"/"Accepted" state, not an error.
+export async function findApplicationStatuses(userId) {
+  const result = await pool.query(
+    `SELECT ga.id,
+            to_char(ga.applied_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS applied_on,
+            ga.grading_session_id,
+            ga.status                                         AS application_status,
+            to_char(ga.instructor_approved_at AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS accepted_on,
+            b.name                                            AS belt_name,
+            b.colour                                          AS belt_colour,
+            to_char(gs.grading_date, 'YYYY-MM-DD')            AS grading_date,
+            to_char(gs.start_time, 'HH24:MI')                 AS start_time,
+            c.name                                            AS centre_name,
+            asmt.status                                       AS assessment_status,
+            to_char(COALESCE(asmt.signed_at, asmt.updated_at, asmt.created_at)
+                    AT TIME ZONE 'Asia/Singapore', 'YYYY-MM-DD') AS assessed_on
+     FROM grading_applications ga
+     JOIN belt_ranks b ON b.id = ga.target_belt_id
+     JOIN grading_sessions gs ON gs.id = ga.grading_session_id
+     LEFT JOIN centres c ON c.id = gs.centre_id
+     LEFT JOIN grading_assessments asmt ON asmt.application_id = ga.id
+     WHERE ga.student_id = $1
+       AND ga.status NOT IN ('withdrawn', 'rejected')
+     ORDER BY gs.grading_date DESC, ga.applied_at DESC`,
+    [userId]
+  );
+  return result.rows;
 }
 
 // The syllabus a student has to demonstrate for a given belt. Reference text,

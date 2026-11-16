@@ -53,3 +53,16 @@ export async function applyForGrading(gradingSessionId) {
   });
   window.location.assign(url);
 }
+
+// the student's grading applications and where each stands, for the
+// status tracker. Returns:
+//   { steps:        [{ key, label }, ...]   the fixed four-step journey,
+//     applications: [{ id, gradingSessionId, belt:{name,colour},
+//                      gradingDate, startTime, centreName, appliedOn,
+//                      acceptedOn, assessedOn,
+//                      step, statusKey, statusLabel }, ...] }  newest first
+//
+// `step` is 1..steps.length -- how far this application has reached. Grading
+// results are out of scope and never included: a submitted assessment shows
+// only as "Submitted for processing".
+export const getMyApplications = () => request("/api/grading/applications/me");
