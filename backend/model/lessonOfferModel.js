@@ -32,9 +32,9 @@ export async function withdrawPendingOffers({ sessionId = null, privateLessonId 
   );
 }
 
-export async function sendOfferNotice(offerId) {
+async function offerDetails(offerId) {
   const result = await pool.query(
-    `SELECT lo.id, lo.instructor_id,
+    `SELECT lo.id, lo.instructor_id, lo.session_id, lo.response_note, iu.full_name AS instructor_name,
             COALESCE(c.title, 'Private lesson with ' || st.full_name) AS title,
             to_char(COALESCE(cs.session_date, pl.lesson_date), 'YYYY-MM-DD') AS date,
             to_char(COALESCE(cs.start_time, pl.start_time), 'HH24:MI') AS start_time,
@@ -46,10 +46,15 @@ export async function sendOfferNotice(offerId) {
      LEFT JOIN private_lessons pl ON pl.id = lo.private_lesson_id
      LEFT JOIN users st ON st.id = pl.student_id
      LEFT JOIN centres ce ON ce.id = COALESCE(cs.centre_id, c.centre_id, pl.centre_id)
+     JOIN users iu ON iu.id = lo.instructor_id
      WHERE lo.id = $1`,
     [offerId]
   );
-  const offer = result.rows[0];
+  return result.rows[0] || null;
+}
+
+export async function sendOfferNotice(offerId) {
+  const offer = await offerDetails(offerId);
   if (!offer) return null;
   const when = `${longDate(offer.date)}, ${clock(offer.start_time)} to ${clock(offer.end_time)}`;
   return notify({
@@ -70,4 +75,37 @@ export async function sendOfferNotice(offerId) {
       button: { label: "Open my dashboard", path: "/dashboard" },
     },
   });
+}
+
+export async function sendOfferDeclinedNotice(offerId) {
+  try {
+    const offer = await offerDetails(offerId);
+    if (!offer) return;
+    const when = `${longDate(offer.date)}, ${clock(offer.start_time)} to ${clock(offer.end_time)}`;
+    const isCover = Boolean(offer.session_id);
+    const path = isCover ? "/admin/cover-requests" : "/admin/private-lessons?view=upcoming";
+    const reason = offer.response_note ? `Reason: ${offer.response_note}` : "No reason given.";
+    const admins = await pool.query("SELECT id FROM users WHERE role = 'admin'");
+    await Promise.all(admins.rows.map(({ id }) => notify({
+      userId: id,
+      type: "lesson_offer",
+      title: `Declined: ${offer.title}, ${longDate(offer.date)}`,
+      body: `${offer.instructor_name} can't take ${offer.title} on ${when} at ${offer.centre}. ${reason} Please pick someone else.`,
+      dedupeKey: `offer-declined:${offer.id}:${id}`,
+      email: {
+        subject: `Instructor declined: ${offer.title}, ${longDate(offer.date)}`,
+        paragraphs: [
+          `${offer.instructor_name} declined this lesson.`,
+          `Lesson: ${offer.title}`,
+          `When: ${when}`,
+          `Where: ${offer.centre}`,
+          reason,
+          isCover ? "Please offer the class to someone else, or cancel it if nobody can take it." : "Please pick another instructor for this lesson.",
+        ],
+        button: { label: isCover ? "Open Cover Requests" : "Open Private Lessons", path },
+      },
+    })));
+  } catch (err) {
+    console.error("Couldn't send decline notice", offerId, err.message);
+  }
 }
