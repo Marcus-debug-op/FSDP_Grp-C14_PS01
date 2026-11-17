@@ -81,3 +81,4 @@ ON CONFLICT (setting_key) DO UPDATE
       source_document = EXCLUDED.source_document,
       updated_at = NOW();
 
+COMMIT;
