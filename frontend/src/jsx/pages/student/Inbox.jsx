@@ -35,15 +35,17 @@ export default function Inbox() {
   const [data, setData] = useState({ notices: [], unread: 0 });
   const [error, setError] = useState("");
 
+  // Opening the inbox counts as reading it: unread updates are marked read
+  // straight away, so the dashboard's updates bar is gone next time. They stay
+  // highlighted on this visit so the student can still see which ones are new.
   useEffect(() => {
-    getNotices().then(setData).catch((err) => setError(err.message));
+    getNotices()
+      .then((result) => {
+        setData(result);
+        if (result.unread > 0) markNoticesRead().catch(() => {});
+      })
+      .catch((err) => setError(err.message));
   }, []);
-
-  function readAll() {
-    markNoticesRead()
-      .then(() => setData((d) => ({ unread: 0, notices: d.notices.map((n) => ({ ...n, read: true })) })))
-      .catch(() => {});
-  }
 
   return (
     <section className="section inbox-page">
@@ -51,13 +53,8 @@ export default function Inbox() {
         <div className="dash-head">
           <div>
             <p className="eyebrow">Inbox</p>
-            <h2>{data.unread > 0 ? plural(data.unread, "unread update") : "Your updates"}</h2>
+            <h2>{data.unread > 0 ? plural(data.unread, "new update") : "Your updates"}</h2>
           </div>
-          {data.unread > 0 && (
-            <button type="button" className="btn btn-outline btn-small" onClick={readAll}>
-              Mark all as read
-            </button>
-          )}
         </div>
 
         {error && <p className="notice" role="alert">{error}</p>}

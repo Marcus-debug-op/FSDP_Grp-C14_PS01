@@ -258,19 +258,18 @@ const ALERT_TYPES = new Set(["lesson_cancelled", "lesson_moved"]);
 // A slim bar under the navigation (dashboard only) pointing students at their
 // inbox for recent updates (item 7). Shows separate indicators for unread
 // alerts and unread routine updates. Replaces the old inline notices list,
-// which now lives on the Inbox page.
+// which now lives on the Inbox page. Only shows while there are unread
+// updates: opening the inbox marks them read, so the bar goes away.
 function UpdatesRow({ notices, unread }) {
-  if (!notices.length) return null;
+  if (unread === 0) return null;
   const alertUnread = notices.filter((n) => !n.read && ALERT_TYPES.has(n.type)).length;
   const otherUnread = Math.max(0, unread - alertUnread);
   return (
     <div className="dash-updates">
       <div className="container dash-updates-inner">
         <p className="dash-updates-text">
-          <span className={unread > 0 ? "dash-updates-dot is-on" : "dash-updates-dot"} aria-hidden="true" />
-          {unread > 0
-            ? <><strong>{plural(unread, "new update")}</strong> since you last checked.</>
-            : <>You&rsquo;re all caught up on updates.</>}
+          <span className="dash-updates-dot is-on" aria-hidden="true" />
+          <strong>{plural(unread, "new update")}</strong> since you last checked.
         </p>
         {(alertUnread > 0 || otherUnread > 0) && (
           <span className="dash-updates-flags">

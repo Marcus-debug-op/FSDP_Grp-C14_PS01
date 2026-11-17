@@ -1,0 +1,81 @@
+/* Dropdown that always opens downwards (jsx/components/Dropdown.jsx).
+   Matches the look of the .filters select boxes in index.css. */
+
+.dd-field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+}
+
+.dd-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-width: 220px;
+  padding: 0.65rem 0.9rem;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  text-align: left;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid #8a847c;
+  cursor: pointer;
+}
+.dd-button:hover { border-color: var(--text); }
+.dd-button.is-open { border-color: var(--accent); }
+.dd-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Small chevron, flips when the list is open */
+.dd-arrow {
+  flex: 0 0 auto;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: -0.25rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+.dd-button.is-open .dd-arrow { margin-top: 0.25rem; transform: rotate(-135deg); }
+
+/* The list: always directly below the box */
+.dd-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 40;
+  width: 100%;
+  min-width: max-content;
+  max-height: 18rem;
+  margin: 4px 0 0;
+  padding: 0.3rem 0;
+  overflow-y: auto;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #8a847c;
+  box-shadow: 0 12px 28px rgba(45, 35, 26, 0.16);
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text);
+}
+.dd-list:focus { outline: none; }
+.dd-option { padding: 0.45rem 0.9rem; cursor: pointer; white-space: nowrap; }
+.dd-option.is-active { background: var(--surface); }
+.dd-option[aria-selected="true"] { color: var(--accent-text); font-weight: 600; }
+
+@media (max-width: 700px) {
+  .dd-field, .dd-button { width: 100%; min-width: 0; }
+  .dd-list { min-width: 0; }
+  .dd-option { white-space: normal; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dd-arrow { transition: none; }
+}

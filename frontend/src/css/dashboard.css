@@ -129,11 +129,10 @@
 .dash-flag.is-alert { background: rgba(224, 90, 70, 0.2); color: #f0a08f; }
 .dash-flag.is-info { background: rgba(255, 255, 255, 0.12); color: #cbd3d6; }
 
-/* ---------- Rank-progress section: fills one screenful ----------
-   Sized to the viewport minus the sticky navbar (~73px) and the updates bar
-   (~55px) so the whole top of the dashboard is a single scroll, with its
-   content vertically centred. */
-.rank-section { position: relative; overflow: hidden; background: #f7f6f4; padding: 3rem 0 2rem; min-height: calc(100vh - 128px); }
+/* ---------- Rank-progress section ----------
+   Hugs its content with even padding above and below, so the background
+   image is only as tall as the progress and buttons inside it. */
+.rank-section { position: relative; overflow: hidden; background: #f7f6f4; padding: 3.5rem 0; }
 
 /* Motion background + readability scrim (lighter toward the right so the motion
    shows there, denser on the left behind the text). */
@@ -195,10 +194,9 @@
 .inbox-empty { margin-top: 1.5rem; }
 .inbox-back { margin-top: 2rem; }
 
-/* When the two columns stack, drop the full-height sizing so the section
-   hugs its content instead of leaving a tall gap. */
+/* When the two columns stack, drop the divider and tighten the padding. */
 @media (max-width: 860px) {
-  .rank-section { min-height: auto; display: block; padding: 2.5rem 0; }
+  .rank-section { display: block; padding: 2.5rem 0; }
   .rank-section .visual-reveal { display: block; }
   .rank-section .visual-reveal::before { display: none; }
   .dash-actions { flex: initial; }
