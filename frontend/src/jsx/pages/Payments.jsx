@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import ScrollReveal from "../components/ScrollReveal.jsx";
 import { getOptions, startCheckout } from "../../js/services/paymentService.js";
-import "../../css/student-dashboard.css";
+import "../../css/content.css";
+import "../../css/payments.css";
 
 // PAY-1 + PAY-2: choose a membership plan or credit package, then pay on
 // Stripe Checkout (test mode). Prices always come from the server.
@@ -13,11 +15,13 @@ const fmtMoney = (cents) =>
 
 function OptionCard({ title, price, lines, buttonLabel, busy, onBuy }) {
   return (
-    <article className="sp-box sp-card sp-option">
-      <p className="sp-label">{title}</p>
-      <p className="sp-card-value">{price}</p>
-      {lines.map((l) => <p className="sp-body" key={l}>{l}</p>)}
-      <button type="button" className="sp-btn sp-btn-secondary sp-option-btn" onClick={onBuy} disabled={busy}>
+    <article className="card pay-card">
+      <h3>{title}</h3>
+      <p className="pay-price">{price}</p>
+      <ul className="pay-lines">
+        {lines.map((l) => <li key={l}>{l}</li>)}
+      </ul>
+      <button type="button" className="btn btn-outline btn-small" onClick={onBuy} disabled={busy}>
         {busy ? "Opening checkout..." : buttonLabel}
       </button>
     </article>
@@ -46,51 +50,50 @@ export default function Payments() {
   }
 
   return (
-    <div className="sp">
-      <span className="sp-glyph" aria-hidden="true">合</span>
-      <div className="sp-content">
-        <div className="sp-main">
-          <header className="sp-intro">
-            <p className="sp-body sp-muted">Payments</p>
-            <h1 className="sp-hero">Keep training.</h1>
-            <p className="sp-body sp-lead">
-              To book lessons you need an active membership and lesson credits. The membership fee
-              doesn't include lessons, and each lesson costs 1 credit. Payment is handled securely by Stripe.
-            </p>
-          </header>
+    <section className="section pay-page">
+      <div className="container">
+        <ScrollReveal>
+          <p className="eyebrow">Payments</p>
+          <h1>Keep Training</h1>
+          <p className="lead">
+            To book lessons you need an active membership and lesson credits. The membership fee
+            doesn't include lessons, and each lesson costs 1 credit. Payment is handled securely by Stripe.
+          </p>
+        </ScrollReveal>
 
-          {params.get("cancelled") && (
-            <p className="sp-notice" role="status">Checkout was cancelled. You haven't been charged.</p>
-          )}
-          {error && <p className="sp-notice sp-notice-error" role="alert">{error}</p>}
+        {params.get("cancelled") && (
+          <p className="notice pay-notice" role="status">Checkout was cancelled. You haven't been charged.</p>
+        )}
+        {error && <p className="notice pay-notice pay-error" role="alert">{error}</p>}
 
-          {!options && !error && <p className="sp-body sp-muted">Loading options...</p>}
+        {!options && !error && <p className="pay-loading">Loading options...</p>}
 
-          {options && (
-            <>
-              <section aria-labelledby="plans-title">
-                <h2 className="sp-section-title" id="plans-title">Membership fee</h2>
-                <div className="sp-grid sp-grid-cards">
-                  {options.plans.map((p) => (
-                    <OptionCard
-                      key={p.id}
-                      title={p.name}
-                      price={fmtMoney(p.price_cents)}
-                      lines={[
-                        `${p.duration_months} ${p.duration_months === 1 ? "month" : "months"} of membership`,
-                        "Lesson credits sold separately",
-                      ]}
-                      buttonLabel="Choose plan"
-                      busy={busyKey === `membership-${p.id}`}
-                      onBuy={() => buy("membership", p.id)}
-                    />
-                  ))}
-                </div>
-              </section>
+        {options && (
+          <>
+            <section className="pay-group" aria-labelledby="plans-title">
+              <h2 className="day-heading" id="plans-title">Membership fee</h2>
+              <div className="grid">
+                {options.plans.map((p) => (
+                  <OptionCard
+                    key={p.id}
+                    title={p.name}
+                    price={fmtMoney(p.price_cents)}
+                    lines={[
+                      `${p.duration_months} ${p.duration_months === 1 ? "month" : "months"} of membership`,
+                      "Lesson credits sold separately",
+                    ]}
+                    buttonLabel="Choose plan"
+                    busy={busyKey === `membership-${p.id}`}
+                    onBuy={() => buy("membership", p.id)}
+                  />
+                ))}
+              </div>
+            </section>
 
-              <section aria-labelledby="credits-title">
-                <h2 className="sp-section-title" id="credits-title">Lesson credits</h2>
-                <div className="sp-grid sp-grid-cards">
+            {options.packages.length > 0 && (
+              <section className="pay-group" aria-labelledby="credits-title">
+                <h2 className="day-heading" id="credits-title">Lesson credits</h2>
+                <div className="grid">
                   {options.packages.map((p) => (
                     <OptionCard
                       key={p.id}
@@ -107,12 +110,12 @@ export default function Payments() {
                   ))}
                 </div>
               </section>
+            )}
 
-              <p className="sp-label">All purchases are final. Credits and memberships are non-refundable.</p>
-            </>
-          )}
-        </div>
+            <p className="pay-policy">All purchases are final. Credits and memberships are non-refundable.</p>
+          </>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

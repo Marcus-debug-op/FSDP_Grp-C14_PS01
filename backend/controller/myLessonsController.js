@@ -21,9 +21,37 @@ function mondayOf(ymd) {
 // Today's date in Singapore, "YYYY-MM-DD".
 const todaySgt = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
 
+// "YYYY-MM-DD" a number of days after a date.
+function addDays(ymd, days) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+// The dates a month calendar shows: from the Monday on or before the 1st
+// to the Sunday on or after the last day, so every row is a full week.
+function monthGrid(month) {
+  const [y, m] = month.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+  return { from: mondayOf(`${month}-01`), to: addDays(mondayOf(lastDay), 6) };
+}
+
 // GET /api/student/timetable?week=YYYY-MM-DD   (any day in the week; defaults to this week)
+// GET /api/student/timetable?month=YYYY-MM     (a whole month for the month view)
 export async function getTimetable(req, res, next) {
   try {
+    if (req.query.month !== undefined) {
+      const month = req.query.month || todaySgt().slice(0, 7);
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+        return res.status(400).json({ message: "That month isn't valid." });
+      }
+      const { from, to } = monthGrid(month);
+      const items = await Timetable.getRange(req.user.id, from, to);
+      return res.json({
+        month, thisMonth: todaySgt().slice(0, 7), from, to,
+        today: todaySgt(), cancelNoticeHours: CANCEL_NOTICE_HOURS, items,
+      });
+    }
+
     if (req.query.week && !isDate(req.query.week)) {
       return res.status(400).json({ message: "That week isn't valid." });
     }

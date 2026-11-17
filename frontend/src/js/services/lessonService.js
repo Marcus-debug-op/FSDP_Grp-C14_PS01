@@ -65,6 +65,12 @@ export const cancelLesson = (sessionId, { acceptLostCredit = false } = {}) =>
 export const getTimetable = (week) =>
   request(`/api/student/timetable${week ? `?week=${encodeURIComponent(week)}` : ""}`);
 
+// The student's lessons for a whole month (`month` is "YYYY-MM"; empty = this month).
+// Covers full weeks, so a few days from the months either side come back too.
+// { month, thisMonth, from, to, today, cancelNoticeHours, items: [...] }
+export const getTimetableMonth = (month) =>
+  request(`/api/student/timetable?month=${encodeURIComponent(month || "")}`);
+
 // FSDP-59: past lessons. filters = { month: "YYYY-MM", centreId }
 // { items, summary: { attended, missed, cancelled }, options: { months, centres } }
 export function getHistory(filters = {}) {
