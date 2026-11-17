@@ -3,6 +3,8 @@ import { decideMembershipApplication, getMembershipApplication, getMembershipApp
 import "../../../css/admin-applications.css";
 
 const fmt = (date) => date ? new Date(date).toLocaleString('en-SG') : '—';
+// Short date for the list, e.g. "13 Nov 2026".
+const shortDate = (date) => date ? new Date(date).toLocaleDateString('en-SG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 const money = (cents) => `S$${(Number(cents || 0)/100).toFixed(2)}`;
 // "3 hours ago" style label for alert times.
 const ago = (date) => {
@@ -176,9 +178,9 @@ export default function AdminMembershipApplications() {
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}
     {loading ? <p role="status">Loading applications…</p> : items.length === 0 ? <p>{status === 'action' ? 'Nothing needs action right now. Use the filter to see approved, rejected or all applications.' : 'No applications in this category.'}</p> :
-      <div className="adm-app-tablewrap"><table className="adm-app-table"><thead><tr><th>Applicant</th><th>Dojo</th><th>Registration</th><th>Payment</th><th>Approval</th><th>Next step</th><th>Action</th></tr></thead><tbody>
+      <div className="adm-app-tablewrap"><table className="adm-app-table"><thead><tr><th>Applicant</th><th>Dojo</th><th>Submitted</th><th>Registration</th><th>Payment</th><th>Approval</th><th>Next step</th><th>Action</th></tr></thead><tbody>
         {items.map(a=><tr key={a.id}><td><strong>{a.full_name}</strong><small>{a.email}</small></td>
-        <td>{a.centre_name}{a.centre_name === "ASK Headquarters Dojo" && <small>HQ · coordinate session pass/attire</small>}</td><td>{a.plan_name}<small>{money(a.price_cents)}</small></td>
+        <td>{a.centre_name}{a.centre_name === "ASK Headquarters Dojo" && <small>HQ · coordinate session pass/attire</small>}</td><td>{shortDate(a.created_at)}</td><td>{a.plan_name}<small>{money(a.price_cents)}</small></td>
         <td>{paymentLabel(a)}</td><td><span className="adm-app-status">{a.approval_status}</span></td>
         <td>{nextStep(a)}</td>
         <td><button className="btn btn-outline" type="button" onClick={()=>openDetail(a.id)}>Review</button></td></tr>)}

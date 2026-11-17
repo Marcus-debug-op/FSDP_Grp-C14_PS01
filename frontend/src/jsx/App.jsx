@@ -83,8 +83,6 @@ export default function App() {
           {/* Weekly timetable and past lessons. FSDP-41, FSDP-59 */}
           <Route path="/timetable" element={<ProtectedRoute role="student"><MyTimetable /></ProtectedRoute>} />
           {/* Student pages not built yet: placeholders until the real pages are ready */}
-          <Route path="/lessons" element={<ProtectedRoute activeMembership><ComingSoon page="lessons" /></ProtectedRoute>} />
-          <Route path="/timetable" element={<ProtectedRoute activeMembership><ComingSoon page="timetable" /></ProtectedRoute>} />
           <Route path="/check-in" element={<ProtectedRoute activeMembership role="student"><CheckIn /></ProtectedRoute>} />
           {/* Personal settings is built: contact details editable, belt and membership view-only. FSDP-42 */}
           <Route path="/settings" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
