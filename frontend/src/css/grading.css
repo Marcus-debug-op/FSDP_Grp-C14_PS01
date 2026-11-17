@@ -1,66 +1,66 @@
 .grad-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
 
-.grad-status { gap: 0.95rem; padding: 1.5rem 1.6rem; }
+.grad-status { padding: 1.5rem 1.7rem; }
 
 .grad-status.is-ok { border-color: #bfe2cc; background: linear-gradient(180deg, #f6fcf8, #fff); }
 
-.grad-status-top {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 0.75rem 1rem; flex-wrap: wrap;
+/* One clear row: status icon -> headline -> belt journey. The icon carries the
+   meaning at a glance, so the copy can stay to a single short line. */
+.grad-status-main {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center; gap: 0.9rem 1.3rem;
 }
 
 .grad-status-title {
-  margin: 0; font-size: clamp(1.45rem, 3vw, 1.85rem); font-weight: 700;
-  letter-spacing: -0.02em; line-height: 1.15;
+  margin: 0; font-size: clamp(1.4rem, 2.8vw, 1.8rem); font-weight: 400;
+  letter-spacing: -0.01em; line-height: 1.2;
 }
 
-/* Belt journey chips: Current -> Next. The two grades can share a belt colour
-   (e.g. 6th and 5th Kyu are both "blue"), so the chips and dots are styled to
-   tell them apart -- the current belt is a soft outlined chip with a pale,
-   ringed dot, the next belt an accented "goal" chip with a solid, haloed dot. */
-.grad-path { display: flex; align-items: center; flex-wrap: wrap; gap: 0.55rem; margin: 0; }
+.grad-status-text { min-width: 0; }
+.grad-status-text .prog-muted { margin: 0.25rem 0 0; }
 
-.grad-path-step {
-  display: inline-flex; align-items: center; gap: 0.6rem;
-  padding: 0.45rem 0.9rem 0.45rem 0.6rem; border-radius: 12px;
+/* Status icon chip. A tinted disc that recolours with its state via currentColor,
+   so the icon, the faint ring and the fill always agree. */
+.grad-status-icon {
+  flex: 0 0 auto; width: 3.1rem; height: 3.1rem; border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--prog-muted);
+  background: color-mix(in srgb, currentColor 10%, var(--prog-card));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
+}
+.grad-status-icon.is-ok { color: var(--prog-ok); }
+.grad-status-icon.is-top { color: #b8860b; }
+
+/* Belt journey: "where you are" -> "where you're heading", as compact pills.
+   Grades can share a belt colour, so the coloured dot does the distinguishing;
+   the goal chip is outlined in its own belt colour to read as the target. */
+.grad-belts { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin: 0; }
+
+.grad-belt {
+  display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+  padding: 0.42rem 0.85rem; border-radius: 999px;
+  font-size: 0.92rem; font-weight: 600; color: var(--prog-text);
   background: var(--prog-soft); box-shadow: inset 0 0 0 1px var(--prog-line);
 }
-
-.grad-path-step.is-next {
-  background: var(--prog-accent-soft);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prog-accent) 32%, transparent);
+.grad-belt.is-next {
+  background: var(--prog-card);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--belt) 60%, var(--prog-line));
 }
 
-.grad-path-dot { flex: 0 0 auto; width: 1.15rem; height: 1.15rem; border-radius: 50%; }
-
-/* Current belt: pale, outlined -- "where you are now". */
-.grad-path-step.is-from .grad-path-dot {
-  background: color-mix(in srgb, var(--belt) 22%, #fff);
-  box-shadow: inset 0 0 0 2px var(--belt);
+.grad-belt-dot {
+  flex: 0 0 auto; width: 0.9rem; height: 0.9rem; border-radius: 50%;
+  background: var(--belt); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
 }
 
-/* Next belt: solid and lifted with a soft accent halo -- "where you're heading". */
-.grad-path-step.is-next .grad-path-dot {
-  background: var(--belt);
-  box-shadow: 0 0 0 3px #fff,
-              0 0 0 4px color-mix(in srgb, var(--prog-accent) 45%, transparent),
-              0 1px 2px rgba(0, 0, 0, 0.25);
+.grad-belt-arrow { color: var(--prog-muted); font-size: 1.05rem; line-height: 1; }
+
+/* When space is tight, drop the belt journey to its own line below the headline. */
+@media (max-width: 560px) {
+  .grad-status-main { grid-template-columns: auto minmax(0, 1fr); }
+  .grad-belts { grid-column: 1 / -1; }
 }
 
-.grad-path-info { display: inline-flex; flex-direction: column; gap: 0.05rem; line-height: 1.15; }
-
-.grad-path-cap {
-  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--prog-muted);
-}
-
-.grad-path-step.is-next .grad-path-cap { color: var(--prog-accent); }
-
-.grad-path-name { font-size: 0.95rem; font-weight: 650; color: var(--prog-text); }
-
-.grad-path-arrow { color: var(--prog-muted); font-size: 1.05rem; line-height: 1; }
-
-.grad-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.2rem 0 0; padding: 0; }
+.grad-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.35rem 0 0; padding: 0; }
 
 .grad-chips li {
   padding: 0.4rem 0.75rem; border-radius: 8px; font-size: 0.88rem; font-weight: 600;

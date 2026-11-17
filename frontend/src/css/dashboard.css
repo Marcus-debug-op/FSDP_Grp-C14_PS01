@@ -130,9 +130,13 @@
 .dash-flag.is-info { background: rgba(255, 255, 255, 0.12); color: #cbd3d6; }
 
 /* ---------- Rank-progress section ----------
-   Hugs its content with even padding above and below, so the background
-   image is only as tall as the progress and buttons inside it. */
-.rank-section { position: relative; overflow: hidden; background: #f7f6f4; padding: 3.5rem 0; }
+   Fills the viewport below the sticky navbar (72px) so the hero is exactly one
+   screen tall, with its content vertically centred against the background. */
+.rank-section {
+  position: relative; overflow: hidden; background: #f7f6f4; padding: 3.5rem 0;
+  min-height: calc(100vh - 72px);
+  display: flex; flex-direction: column; justify-content: center;
+}
 
 /* Motion background + readability scrim (lighter toward the right so the motion
    shows there, denser on the left behind the text). */
@@ -196,7 +200,7 @@
 
 /* When the two columns stack, drop the divider and tighten the padding. */
 @media (max-width: 860px) {
-  .rank-section { display: block; padding: 2.5rem 0; }
+  .rank-section { display: flex; padding: 2.5rem 0; min-height: calc(100vh - 72px); }
   .rank-section .visual-reveal { display: block; }
   .rank-section .visual-reveal::before { display: none; }
   .dash-actions { flex: initial; }

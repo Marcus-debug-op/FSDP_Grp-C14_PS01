@@ -55,13 +55,17 @@ function Body({ data, tracker, error, cancelled }) {
 
   if (atHighestBelt) {
     return (
-      <article className="prog-card grad-status">
-        <BeltPath current={currentBelt} />
-        <h2 className="grad-status-title">You're at the highest recorded belt</h2>
-        <p className="prog-muted">
-          Nothing to apply for yet. Since this belt you've trained {progress.classes.attended} classes
-          and {progress.hours.attended} hours.
-        </p>
+      <article className="prog-card grad-status is-ok">
+        <div className="grad-status-main">
+          <span className="grad-status-icon is-top" aria-hidden="true"><StarIcon /></span>
+          <div className="grad-status-text">
+            <h2 className="grad-status-title">Top belt reached</h2>
+            <p className="prog-muted">
+              {progress.classes.attended} classes · {progress.hours.attended} hours since this belt.
+            </p>
+          </div>
+          <BeltPath current={currentBelt} />
+        </div>
       </article>
     );
   }
@@ -92,24 +96,24 @@ function Body({ data, tracker, error, cancelled }) {
       )}
 
       <article className={eligible ? "prog-card grad-status is-ok" : "prog-card grad-status"}>
-        <div className="grad-status-top">
-          <BeltPath current={currentBelt} next={nextBelt} />
-          <span className={eligible ? "prog-pill is-ok" : "prog-pill"}>
-            {eligible ? "Eligible" : "Not yet eligible"}
+        <div className="grad-status-main">
+          <span className={eligible ? "grad-status-icon is-ok" : "grad-status-icon"} aria-hidden="true">
+            {eligible ? <CheckIcon /> : <ClockIcon />}
           </span>
+          <div className="grad-status-text">
+            <h2 className="grad-status-title">
+              {eligible ? "Ready to grade" : "Keep training"}
+            </h2>
+            {eligible ? (
+              <p className="prog-muted">All requirements met — applying is your choice.</p>
+            ) : (
+              <ul className="grad-chips">
+                {unmet.map((reason) => <li key={reason}>{reason}</li>)}
+              </ul>
+            )}
+          </div>
+          <BeltPath current={currentBelt} next={nextBelt} />
         </div>
-        <h2 className="grad-status-title">
-          {eligible ? `You can grade for ${nextBelt.name}` : `Keep training for ${nextBelt.name}`}
-        </h2>
-        {eligible ? (
-          <p className="prog-muted">
-            You meet the requirements. Your instructor can advise, but whether to apply is your choice.
-          </p>
-        ) : (
-          <ul className="grad-chips">
-            {unmet.map((reason) => <li key={reason}>{reason}</li>)}
-          </ul>
-        )}
       </article>
 
       <div className="grad-tiles">
@@ -211,29 +215,52 @@ function SyllabusCard({ syllabus, nextBelt }) {
   );
 }
 
+// Compact "where you are -> where you're heading" pill. The current belt is a
+// plain chip; the next belt is outlined in its own colour as the goal. Belt
+// colours can repeat across grades, so the coloured dots carry the meaning.
 function BeltPath({ current, next }) {
   return (
-    <div className="grad-path">
-      <span className="grad-path-step is-from">
-        <span className="grad-path-dot" style={{ "--belt": colourHex(current.colour) }} aria-hidden="true" />
-        <span className="grad-path-info">
-          <span className="grad-path-cap">Current</span>
-          <span className="grad-path-name">{current.name}</span>
-        </span>
+    <div className="grad-belts">
+      <span className="grad-belt" style={{ "--belt": colourHex(current.colour) }}>
+        <span className="grad-belt-dot" aria-hidden="true" />
+        {current.name}
       </span>
       {next && (
         <>
-          <span className="grad-path-arrow" aria-hidden="true">→</span>
-          <span className="grad-path-step is-next">
-            <span className="grad-path-dot" style={{ "--belt": colourHex(next.colour) }} aria-hidden="true" />
-            <span className="grad-path-info">
-              <span className="grad-path-cap">Next up</span>
-              <span className="grad-path-name">{next.name}</span>
-            </span>
+          <span className="grad-belt-arrow" aria-hidden="true">→</span>
+          <span className="grad-belt is-next" style={{ "--belt": colourHex(next.colour) }}>
+            <span className="grad-belt-dot" aria-hidden="true" />
+            {next.name}
           </span>
         </>
       )}
     </div>
+  );
+}
+
+// Small inline status icons, drawn so they read instantly at a glance.
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+      strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v4.8l3 1.8" />
+    </svg>
+  );
+}
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2.5l2.6 5.76 6.3.62-4.72 4.2 1.36 6.17L12 16.9l-5.54 3.35 1.36-6.17-4.72-4.2 6.3-.62z" />
+    </svg>
   );
 }
 
