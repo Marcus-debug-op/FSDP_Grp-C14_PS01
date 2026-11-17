@@ -8,6 +8,7 @@ import {
   LIMITS, boundedText, phoneNumber, postalCode, assertPresent,
 } from "../utils/contactValidation.js";
 import pool from "../db.js";
+import { welcomeStudent } from "../utils/notices.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const FILE_TYPES = new Map([
@@ -154,7 +155,7 @@ export async function signup(req, res, next) {
       return res.status(400).json({ message: "Please choose a preferred dojo." });
     }
     const centreResult = await pool.query(
-      "SELECT id FROM centres WHERE id = $1 AND is_active = TRUE",
+      "SELECT id, name FROM centres WHERE id = $1 AND is_active = TRUE",
       [preferredCentreId]
     );
     if (centreResult.rowCount === 0) {
@@ -162,6 +163,8 @@ export async function signup(req, res, next) {
     }
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.createStudent({ fullName, email, passwordHash, onboarding, planId: selectedPlanId, preferredCentreId });
+    // Welcome notice + email (never throws, and the student doesn't wait for it).
+    welcomeStudent(user.id, { centreName: centreResult.rows[0].name });
     return res.status(201).json({ token: createToken(user), user: publicUser(user) });
   } catch (err) {
     if (err.code === "23505") return res.status(409).json({ message: "An account with this email already exists." });
