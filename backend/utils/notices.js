@@ -234,3 +234,24 @@ export function privateLessonClosed(lesson, refunded) {
     },
   });
 }
+
+// Brief outcome 1: new students "receive automated welcome emails".
+// Sent once, right after sign-up. dedupe_key welcome:<id> stops a second one.
+export function welcomeStudent(studentId, { centreName }) {
+  return notify({
+    userId: studentId,
+    type: "welcome",
+    title: "Welcome to Aikido Shinju-Kai",
+    body: `Your account is ready. Next, pay the registration fee so the Shihan can review your application${centreName ? ` for ${centreName}` : ""}.`,
+    dedupeKey: `welcome:${studentId}`,
+    email: {
+      subject: "Welcome to Aikido Shinju-Kai",
+      paragraphs: [
+        "Thank you for signing up. Your Aikido Shinju-Kai account is ready.",
+        `Here's what happens next: pay the registration fee, then the Shihan will review your application${centreName ? ` for ${centreName}` : ""} and our staff will check your profile photo.`,
+        "Once you're approved, your membership becomes active and you can book classes. You can follow every step on your profile page.",
+      ],
+      button: { label: "View my application", path: "/profile" },
+    },
+  });
+}
