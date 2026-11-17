@@ -1,6 +1,7 @@
 // CONTROLLER: builds the student dashboard from the model's queries.
 import * as Student from "../model/studentModel.js";
 import { CANCEL_NOTICE_HOURS } from "../model/lessonModel.js";
+import { settlePendingPayments } from "./paymentController.js";
 
 // GET /api/student/dashboard  (students only)
 export async function getDashboard(req, res, next) {
@@ -10,6 +11,10 @@ export async function getDashboard(req, res, next) {
 
     // Signed up, but no student_profiles row yet (no belt or centre recorded).
     if (!rank) return res.json({ profileReady: false });
+
+    // Payments still "pending" are checked with Stripe first, so the payment
+    // history shows how they really ended even if the webhook never arrived.
+    await settlePendingPayments(studentId);
 
     const [classesAtRank, nextClass, attendance, membership, credits, recommended, payments, grading, openCentres] =
       await Promise.all([

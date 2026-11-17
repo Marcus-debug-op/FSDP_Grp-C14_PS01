@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import ScrollReveal from "../../components/ScrollReveal.jsx";
 import CancelBooking from "../../components/student/CancelBooking.jsx";
-import { getTimetable, getHistory } from "../../../js/services/lessonService.js";
+import { getTimetable, getTimetableMonth, getHistory } from "../../../js/services/lessonService.js";
 import {
-  addDays, formatDayHeading, formatShortDate, formatTime, formatWeekRange,
+  addDays, formatShortDate, formatTime, formatWeekRange,
 } from "../../../js/utils/formatters.js";
 import "../../../css/content.css";
 import "../../../css/my-timetable.css";
 
-// FSDP-41 View my timetable: this week's booked lessons in a weekly calendar.
+// FSDP-41 View my timetable: booked lessons on a week or month calendar.
+// Picking a day lists its lessons underneath, where they can be cancelled.
 // Cancelled lessons say "Cancelled", moved lessons say "Venue changed" with
 // the new dojo. The page refreshes itself every minute and whenever the
 // student comes back to the tab, so changes show up straight away.
@@ -31,6 +32,65 @@ const LABELS = {
 function monthLabel(ym) {
   const [y, m] = ym.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-SG", { month: "long", year: "numeric" });
+}
+
+// "YYYY-MM" a number of months before or after another.
+function shiftMonth(ym, offset) {
+  const [y, m] = ym.split("-").map(Number);
+  const date = new Date(y, m - 1 + offset, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// "Tuesday, 17 November"
+function longDay(ymd) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-SG", { weekday: "long", day: "numeric", month: "long" });
+}
+
+// What the student sees after cancelling from either view.
+function cancelMessage(item, result, noticeHours) {
+  return result.refunded > 0
+    ? `Cancelled ${item.title} on ${formatShortDate(item.date)}. ${plural(result.refunded, "credit")} returned.`
+    : `Cancelled ${item.title} on ${formatShortDate(item.date)}. Your credit wasn't returned because it was less than ${noticeHours} hours before the lesson.`;
+}
+
+// Loads the timetable, then again every minute and whenever the student
+// comes back to the tab, so changes from the dojo show up straight away.
+// `fetchData` should only change when what's being shown changes.
+function useLiveTimetable(fetchData) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
+  const latest = useRef(0);
+
+  const load = useCallback(() => {
+    const id = ++latest.current;
+    fetchData()
+      .then((result) => {
+        if (id !== latest.current) return;
+        setData(result);
+        setError("");
+      })
+      .catch((err) => {
+        if (id === latest.current) setError(err.message);
+      });
+  }, [fetchData]);
+
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, REFRESH_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [load]);
+
+  return { data, error, load };
 }
 
 // ---------- One lesson in the calendar ----------
@@ -57,64 +117,140 @@ function TimetableItem({ item, noticeHours, onCancelled }) {
   );
 }
 
-// ---------- This week ----------
+// ---------- Calendar shared by the week and month views ----------
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+// Every date from `from` to `to`, both included.
+function datesBetween(from, to) {
+  const days = [];
+  for (let day = from; day <= to; day = addDays(day, 1)) days.push(day);
+  return days;
+}
+
+// The day shown under the calendar until the student picks one:
+// today if it's in range, otherwise the first day with a lesson, otherwise the first day.
+function defaultDay(items, today, from, to) {
+  if (today >= from && today <= to) return today;
+  return items.find((i) => i.date >= from && i.date <= to)?.date || from;
+}
+
+// On small screens the day's lessons sit below the fold, so bring them into view.
+function scrollToList(listRef) {
+  const list = listRef.current;
+  if (list && list.getBoundingClientRect().top > window.innerHeight - 120) {
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    list.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
+  }
+}
+
+// Rows of days with a short line per lesson. Days outside `month` are greyed out.
+function CalendarGrid({ days, items, today, selected, onPick, chipsPerDay, month = null, variant }) {
+  return (
+    <div className={`mt-cal mt-cal-${variant}`}>
+      <div className="mt-cal-head" aria-hidden="true">
+        {WEEKDAYS.map((d) => <span key={d}>{d}</span>)}
+      </div>
+      <div className="mt-cal-grid">
+        {days.map((day) => {
+          const dayItems = items.filter((i) => i.date === day);
+          const outside = month && !day.startsWith(month);
+          const hidden = dayItems.length - chipsPerDay;
+          const label = `${longDay(day)}, ${dayItems.length ? plural(dayItems.length, "lesson") : "no lessons"}`;
+          return (
+            <button
+              type="button"
+              key={day}
+              className={`mt-cal-day${outside ? " is-outside" : ""}${day === today ? " is-today" : ""}${day === selected ? " is-selected" : ""}`}
+              aria-pressed={day === selected}
+              aria-label={label}
+              onClick={() => onPick(day)}
+            >
+              <span className="mt-cal-date">{Number(day.slice(8))}</span>
+              {dayItems.slice(0, chipsPerDay).map((item) => (
+                <span
+                  key={`${item.type}-${item.id}`}
+                  className={`mt-chip mt-chip-${item.status}${item.type === "private" ? " mt-private" : ""}`}
+                >
+                  <span className="mt-chip-time">{formatTime(item.startTime)}</span> {item.title}
+                </span>
+              ))}
+              {hidden > 0 && <span className="mt-cal-more">+{hidden} more</span>}
+              {dayItems.length > 0 && <span className="mt-cal-dot" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// The picked day's lessons in full, under the calendar.
+function DayDetails({ day, items, today, noticeHours, onCancelled, listRef }) {
+  const dayItems = items.filter((i) => i.date === day);
+  return (
+    <section className="mt-cal-list" ref={listRef} aria-live="polite">
+      <h2 className="mt-cal-list-title">
+        {longDay(day)}
+        {day === today && <span className="mt-today">Today</span>}
+      </h2>
+      {dayItems.length === 0 ? (
+        <p className="mt-none">
+          No lessons on this day.{day >= today && <> <Link to="/lessons">Book a lesson</Link></>}
+        </p>
+      ) : (
+        <div className="mt-cal-items">
+          {dayItems.map((item) => (
+            <TimetableItem
+              key={`${item.type}-${item.id}`}
+              item={item}
+              noticeHours={noticeHours}
+              onCancelled={(result) => onCancelled(item, result)}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ---------- Week ----------
 function WeekView() {
   const [week, setWeek] = useState(null); // any date in the week; null = this week
-  const [data, setData] = useState(null);
-  const [error, setError] = useState("");
+  const [picked, setPicked] = useState(null); // the day the student chose
   const [note, setNote] = useState("");
-  const latest = useRef(0);
-
-  const load = useCallback(() => {
-    const id = ++latest.current;
-    getTimetable(week)
-      .then((result) => {
-        if (id !== latest.current) return;
-        setData(result);
-        setError("");
-      })
-      .catch((err) => {
-        if (id === latest.current) setError(err.message);
-      });
-  }, [week]);
-
-  // Load now, then every minute and whenever the student comes back to the tab.
-  useEffect(() => {
-    load();
-    const timer = setInterval(load, REFRESH_MS);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") load();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
-    };
-  }, [load]);
+  const listRef = useRef(null);
+  const fetchWeek = useCallback(() => getTimetable(week), [week]);
+  const { data, error, load } = useLiveTimetable(fetchWeek);
 
   function cancelled(item, result) {
-    setNote(
-      result.refunded > 0
-        ? `Cancelled ${item.title} on ${formatShortDate(item.date)}. ${plural(result.refunded, "credit")} returned.`
-        : `Cancelled ${item.title} on ${formatShortDate(item.date)}. Your credit wasn't returned because it was less than ${data.cancelNoticeHours} hours before the lesson.`
-    );
+    setNote(cancelMessage(item, result, data.cancelNoticeHours));
     load();
+  }
+
+  function goToWeek(next) {
+    setWeek(next);
+    setPicked(null);
+  }
+
+  function pickDay(day) {
+    setPicked(day);
+    scrollToList(listRef);
   }
 
   if (!data && error) return <p className="notice" role="alert">{error}</p>;
   if (!data) return <p>Loading your timetable...</p>;
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(data.weekStart, i));
-  const weekEnd = days[6];
+  const weekEnd = addDays(data.weekStart, 6);
   const isThisWeek = data.weekStart === data.thisWeek;
   const changes = data.items.filter((i) => i.status === "cancelled" || i.status === "moved");
+  const selected = picked && picked >= data.weekStart && picked <= weekEnd
+    ? picked
+    : defaultDay(data.items, data.today, data.weekStart, weekEnd);
 
   return (
     <>
       <div className="mt-nav" role="group" aria-label="Choose a week">
-        <button type="button" className="btn btn-outline btn-small" onClick={() => setWeek(addDays(data.weekStart, -7))}>
+        <button type="button" className="btn btn-outline btn-small" onClick={() => goToWeek(addDays(data.weekStart, -7))}>
           ← Previous week
         </button>
         <p className="mt-range" aria-live="polite">
@@ -123,9 +259,9 @@ function WeekView() {
         </p>
         <div className="mt-nav-right">
           {!isThisWeek && (
-            <button type="button" className="btn btn-outline btn-small" onClick={() => setWeek(null)}>This week</button>
+            <button type="button" className="btn btn-outline btn-small" onClick={() => goToWeek(null)}>This week</button>
           )}
-          <button type="button" className="btn btn-outline btn-small" onClick={() => setWeek(addDays(data.weekStart, 7))}>
+          <button type="button" className="btn btn-outline btn-small" onClick={() => goToWeek(addDays(data.weekStart, 7))}>
             Next week →
           </button>
         </div>
@@ -136,7 +272,7 @@ function WeekView() {
       {changes.length > 0 && (
         <p className="notice mt-changes" role="status">
           {plural(changes.length, "lesson")} this week {changes.length === 1 ? "has" : "have"} changed. Check the
-          lessons marked below.
+          days marked below.
         </p>
       )}
 
@@ -146,37 +282,120 @@ function WeekView() {
         </p>
       )}
 
-      <div className="mt-week">
-        {days.map((day) => {
-          const items = data.items.filter((i) => i.date === day);
-          const { weekday, day: dayText } = formatDayHeading(day);
-          const isToday = day === data.today;
-          return (
-            <section
-              key={day}
-              className={`mt-day${isToday ? " is-today" : ""}${items.length === 0 ? " is-empty" : ""}`}
-              aria-label={`${weekday} ${dayText}`}
-            >
-              <h2 className="mt-day-head">
-                <span>{weekday}</span> {dayText}
-                {isToday && <span className="mt-today">Today</span>}
-              </h2>
-              {items.length === 0 ? (
-                <p className="mt-none">No lessons</p>
-              ) : (
-                items.map((item) => (
-                  <TimetableItem
-                    key={`${item.type}-${item.id}`}
-                    item={item}
-                    noticeHours={data.cancelNoticeHours}
-                    onCancelled={(result) => cancelled(item, result)}
-                  />
-                ))
-              )}
-            </section>
-          );
-        })}
+      <CalendarGrid
+        variant="week"
+        days={datesBetween(data.weekStart, weekEnd)}
+        items={data.items}
+        today={data.today}
+        selected={selected}
+        onPick={pickDay}
+        chipsPerDay={4}
+      />
+
+      <DayDetails
+        day={selected}
+        items={data.items}
+        today={data.today}
+        noticeHours={data.cancelNoticeHours}
+        onCancelled={cancelled}
+        listRef={listRef}
+      />
+    </>
+  );
+}
+
+// ---------- Month ----------
+function MonthView() {
+  const [month, setMonth] = useState(null); // "YYYY-MM"; null = this month
+  const [picked, setPicked] = useState(null); // the day the student chose
+  const [note, setNote] = useState("");
+  const listRef = useRef(null);
+  const fetchMonth = useCallback(() => getTimetableMonth(month), [month]);
+  const { data, error, load } = useLiveTimetable(fetchMonth);
+
+  function cancelled(item, result) {
+    setNote(cancelMessage(item, result, data.cancelNoticeHours));
+    load();
+  }
+
+  function goToMonth(next) {
+    setMonth(next);
+    setPicked(null);
+  }
+
+  // Days from the months either side open that month.
+  function pickDay(day) {
+    if (!day.startsWith(data.month)) setMonth(day.slice(0, 7));
+    setPicked(day);
+    scrollToList(listRef);
+  }
+
+  if (!data && error) return <p className="notice" role="alert">{error}</p>;
+  if (!data) return <p>Loading your timetable...</p>;
+
+  const shown = data.month;
+  const isThisMonth = shown === data.thisMonth;
+  const inMonth = data.items.filter((i) => i.date.startsWith(shown));
+  const changes = inMonth.filter((i) => i.status === "cancelled" || i.status === "moved");
+  const lastDay = addDays(`${shiftMonth(shown, 1)}-01`, -1);
+  const selected = picked && picked.startsWith(shown)
+    ? picked
+    : defaultDay(inMonth, data.today, `${shown}-01`, lastDay);
+
+  return (
+    <>
+      <div className="mt-nav" role="group" aria-label="Choose a month">
+        <button type="button" className="btn btn-outline btn-small" onClick={() => goToMonth(shiftMonth(shown, -1))}>
+          ← Previous month
+        </button>
+        <p className="mt-range" aria-live="polite">
+          {monthLabel(shown)}
+          {isThisMonth && <span className="mt-this-week">This month</span>}
+        </p>
+        <div className="mt-nav-right">
+          {!isThisMonth && (
+            <button type="button" className="btn btn-outline btn-small" onClick={() => goToMonth(null)}>This month</button>
+          )}
+          <button type="button" className="btn btn-outline btn-small" onClick={() => goToMonth(shiftMonth(shown, 1))}>
+            Next month →
+          </button>
+        </div>
       </div>
+
+      {error && <p className="notice" role="alert">{error}</p>}
+      {note && <p className="notice mt-flash" role="status">{note}</p>}
+      {changes.length > 0 && (
+        <p className="notice mt-changes" role="status">
+          {plural(changes.length, "lesson")} this month {changes.length === 1 ? "has" : "have"} changed. Check the
+          days marked below.
+        </p>
+      )}
+
+      {inMonth.length === 0 && (
+        <p className="mt-empty">
+          Nothing booked this month. <Link to="/lessons">Book a lesson</Link>
+        </p>
+      )}
+
+      <CalendarGrid
+        variant="month"
+        days={datesBetween(data.from, data.to)}
+        items={data.items}
+        today={data.today}
+        selected={selected}
+        onPick={pickDay}
+        chipsPerDay={2}
+        month={shown}
+      />
+
+      <DayDetails
+        day={selected}
+        items={data.items}
+        today={data.today}
+        noticeHours={data.cancelNoticeHours}
+        onCancelled={cancelled}
+        listRef={listRef}
+      />
     </>
   );
 }
@@ -302,8 +521,8 @@ function HistoryView() {
 // ---------- Page ----------
 export default function MyTimetable() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const view = searchParams.get("view") === "history" ? "history" : "week";
-  const show = (v) => setSearchParams(v === "history" ? { view: "history" } : {}, { replace: true });
+  const view = ["month", "history"].includes(searchParams.get("view")) ? searchParams.get("view") : "week";
+  const show = (v) => setSearchParams(v === "week" ? {} : { view: v }, { replace: true });
 
   return (
     <section className="section mt-page">
@@ -314,7 +533,7 @@ export default function MyTimetable() {
           <p className="lead">
             {view === "history"
               ? "Every lesson you've booked or attended, including outside events."
-              : "Your booked lessons for the week. Changes from the dojo show up here straight away."}
+              : `Your booked lessons for the ${view}. Changes from the dojo show up here straight away.`}
           </p>
         </ScrollReveal>
 
@@ -322,13 +541,20 @@ export default function MyTimetable() {
           <button type="button" role="tab" aria-selected={view === "week"} className={view === "week" ? "is-active" : ""} onClick={() => show("week")}>
             Week
           </button>
+          <button type="button" role="tab" aria-selected={view === "month"} className={view === "month" ? "is-active" : ""} onClick={() => show("month")}>
+            Month
+          </button>
           <button type="button" role="tab" aria-selected={view === "history"} className={view === "history" ? "is-active" : ""} onClick={() => show("history")}>
             Past lessons
           </button>
           <Link to="/lessons" className="btn btn-primary btn-small mt-book">Book a lesson</Link>
         </div>
 
-        <div role="tabpanel">{view === "week" ? <WeekView /> : <HistoryView />}</div>
+        <div role="tabpanel">
+          {view === "week" && <WeekView />}
+          {view === "month" && <MonthView />}
+          {view === "history" && <HistoryView />}
+        </div>
       </div>
     </section>
   );

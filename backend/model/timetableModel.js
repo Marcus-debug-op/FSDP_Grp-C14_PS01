@@ -11,11 +11,17 @@ const NOW_SGT = "(NOW() AT TIME ZONE 'Asia/Singapore')";
 // Until then, a lesson with no record is "not marked yet" rather than missed.
 const MARKING_HOURS = 24;
 
-// Everything the student has on in one week (Monday to Sunday):
+// Everything the student has on in one week (Monday to Sunday).
+export function getWeek(studentId, weekStart) {
+  return getRange(studentId, weekStart, null);
+}
+
+// Everything the student has on between two dates (both included):
 // - group lessons they booked, including ones the dojo cancelled or moved
 // - their 1-on-1 sessions
 // Past items also say whether the student attended.
-export async function getWeek(studentId, weekStart) {
+// Leaving `to` empty means the 6 days after `from` (one week).
+export async function getRange(studentId, from, to) {
   const result = await pool.query(
     `SELECT * FROM (
        SELECT 'group' AS type, cs.id, cl.title,
@@ -45,7 +51,7 @@ export async function getWeek(studentId, weekStart) {
        JOIN users u ON u.id = cs.instructor_id
        LEFT JOIN attendance a ON a.session_id = cs.id AND a.student_id = b.student_id
        WHERE b.student_id = $1 AND b.status = 'booked'
-         AND cs.session_date BETWEEN $2::date AND $2::date + 6
+         AND cs.session_date BETWEEN $2::date AND COALESCE($4::date, $2::date + 6)
 
        UNION ALL
 
@@ -66,10 +72,10 @@ export async function getWeek(studentId, weekStart) {
        LEFT JOIN users i ON i.id = pl.instructor_id
        WHERE pl.student_id = $1 AND pl.lesson_date IS NOT NULL
          AND pl.status IN ('scheduled', 'completed', 'no_show', 'cancelled')
-         AND pl.lesson_date BETWEEN $2::date AND $2::date + 6
+         AND pl.lesson_date BETWEEN $2::date AND COALESCE($4::date, $2::date + 6)
      ) items
      ORDER BY date, start_time, title`,
-    [studentId, weekStart, CANCEL_NOTICE_HOURS]
+    [studentId, from, CANCEL_NOTICE_HOURS, to]
   );
 
   return result.rows.map((r) => {

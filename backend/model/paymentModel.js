@@ -176,6 +176,20 @@ export async function findBySession(studentId, sessionId) {
   return result.rows[0];
 }
 
+// The student's payments still waiting on Stripe, newest first.
+// isStale: created over 5 minutes ago, so a missing Stripe page will never appear.
+export async function findPendingForStudent(studentId, limit = 10) {
+  const result = await pool.query(
+    `SELECT id, stripe_checkout_session_id, created_at < NOW() - INTERVAL '5 minutes' AS is_stale
+     FROM payments
+     WHERE student_id = $1 AND status = 'pending'
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [studentId, limit]
+  );
+  return result.rows;
+}
+
 // A card was declined. The student may still retry and succeed in the same
 // checkout, in which case markSucceeded overwrites this.
 export async function markFailed(paymentId, reason) {
