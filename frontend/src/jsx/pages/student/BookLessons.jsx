@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
 import ScrollReveal from "../../components/ScrollReveal.jsx";
+import Dropdown from "../../components/Dropdown.jsx";
 import CancelBooking from "../../components/student/CancelBooking.jsx";
 import PrivateLessons from "../../components/student/PrivateLessons.jsx";
 import { getLessons, bookLesson } from "../../../js/services/lessonService.js";
@@ -305,44 +306,50 @@ export default function BookLessons() {
           </p>
         )}
 
+        {/* Dropdowns always open downwards, unlike a normal select box. */}
         <div className="filters bk-filters">
-          <label>
-            Lesson type
-            <select value={filters.type} onChange={(e) => changeFilter("type", e.target.value)}>
-              {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </label>
-          <label>
-            Dojo
-            <select value={filters.centreId} onChange={(e) => changeFilter("centreId", e.target.value)}>
-              <option value="">All dojos</option>
-              {data?.filters.centres.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </label>
-          <label>
-            Date
-            <select value={filters.date} onChange={(e) => changeFilter("date", e.target.value)}>
-              <option value="">Any date</option>
-              {data?.filters.dates?.map((d) => <option key={d} value={d}>{dateOption(d)}</option>)}
-            </select>
-          </label>
-          <label>
-            Day
-            <select value={filters.day} onChange={(e) => changeFilter("day", e.target.value)}>
-              <option value="">Any day</option>
-              {DAYS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-            </select>
-          </label>
+          <Dropdown
+            label="Lesson type"
+            value={filters.type}
+            options={TYPES}
+            onChange={(v) => changeFilter("type", v)}
+          />
+          <Dropdown
+            label="Dojo"
+            value={filters.centreId}
+            options={[
+              { value: "", label: "All dojos" },
+              ...(data?.filters.centres || []).map((c) => ({ value: String(c.id), label: c.name })),
+            ]}
+            onChange={(v) => changeFilter("centreId", v)}
+          />
+          <Dropdown
+            label="Date"
+            value={filters.date}
+            options={[
+              { value: "", label: "Any date" },
+              ...(data?.filters.dates || []).map((d) => ({ value: d, label: dateOption(d) })),
+            ]}
+            onChange={(v) => changeFilter("date", v)}
+          />
+          <Dropdown
+            label="Day"
+            value={filters.day}
+            options={[{ value: "", label: "Any day" }, ...DAYS.map((d) => ({ value: String(d.value), label: d.label }))]}
+            onChange={(v) => changeFilter("day", v)}
+          />
           {/* 1-on-1 sessions are arranged by the dojo, so these two filters only apply to group lessons. */}
           {!showPrivate && (
             <>
-              <label>
-                Instructor
-                <select value={filters.instructorId} onChange={(e) => changeFilter("instructorId", e.target.value)}>
-                  <option value="">Any instructor</option>
-                  {data?.filters.instructors.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
-                </select>
-              </label>
+              <Dropdown
+                label="Instructor"
+                value={filters.instructorId}
+                options={[
+                  { value: "", label: "Any instructor" },
+                  ...(data?.filters.instructors || []).map((i) => ({ value: String(i.id), label: i.name })),
+                ]}
+                onChange={(v) => changeFilter("instructorId", v)}
+              />
               <label className="bk-check">
                 <input
                   type="checkbox"
