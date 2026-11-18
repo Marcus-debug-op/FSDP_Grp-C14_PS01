@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { cancelCoverLesson, closeCoverRequest, getCoverAvailability, getCoverRequests, offerCover } from "../../../js/services/adminService.js";
 import { formatShortDate, formatTime } from "../../../js/utils/formatters.js";
 import PageHeader from "../../components/admin/PageHeader.jsx";
+import useAutoRefresh from "../../../js/hooks/useAutoRefresh.js";
 import OfferRow from "../../components/admin/OfferRow.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
@@ -119,6 +120,10 @@ export default function AdminCoverRequests() {
       active = false;
     };
   }, [view, reload]);
+
+  useAutoRefresh(() => {
+    getCoverRequests(view).then(setData).catch(() => {});
+  });
 
   function changeView(key) {
     setOpen(null);
