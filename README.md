@@ -18,6 +18,20 @@
 
 As Aikido Shinju-Kai expands to 60 dojos, coordination between members, payments, classes, and gradings becomes increasingly difficult. Our student management system brings everything together. Students sign up, make payments for memberships, credits and gradings via Stripe, schedule classes, check-in using QR codes and view their next gradings. Instructors handle rostering and assessing students, while admins authorize members and coordinate class scheduling without clashes in every dojo. Notifications are sent directly to the relevant individual via email notifications.
 
+## Live demo
+
+**App:** https://fsdp-grp-c14-ps-01.vercel.app
+
+| Role | Email | Password | What to try |
+| ---- | ----- | -------- | ----------- |
+| Student | matthewtayjk@gmail.com | Shinjukai@2026 | Book a class, check belt progress, apply for grading |
+| Student | tester6@gmail.com | tester06 | Second student account with an active membership and credits |
+| Student | tester12@gmail.com | tester12 | Third student account |
+| Instructor | matthewtayjk+elaine@gmail.com | Instructor@2026 | View rosters, show a QR code, accept lesson offers (Instructor Elaine Ong) |
+| Instructor | instructor@example.com | instructorispassword | Second instructor account (Instrcutor Lim) |
+| Admin | matthewtayjk+admin@gmail.com | Admin@2026 | Approve members, schedule private lessons, manage cover requests |
+
+Payments are in Stripe test mode. Use card `4242 4242 4242 4242` with any future date and any CVC. It uses a sandbox payment.
 ### Tech stack
 
 | Part      | What we use |
