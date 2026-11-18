@@ -146,7 +146,7 @@ export default function AdminMembershipApplications() {
     if (a.book_status === 'issued') return 'Complete';
     return bookActions[bookSteps[a.book_status || 'not_prepared']];
   };
-  const paymentLabel = (a) => Number(a.succeeded_count) > 0 ? 'Possible paid registration (verify)' : Number(a.pending_count) > 0 ? 'Payment pending' : 'No matching payment';
+  const paymentLabel = (a) => Number(a.succeeded_count) > 0 ? 'Paid' : Number(a.pending_count) > 0 ? 'Payment pending' : 'No matching payment';
   return <section className="section"><div className="container adm-app">
     <p className="eyebrow">Administration</p><h1>Membership Applications</h1>
     <p className="lead">Review registration applications and record the Shihan's decision. Membership activation requires verified payment, approval and an accepted photo.</p>
