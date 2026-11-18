@@ -424,3 +424,18 @@
   .wk-pop { left: 12px; right: 12px; bottom: 12px; width: auto; }
   .wk-mobile-days { margin-bottom: 2px; }
 }
+
+.date-input { position: relative; display: block; }
+.date-input > input[type="text"] { width: 100%; padding-right: 2.75rem; }
+.date-input-btn {
+  position: absolute; top: 50%; right: 0.4rem; transform: translateY(-50%);
+  display: grid; place-items: center; width: 2.1rem; height: 2.1rem;
+  border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer;
+}
+.date-input-btn:hover { background: rgba(0, 0, 0, 0.06); color: var(--text); }
+.date-input-btn:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+.adm-main .auth-form .date-input-native,
+.date-input-native {
+  position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; padding: 0; border: 0;
+  opacity: 0; pointer-events: none;
+}
