@@ -14,6 +14,8 @@ import {
 import { formatShortDate, formatTime, todayString } from "../../../js/utils/formatters.js";
 import PageHeader from "../../components/admin/PageHeader.jsx";
 import OfferRow from "../../components/admin/OfferRow.jsx";
+import DateInput from "../../components/admin/DateInput.jsx";
+import useAutoRefresh from "../../../js/hooks/useAutoRefresh.js";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -197,7 +199,7 @@ function LessonForm({ request, centres, onSaved, onCancel }) {
         <div className="lesson-row">
           <label>
             Date
-            <input type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} required />
+            <DateInput value={date} min={today} onChange={setDate} required />
           </label>
           <label>
             Start
@@ -342,6 +344,10 @@ export default function AdminPrivateLessons() {
       active = false;
     };
   }, [view, reload]);
+
+  useAutoRefresh(() => {
+    getPrivateLessons(view).then(setData).catch(() => {});
+  });
 
   function changeView(key) {
     setCancelling(null);
