@@ -28,7 +28,7 @@ As Aikido Shinju-Kai expands to 60 dojos, coordination between members, payments
 | Student | tester6@gmail.com | tester06 | Second student account with an active membership and credits |
 | Student | tester12@gmail.com | tester12 | Third student account |
 | Instructor | matthewtayjk+elaine@gmail.com | Instructor@2026 | View rosters, show a QR code, accept lesson offers (Instructor Elaine Ong) |
-| Instructor | instructor@example.com | instructorispassword | Second instructor account (Instrcutor Lim) |
+| Instructor | instructor@example.com | instructorispassword | Second instructor account (Instructor Lim) |
 | Admin | matthewtayjk+admin@gmail.com | Admin@2026 | Approve members, schedule private lessons, manage cover requests |
 
 Payments are in Stripe test mode. Use card `4242 4242 4242 4242` with any future date and any CVC. It uses a sandbox payment.
