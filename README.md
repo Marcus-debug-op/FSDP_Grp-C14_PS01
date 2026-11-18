@@ -14,6 +14,10 @@
 
 **Aikido Shinju-Kai** is a web app for an aikido school with dojos in Singapore and overseas. It covers the full journey of a student: finding a class as a visitor, signing up and paying the registration fee, booking lessons, checking in to class with a QR code, and applying for gradings. Instructors and admins get their own tools to run classes, approve members and manage the schedule.
 
+## Project Tagline
+
+As Aikido Shinju-Kai expands to 60 dojos, coordination between members, payments, classes, and gradings becomes increasingly difficult. Our student management system brings everything together. Students sign up, make payments for memberships, credits and gradings via Stripe, schedule classes, check-in using QR codes and view their next gradings. Instructors handle rostering and assessing students, while admins authorize members and coordinate class scheduling without clashes in every dojo. Notifications are sent directly to the relevant individual via email notifications.
+
 ### Tech stack
 
 | Part      | What we use |
