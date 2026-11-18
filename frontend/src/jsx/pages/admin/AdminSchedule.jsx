@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getCentres, getInstructors, getSchedule } from "../../../js/services/adminService.js";
 import { addDays, formatDayHeading, formatTime, formatWeekRange, todayString } from "../../../js/utils/formatters.js";
 import PageHeader from "../../components/admin/PageHeader.jsx";
+import WeekGrid from "../../components/admin/WeekGrid.jsx";
 import "../../../css/auth.css";
 import "../../../css/admin.css";
 
@@ -47,33 +48,6 @@ function sessionSummary(items) {
 }
 
 const PRIVATE_STATUS = { completed: "Completed", no_show: "No-show", cancelled: "Cancelled" };
-
-function WeekCard({ item, showCentre }) {
-  const cancelled = item.status === "cancelled";
-  if (item.kind === "private") {
-    return (
-      <li className={cancelled ? "tt-card tt-private tt-cancelled" : "tt-card tt-private"}>
-        <span className="tt-time">{timeRange(item.startTime, item.endTime)}</span>
-        <strong className="tt-title">Private lesson</strong>
-        <span className="tt-meta">{item.studentName}</span>
-        {showCentre && <span className="tt-meta">{item.centreName}</span>}
-        <span className="tt-meta">{item.instructorName}</span>
-        {PRIVATE_STATUS[item.status] && <span className="tt-belts">{PRIVATE_STATUS[item.status]}</span>}
-      </li>
-    );
-  }
-  const belts = beltRange(item);
-  return (
-    <li className={cancelled ? "tt-card tt-cancelled" : "tt-card"}>
-      <span className="tt-time">{timeRange(item.startTime, item.endTime)}</span>
-      <strong className="tt-title">{item.title}</strong>
-      {showCentre && <span className="tt-meta">{item.centreName}</span>}
-      <span className="tt-meta">{item.instructorName}</span>
-      {belts && <span className="tt-belts">{belts}</span>}
-      {cancelled && <span className="tt-belts">Cancelled</span>}
-    </li>
-  );
-}
 
 function DayTable({ items, showCentre, heading }) {
   if (items.length === 0) return <p className="adm-empty">No classes or private lessons on this day.</p>;
@@ -196,6 +170,12 @@ export default function AdminSchedule() {
     setWeek(addDays(schedule?.weekStart || week, amount));
   }
 
+  function openDay(date) {
+    const index = days.findIndex((d) => d.date === date);
+    if (index >= 0) setDayIndex(index);
+    setParam("view", "");
+  }
+
   function goToThisWeek() {
     setWeek(todayString());
     setDayIndex(null);
@@ -243,14 +223,23 @@ export default function AdminSchedule() {
 
         <div className="tt-toolbar">
           <div className="tt-week">
-            <button type="button" className="btn btn-outline btn-small" onClick={() => shiftWeek(-7)} aria-label="Previous week">Prev</button>
-            <h2 className="tt-range">{schedule ? formatWeekRange(schedule.weekStart, schedule.weekEnd) : ""}</h2>
-            <button type="button" className="btn btn-outline btn-small" onClick={() => shiftWeek(7)} aria-label="Next week">Next</button>
+            <div className="tt-range-pill">
+              <button type="button" className="tt-nav" onClick={() => shiftWeek(-7)} aria-label="Previous week">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+              <span className="tt-range-label">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>
+                <h2 className="tt-range">{schedule ? formatWeekRange(schedule.weekStart, schedule.weekEnd) : ""}</h2>
+              </span>
+              <button type="button" className="tt-nav" onClick={() => shiftWeek(7)} aria-label="Next week">
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+              </button>
+            </div>
             {schedule && !isThisWeek && (
-              <button type="button" className="link-button" onClick={goToThisWeek}>Back to this week</button>
+              <button type="button" className="tt-today-btn" onClick={goToThisWeek}>This week</button>
             )}
           </div>
-          <div className="auth-toggle tt-views" role="group" aria-label="Timetable layout">
+          <div className="tt-seg" role="group" aria-label="Timetable layout">
             {VIEWS.map((v) => (
               <button key={v.key} type="button" aria-pressed={view === v.key} onClick={() => setParam("view", v.key === "day" ? "" : v.key)}>
                 {v.label}
@@ -298,26 +287,7 @@ export default function AdminSchedule() {
         )}
 
         {schedule && view === "week" && (
-          <div className="week-grid">
-            {days.map((d) => {
-              const isToday = d.date === today;
-              return (
-                <section key={d.date} className={isToday ? "day day-today" : "day"} aria-label={`${d.heading.weekday} ${d.heading.day}`}>
-                  <h3 className="day-head">
-                    <span>{d.heading.weekday}</span>
-                    <span className="day-date">{d.heading.day}{isToday ? " · Today" : ""}</span>
-                  </h3>
-                  {d.items.length === 0 ? (
-                    <p className="day-empty">No classes</p>
-                  ) : (
-                    <ul className="day-lessons">
-                      {d.items.map((item) => <WeekCard key={item.id} item={item} showCentre={showCentre} />)}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
-          </div>
+          <WeekGrid days={days} today={today} showCentre={showCentre} onOpenDay={openDay} />
         )}
       </div>
     </section>
