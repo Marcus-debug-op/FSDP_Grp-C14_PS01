@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { decideMembershipApplication, getMembershipApplication, getMembershipApplicationPhoto, getMembershipApplicationEvidence, listMembershipApplications, requestMembershipPhotoResubmission, acceptMembershipApplicationPhoto, advanceMembershipBook, listHQAlerts, acknowledgeHQAlert } from "../../../js/services/adminService.js";
 import "../../../css/admin-applications.css";
+import useAutoRefresh from "../../../js/hooks/useAutoRefresh.js";
 
 const fmt = (date) => date ? new Date(date).toLocaleString('en-SG') : '—';
+// Short date for the list, e.g. "13 Nov 2026".
 const money = (cents) => `S$${(Number(cents || 0)/100).toFixed(2)}`;
 // "3 hours ago" style label for alert times.
 const ago = (date) => {
@@ -72,6 +74,10 @@ export default function AdminMembershipApplications() {
     finally { setLoading(false); }
   }
   useEffect(() => { refresh(); setDetail(null); setConfirmDecision(null); }, [status]);
+  useAutoRefresh(async () => {
+    try { setItems(await listMembershipApplications(status)); await refreshHQAlerts(); }
+    catch { return; }
+  });
   useEffect(() => { setEvidenceError(''); }, [detail?.id]);
 
   // Opens the uploaded certificate in a new tab. The tab is opened first so the
@@ -144,7 +150,7 @@ export default function AdminMembershipApplications() {
     if (a.book_status === 'issued') return 'Complete';
     return bookActions[bookSteps[a.book_status || 'not_prepared']];
   };
-  const paymentLabel = (a) => Number(a.succeeded_count) > 0 ? 'Possible paid registration (verify)' : Number(a.pending_count) > 0 ? 'Payment pending' : 'No matching payment';
+  const paymentLabel = (a) => Number(a.succeeded_count) > 0 ? 'Paid' : Number(a.pending_count) > 0 ? 'Payment pending' : 'No matching payment';
   return <section className="section"><div className="container adm-app">
     <p className="eyebrow">Administration</p><h1>Membership Applications</h1>
     <p className="lead">Review registration applications and record the Shihan's decision. Membership activation requires verified payment, approval and an accepted photo.</p>

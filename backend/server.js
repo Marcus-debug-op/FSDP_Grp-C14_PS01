@@ -25,6 +25,10 @@ if (!process.env.JWT_SECRET) {
 
 const app = express();
 
+// When deployed behind a host's proxy (Render, Railway...), trust its first hop so
+// the login rate limit sees each visitor's real IP instead of the proxy's.
+app.set("trust proxy", 1);
+
 // Only the frontend is allowed to call this API from a browser.
 // Optional EXTRA_CORS_ORIGINS (comma-separated) lets a second address in while
 // testing, e.g. your laptop's Wi-Fi address for phone testing. Leave it unset normally.

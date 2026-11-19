@@ -1,7 +1,8 @@
 // CONTROLLER: Stripe Checkout for memberships and credit top-ups (test mode).
 // Flow: student picks an item -> we save a "pending" payment -> Stripe Checkout
 // -> Stripe calls our webhook -> payment marked succeeded/failed -> membership
-// or credits added. The success page only reads what the webhook saved.
+// or credits added. If the webhook never arrives, the success page and the
+// payment history ask Stripe directly instead (syncWithStripe).
 // The membership fee is only the fee to be a member. It never includes lesson
 // credits: students buy credits separately, and 1 credit = 1 lesson.
 import { getStripe } from "../stripe.js";
@@ -36,6 +37,79 @@ async function recordPaidRegistrationSession(session, studentId) {
   const activation = await activateApplicationAfterPayment(paymentId);
   console.log("Registration activation check", paymentId, activation);
   return true;
+}
+
+// Records a Checkout that Stripe says is paid: marks the payment succeeded and
+// adds what was bought (membership, lesson credits or grading application).
+// Used by the webhook and by syncWithStripe below. markSucceeded only works
+// once per payment, so the same payment can never be counted twice.
+// `session` must come from Stripe (webhook or getStripe()), never from the browser.
+async function recordPaidSession(session) {
+  const paymentId = Number(session.metadata?.paymentId);
+  if (!paymentId || session.payment_status !== "paid") return false;
+
+  const item = {
+    kind: session.metadata.kind,
+    itemId: Number(session.metadata.itemId),
+    // only grading checkouts carry this (set in
+    // gradingController.applyForGrading). null for everything else.
+    targetBeltId: Number(session.metadata.targetBeltId) || null,
+  };
+  const outcome = await Payment.markSucceeded({
+    paymentId,
+    paymentIntentId: session.payment_intent,
+    customerId: session.customer,
+    item,
+  });
+
+  // FSDP-47: one confirmation email per payment, sent only the first time
+  // this payment succeeds. Not awaited, so callers get their answer straight away.
+  if (!outcome.alreadyDone) paymentReceived(paymentId, session.payment_intent, item);
+
+  if (item.kind === "membership") {
+    const activation = await activateApplicationAfterPayment(paymentId);
+    console.log("Registration activation check", paymentId, activation);
+  }
+  return true;
+}
+
+// Asks Stripe how a pending checkout ended and records it, in case the webhook
+// never arrived (e.g. the Stripe CLI listener wasn't running):
+// - paid    -> succeeded, and what was bought is added
+// - expired -> failed (nothing was charged)
+// - open    -> left as pending (the student may still be paying)
+// A payment with no Stripe page after 5 minutes never got one, so it fails too.
+async function syncWithStripe(studentId, payment) {
+  if (!payment.stripe_checkout_session_id) {
+    if (payment.is_stale) await Payment.markFailed(payment.id, "Checkout page was never created.");
+    return;
+  }
+
+  const session = await getStripe().checkout.sessions.retrieve(payment.stripe_checkout_session_id);
+  // Only act on the checkout this payment row actually started.
+  if (Number(session.metadata?.paymentId) !== Number(payment.id)) return;
+  if (String(session.client_reference_id) !== String(studentId)) return;
+
+  if (session.status === "complete" && session.payment_status === "paid") {
+    if (await recordPaidSession(session)) console.log("Payment recorded from Stripe check (no webhook)", payment.id);
+  } else if (session.status === "expired") {
+    await Payment.markFailed(payment.id, "Checkout expired before payment.");
+  }
+}
+
+// Settles all of a student's pending payments with Stripe before their payment
+// history is shown. Never throws: if Stripe can't be reached, the payments
+// simply stay pending and are checked again next time.
+export async function settlePendingPayments(studentId) {
+  try {
+    const pending = await Payment.findPendingForStudent(studentId);
+    const results = await Promise.allSettled(pending.map((p) => syncWithStripe(studentId, p)));
+    results.forEach((r, i) => {
+      if (r.status === "rejected") console.error("Could not check payment with Stripe", pending[i].id, r.reason?.message);
+    });
+  } catch (err) {
+    console.error("Could not check pending payments with Stripe", err.message);
+  }
 }
 
 const FRONTEND_URL = () => (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
@@ -210,17 +284,15 @@ export async function getSessionStatus(req, res, next) {
     let payment = await Payment.findBySession(req.user.id, req.params.sessionId);
     if (!payment) return res.status(404).json({ message: "Payment not found." });
 
-    // Registration only: if still pending, ask Stripe directly whether it was paid.
-    if (payment.status === "pending" && payment.purpose === "membership") {
+    // Still pending: ask Stripe directly how the checkout ended, so the page
+    // doesn't wait forever when the webhook never arrives.
+    if (payment.status === "pending") {
       try {
-        const session = await getStripe().checkout.sessions.retrieve(req.params.sessionId);
-        if (Number(session.metadata?.paymentId) === Number(payment.id) &&
-            await recordPaidRegistrationSession(session, req.user.id)) {
-          payment = await Payment.findBySession(req.user.id, req.params.sessionId);
-        }
+        await syncWithStripe(req.user.id, { id: payment.id, stripe_checkout_session_id: req.params.sessionId });
+        payment = await Payment.findBySession(req.user.id, req.params.sessionId);
       } catch (err) {
         // Not fatal: the page keeps checking and the webhook may still arrive.
-        console.error("Could not check registration payment with Stripe", payment.id, err.message);
+        console.error("Could not check payment with Stripe", payment.id, err.message);
       }
     }
 
@@ -259,37 +331,7 @@ export async function stripeWebhook(req, res) {
       
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded":
-      if (paymentId && obj.payment_status === "paid") {
-        const item = {
-          kind: obj.metadata.kind,
-          itemId: Number(obj.metadata.itemId),
-          // only grading checkouts carry this (set in
-          // gradingController.applyForGrading). null for everything else.
-          targetBeltId: Number(obj.metadata.targetBeltId) || null,
-        };
-        const outcome = await Payment.markSucceeded({
-          paymentId,
-          paymentIntentId: obj.payment_intent,
-          customerId: obj.customer,
-          item,
-        });
-
-        // FSDP-47: one confirmation email per payment, sent only the first
-        // time this payment succeeds (Stripe can send the same event twice).
-        // Not awaited, so Stripe gets its answer straight away.
-        if (!outcome.alreadyDone) paymentReceived(paymentId, obj.payment_intent, item);
-
-        if (obj.metadata.kind === "membership") {
-          const outcome =
-            await activateApplicationAfterPayment(paymentId);
-
-          console.log(
-            "Registration activation check",
-            paymentId,
-            outcome
-          );
-        }
-      }
+      await recordPaidSession(obj);
       break;
 
 

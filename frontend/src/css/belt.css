@@ -19,7 +19,8 @@
   font-family: var(--font-body);
 }
 
-.prog h1, .prog h2, .prog h3 { font-family: var(--font-body); }
+/* Match the rest of the student account: serif display font for headings. */
+.prog h1, .prog h2, .prog h3 { font-family: var(--font-heading); }
 
 .prog-wrap { width: min(1040px, calc(100% - 32px)); margin: 0 auto; display: flex; flex-direction: column; gap: 1.25rem; }
 
@@ -37,7 +38,7 @@
 
 .prog-tab.active { background: var(--prog-text); color: #fff; }
 
-.prog-head h1 { margin: 0.25rem 0 0.25rem; font-size: clamp(1.8rem, 4vw, 2.3rem); font-weight: 700; letter-spacing: -0.03em; }
+.prog-head h1 { margin: 0.25rem 0 0.25rem; font-size: clamp(1.8rem, 4vw, 2.3rem); font-weight: 400; letter-spacing: -0.01em; }
 
 .prog-head p { margin: 0; color: var(--prog-muted); font-size: 1rem; }
 
@@ -52,7 +53,7 @@
 
 .prog-card-title {
   display: flex; align-items: center; gap: 0.55rem; margin: 0;
-  font-size: 1.05rem; font-weight: 650; letter-spacing: -0.01em;
+  font-size: 1.15rem; font-weight: 500; letter-spacing: 0;
 }
 
 .prog-label {
@@ -118,12 +119,27 @@
 
 .belt-hero-title {
   display: flex; align-items: center; gap: 0.7rem; margin: 0;
-  font-size: clamp(1.7rem, 3.5vw, 2.1rem); font-weight: 700; letter-spacing: -0.03em;
+  font-size: clamp(1.7rem, 3.5vw, 2.1rem); font-weight: 400; letter-spacing: -0.01em;
 }
 
 .belt-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; margin: 0.4rem 0 0; }
 
-.belt-stats div { padding: 0.7rem 0.8rem; border-radius: 10px; background: var(--prog-soft); }
+.belt-stats div {
+  position: relative; isolation: isolate; overflow: hidden;
+  padding: 0.7rem 0.8rem; border-radius: 10px; background: var(--prog-soft);
+}
+
+/* Faint dot-grid texture behind each mini box, matching the grading stat tiles.
+   Drawn in the muted tone at low opacity and faded out toward the value text so
+   it never competes with the content on top. */
+.belt-stats div::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(var(--prog-muted) 1px, transparent 1.1px);
+  background-size: 11px 11px; background-position: -1px -1px;
+  -webkit-mask-image: linear-gradient(160deg, #000 0%, rgba(0, 0, 0, 0.3) 60%, transparent 100%);
+          mask-image: linear-gradient(160deg, #000 0%, rgba(0, 0, 0, 0.3) 60%, transparent 100%);
+  opacity: 0.1;
+}
 
 .belt-stats dt { font-size: 0.75rem; color: var(--prog-muted); }
 

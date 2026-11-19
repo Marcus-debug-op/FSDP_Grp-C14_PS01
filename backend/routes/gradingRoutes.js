@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/authMiddleware.js";
-import { getEligibility, applyForGrading } from "../controller/gradingController.js";
+import { getEligibility, applyForGrading, getMyApplications } from "../controller/gradingController.js";
 
 const router = Router();
 
@@ -18,7 +18,9 @@ router.get("/eligibility", getEligibility);
 // that happens in paymentModel.markSucceeded once Stripe confirms the payment.
 router.post("/applications", applyForGrading);
 
-// Coming next in this domain:
-//   GET  /applications/me   FSDP-66 track application status
+// track application status. The student's own applications and where
+// each one stands on the Submitted -> Accepted -> Assessed -> Submitted for
+// processing journey. Read-only.
+router.get("/applications/me", getMyApplications);
 
 export default router;

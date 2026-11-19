@@ -3,6 +3,7 @@
 import * as Instructor from "../model/instructorModel.js";
 import { isValidDate } from "../utils/schedule.js";
 import { notify } from "../model/notificationModel.js";
+import { sendOfferDeclinedNotice } from "../model/lessonOfferModel.js";
 import { longDate, clock } from "../utils/notices.js";
 
 const ATTENDANCE_STATUSES = ["present", "absent"];
@@ -601,6 +602,7 @@ async function answerOffer(req, res, next, accept) {
     }
 
     await Instructor.respondToOffer(offerId, req.user.id, accept, note);
+    if (!accept) sendOfferDeclinedNotice(offerId);
     res.json({ message: accept ? "Lesson accepted." : "Lesson declined. The admin will find someone else." });
   } catch (err) {
     if (err instanceof Instructor.OfferError) return res.status(err.status).json({ message: err.message });

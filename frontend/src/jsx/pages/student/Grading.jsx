@@ -1,18 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import ProgressLayout, { Swatch, Bar } from "../../components/student/ProgressLayout.jsx";
-import { getEligibility, applyForGrading } from "../../../js/services/gradingService.js";
+import { useSearchParams } from "react-router-dom";
+import ProgressLayout, { Bar } from "../../components/student/ProgressLayout.jsx";
+import { getEligibility, applyForGrading, getMyApplications } from "../../../js/services/gradingService.js";
 import { colourHex, formatDate } from "../../../js/utils/beltFormat.js";
 import "../../../css/grading.css";
-
-const APPLICATION_LABEL = {
-  pending: "Submitted",
-  approved: "Accepted",
-  passed: "Submitted for processing",
-  failed: "Submitted for processing",
-  withdrawn: "Withdrawn",
-  rejected: "Not accepted",
-};
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -25,6 +16,7 @@ const fmtMoney = (cents) =>
 
 export default function Grading() {
   const [data, setData] = useState(null);
+  const [tracker, setTracker] = useState(null);
   const [error, setError] = useState("");
   // Stripe sends the student back with ?cancelled=1 if they leave checkout
   // without paying (see cancel_url in gradingController.applyForGrading).
@@ -32,16 +24,19 @@ export default function Grading() {
 
   useEffect(() => {
     getEligibility().then(setData).catch((err) => setError(err.message));
+    // FSDP-66 status tracker. A separate call so the page still renders the
+    // progress and eligibility if this one fails; the tracker just stays hidden.
+    getMyApplications().then(setTracker).catch(() => setTracker(null));
   }, []);
 
   return (
     <ProgressLayout title="Grading" subtitle="Where you stand for your next belt and when the next grading is.">
-      <Body data={data} error={error} cancelled={params.get("cancelled") === "1"} />
+      <Body data={data} tracker={tracker} error={error} cancelled={params.get("cancelled") === "1"} />
     </ProgressLayout>
   );
 }
 
-function Body({ data, error, cancelled }) {
+function Body({ data, tracker, error, cancelled }) {
   if (error) return <p className="prog-alert" role="alert">{error}</p>;
   if (!data) return <p className="prog-loading" aria-live="polite">Checking your eligibility…</p>;
 
@@ -60,19 +55,31 @@ function Body({ data, error, cancelled }) {
 
   if (atHighestBelt) {
     return (
-      <article className="prog-card grad-status">
-        <BeltPath current={currentBelt} />
-        <h2 className="grad-status-title">You're at the highest recorded belt</h2>
-        <p className="prog-muted">
-          Nothing to apply for yet. Since this belt you've trained {progress.classes.attended} classes
-          and {progress.hours.attended} hours.
-        </p>
+      <article className="prog-card grad-status is-ok">
+        <div className="grad-status-main">
+          <span className="grad-status-icon is-top" aria-hidden="true"><StarIcon /></span>
+          <div className="grad-status-text">
+            <h2 className="grad-status-title">Top belt reached</h2>
+            <p className="prog-muted">
+              {progress.classes.attended} classes · {progress.hours.attended} hours since this belt.
+            </p>
+          </div>
+          <BeltPath current={currentBelt} />
+        </div>
       </article>
     );
   }
 
   const { classes, timeAtBelt, hours } = progress;
   const noMinMonths = timeAtBelt.requiredMonths === 0;
+
+  // the application to track is the most recent live one (the tracker
+  // returns them newest first). The one tied to the grading shown below, if
+  // any, also drives that card's status line so the two always agree.
+  const trackedApplication = tracker?.applications?.[0] || null;
+  const sessionApplication = nextGrading
+    ? tracker?.applications?.find((a) => a.gradingSessionId === nextGrading.id) || null
+    : null;
 
   return (
     <>
@@ -84,25 +91,29 @@ function Body({ data, error, cancelled }) {
         </p>
       )}
 
+      {trackedApplication && tracker?.steps && (
+        <StatusTimeline steps={tracker.steps} application={trackedApplication} />
+      )}
+
       <article className={eligible ? "prog-card grad-status is-ok" : "prog-card grad-status"}>
-        <div className="grad-status-top">
-          <BeltPath current={currentBelt} next={nextBelt} />
-          <span className={eligible ? "prog-pill is-ok" : "prog-pill"}>
-            {eligible ? "Eligible" : "Not yet eligible"}
+        <div className="grad-status-main">
+          <span className={eligible ? "grad-status-icon is-ok" : "grad-status-icon"} aria-hidden="true">
+            {eligible ? <CheckIcon /> : <ClockIcon />}
           </span>
+          <div className="grad-status-text">
+            <h2 className="grad-status-title">
+              {eligible ? "Ready to grade" : "Keep training"}
+            </h2>
+            {eligible ? (
+              <p className="prog-muted">All requirements met — applying is your choice.</p>
+            ) : (
+              <ul className="grad-chips">
+                {unmet.map((reason) => <li key={reason}>{reason}</li>)}
+              </ul>
+            )}
+          </div>
+          <BeltPath current={currentBelt} next={nextBelt} />
         </div>
-        <h2 className="grad-status-title">
-          {eligible ? `You can grade for ${nextBelt.name}` : `Keep training for ${nextBelt.name}`}
-        </h2>
-        {eligible ? (
-          <p className="prog-muted">
-            You meet the requirements. Your instructor can advise, but whether to apply is your choice.
-          </p>
-        ) : (
-          <ul className="grad-chips">
-            {unmet.map((reason) => <li key={reason}>{reason}</li>)}
-          </ul>
-        )}
       </article>
 
       <div className="grad-tiles">
@@ -138,6 +149,7 @@ function Body({ data, error, cancelled }) {
         <NextGrading
           session={nextGrading}
           application={application}
+          statusLabel={sessionApplication?.statusLabel}
           hasLiveApplication={hasLiveApplication}
           canApply={canApply}
           fee={fee}
@@ -147,10 +159,6 @@ function Body({ data, error, cancelled }) {
 
         <SyllabusCard syllabus={syllabus} nextBelt={nextBelt} />
       </div>
-
-      <p className="prog-footnote">
-        <Link to="/belt-progress">Back to My Belt</Link>
-      </p>
     </>
   );
 }
@@ -207,23 +215,52 @@ function SyllabusCard({ syllabus, nextBelt }) {
   );
 }
 
+// Compact "where you are -> where you're heading" pill. The current belt is a
+// plain chip; the next belt is outlined in its own colour as the goal. Belt
+// colours can repeat across grades, so the coloured dots carry the meaning.
 function BeltPath({ current, next }) {
   return (
-    <p className="grad-path">
-      <span className="grad-path-step">
-        <Swatch colour={colourHex(current.colour)} />
+    <div className="grad-belts">
+      <span className="grad-belt" style={{ "--belt": colourHex(current.colour) }}>
+        <span className="grad-belt-dot" aria-hidden="true" />
         {current.name}
       </span>
       {next && (
         <>
-          <span className="grad-path-arrow" aria-hidden="true">→</span>
-          <span className="grad-path-step is-next">
-            <Swatch colour={colourHex(next.colour)} />
+          <span className="grad-belt-arrow" aria-hidden="true">→</span>
+          <span className="grad-belt is-next" style={{ "--belt": colourHex(next.colour) }}>
+            <span className="grad-belt-dot" aria-hidden="true" />
             {next.name}
           </span>
         </>
       )}
-    </p>
+    </div>
+  );
+}
+
+// Small inline status icons, drawn so they read instantly at a glance.
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+      strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v4.8l3 1.8" />
+    </svg>
+  );
+}
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2.5l2.6 5.76 6.3.62-4.72 4.2 1.36 6.17L12 16.9l-5.54 3.35 1.36-6.17-4.72-4.2 6.3-.62z" />
+    </svg>
   );
 }
 
@@ -300,7 +337,60 @@ function ApplyPanel({ session, hasLiveApplication, canApply, fee, eligible, next
   return reason ? <p className="grad-apply-note">{reason}</p> : null;
 }
 
-function NextGrading({ session, application, hasLiveApplication, canApply, fee, eligible, nextBelt }) {
+// the application status tracker. Draws the whole four-step journey
+// from `steps`, with every step up to the one reached marked done and the
+// reached one called out. Dates come from the application where the data has
+// one for that step. Grading results are out of scope, so the furthest this
+// ever shows is "Submitted for processing".
+function StatusTimeline({ steps, application }) {
+  // The date to show under each step, by its position. Steps not yet reached,
+  // and reached steps the data has no date for, simply show no date.
+  const dateForStep = [
+    application.appliedOn,                       // 1 Submitted
+    application.acceptedOn,                       // 2 Accepted
+    application.assessedOn,                        // 3 Assessed
+    application.assessedOn,                         // 4 Submitted for processing
+  ];
+
+  return (
+    <article className="prog-card grad-track">
+      <div className="prog-card-head">
+        <h2 className="prog-card-title">Your application</h2>
+        <span className="prog-pill is-accent">{application.statusLabel}</span>
+      </div>
+      <p className="prog-muted">
+        {application.belt.name} · grading on {formatDate(application.gradingDate)}
+        {application.centreName ? ` · ${application.centreName}` : ""}
+      </p>
+
+      <ol className="grad-steps" role="list">
+        {steps.map((s, i) => {
+          const reached = i < application.step;
+          const current = i === application.step - 1;
+          const when = dateForStep[i];
+          const cls = ["grad-step", reached ? "is-done" : "", current ? "is-current" : ""]
+            .filter(Boolean).join(" ");
+          return (
+            <li key={s.key} className={cls}>
+              <span className="grad-step-dot" aria-hidden="true">{reached ? "✓" : i + 1}</span>
+              <span className="grad-step-text">
+                <span className="grad-step-label">{s.label}</span>
+                {reached && when && <span className="grad-step-date">{formatDate(when)}</span>}
+                {current && <span className="grad-step-now">Current stage</span>}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      <p className="grad-track-foot">
+        Your result and any belt promotion are confirmed separately by your instructor — they aren't shown here.
+      </p>
+    </article>
+  );
+}
+
+function NextGrading({ session, application, statusLabel, hasLiveApplication, canApply, fee, eligible, nextBelt }) {
   if (!session) {
     return (
       <article className="prog-card">
@@ -344,8 +434,8 @@ function NextGrading({ session, application, hasLiveApplication, canApply, fee, 
       </p>
       {application && (
         <p className="grad-applied">
-          Applied {formatDate(application.appliedOn)} ·{" "}
-          <strong>{APPLICATION_LABEL[application.status] || application.status}</strong>
+          Applied {formatDate(application.appliedOn)}
+          {statusLabel && <> · <strong>{statusLabel}</strong></>}
         </p>
       )}
       <ApplyPanel

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getCheckoutStatus } from "../../js/services/paymentService.js";
-import "../../css/student-dashboard.css";
+import ScrollReveal from "../components/ScrollReveal.jsx";
+import "../../css/payments.css";
 
 // PAY-3: Stripe sends the student back here. The payment only counts once
 // Stripe's webhook has confirmed it, so this page checks until it has.
@@ -73,34 +74,33 @@ export default function PaymentSuccess() {
   }
 
   return (
-    <div className="sp">
-      <span className="sp-glyph" aria-hidden="true">合</span>
-      <div className="sp-content">
-        <div className="sp-main">
-          <header className="sp-intro" aria-live="polite">
-            <p className="sp-body sp-muted">Payments</p>
-            <h1 className="sp-hero">{title}</h1>
-            <p className="sp-body sp-lead">{body}</p>
-            <div className="sp-intro-action sp-button-row">
-              <Link to="/dashboard" className="sp-btn sp-btn-primary">Back to dashboard</Link>
-              {payment?.status === "failed" && (
-                // A failed exam fee is retried from the grading page, where the
-                // Apply button is; everything else from Payments.
-                <Link to={payment.purpose === "grading_fee" ? "/grading" : "/payments"} className="sp-btn sp-btn-secondary">Try again</Link>
-              )}
-              {payment?.status === "succeeded" && payment.purpose === "grading_fee" && (
-                <Link to="/grading" className="sp-btn sp-btn-secondary">View my grading</Link>
-              )}
-              {payment?.status === "succeeded" && payment.isRegistration && (
-                <Link to="/profile" className="sp-btn sp-btn-secondary">View application status</Link>
-              )}
-              {payment?.status === "succeeded" && payment.purpose === "membership" && !payment.isRegistration && (
-                <Link to="/payments" className="sp-btn sp-btn-secondary">Buy lesson credits</Link>
-              )}
-            </div>
-          </header>
+    <section className="section pay-page">
+      <div className="container">
+        <ScrollReveal>
+          <div aria-live="polite">
+            <p className="eyebrow">Payments</p>
+            <h1>{title}</h1>
+            <p className="lead">{body}</p>
+          </div>
+        </ScrollReveal>
+        <div className="pay-actions">
+          <Link to="/dashboard" className="btn btn-primary">Back to dashboard</Link>
+          {payment?.status === "failed" && (
+            // A failed exam fee is retried from the grading page, where the
+            // Apply button is; everything else from Payments.
+            <Link to={payment.purpose === "grading_fee" ? "/grading" : "/payments"} className="btn btn-outline">Try again</Link>
+          )}
+          {payment?.status === "succeeded" && payment.purpose === "grading_fee" && (
+            <Link to="/grading" className="btn btn-outline">View my grading</Link>
+          )}
+          {payment?.status === "succeeded" && payment.isRegistration && (
+            <Link to="/profile" className="btn btn-outline">View application status</Link>
+          )}
+          {payment?.status === "succeeded" && payment.purpose === "membership" && !payment.isRegistration && (
+            <Link to="/payments" className="btn btn-outline">Buy lesson credits</Link>
+          )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

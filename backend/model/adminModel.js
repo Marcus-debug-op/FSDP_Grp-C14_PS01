@@ -426,7 +426,12 @@ export async function findStudentProfile(id) {
             nb.id AS next_belt_id, nb.name AS next_belt_name,
             nb.min_months_at_rank AS next_min_months, nb.min_classes_at_rank AS next_min_classes,
             (SELECT COUNT(*)::int FROM attendance a JOIN class_sessions cs ON cs.id = a.session_id
-              WHERE a.student_id = u.id AND a.status IN ('present', 'late') AND cs.session_date >= sp.belt_awarded_on) AS classes_at_belt,
+              WHERE a.student_id = u.id AND a.status IN ('present', 'late')
+                AND cs.status <> 'cancelled' AND cs.session_date > sp.belt_awarded_on)
+            + (SELECT COUNT(*)::int FROM external_attendance e
+                WHERE e.student_id = u.id AND e.attended_on > sp.belt_awarded_on)
+            + (SELECT COUNT(*)::int FROM private_lessons pl
+                WHERE pl.student_id = u.id AND pl.status = 'completed' AND pl.lesson_date > sp.belt_awarded_on) AS classes_at_belt,
             (SELECT COALESCE(SUM(ct.change), 0)::int FROM credit_transactions ct WHERE ct.student_id = u.id) AS credits
      FROM users u
      LEFT JOIN student_profiles sp ON sp.user_id = u.id

@@ -1,15 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getDashboard, getNotices, markNoticesRead } from "../../js/services/studentService.js";
+import { getDashboard, getNotices } from "../../js/services/studentService.js";
 import ScrollReveal from "../components/ScrollReveal.jsx";
 import CancelBooking from "../components/student/CancelBooking.jsx";
-import useHeroScrollFade from "../../js/hooks/useHeroScrollFade.js";
 import "../../css/dashboard.css";
 
-// Student portal home. Uses the same layout and motion as the homepage:
-// dark hero that fades on scroll, alternating white/grey sections that reveal
-// as you scroll, and the red call-to-action band at the bottom.
+// Student portal home. Leads with the rank progress section, then alternating
+// white/grey sections that reveal as you scroll, and the red CTA band at the
+// bottom. A dark updates bar sits under the nav.
 
 // ---------- Formatting helpers ----------
 // Dates arrive as "YYYY-MM-DD" and times as "HH:MM", so build them as local dates.
@@ -42,48 +41,37 @@ const STATUS = {
   refunded: { label: "Refunded", tone: "muted" },
 };
 
-// Hero text and main button change with grading eligibility.
-function heroCopy(rank, grading) {
-  const book = <Link to="/lessons" className="btn btn-primary">Book a Class</Link>;
-
-  if (!rank.next) {
-    return { body: `You hold ${rank.current}, the highest rank tracked in the portal.`, action: book };
-  }
-  if (rank.eligible && grading?.applicationStatus) {
-    return { body: `Your application for the ${fmtDate(grading.date)} grading is ${grading.applicationStatus}.`, action: book };
-  }
-  if (rank.eligible && grading) {
-    return {
-      body: `You meet the attendance and time-in-rank requirements. Applications close on ${fmtDate(grading.closesOn)}.`,
-      action: <Link to="/grading" className="btn btn-primary">Apply for Grading</Link>,
-    };
-  }
-  if (rank.eligible) {
-    return { body: `You meet the requirements for ${rank.next}. The next grading date hasn't been announced yet.`, action: book };
-  }
-  const parts = [];
-  if (rank.classesNeeded) parts.push(plural(rank.classesNeeded, "more class", "more classes"));
-  if (rank.monthsNeeded) parts.push(plural(rank.monthsNeeded, "more month"));
-  return {
-    body: `You need ${parts.join(" and ")} at ${rank.current} before you can grade for ${rank.next}.`,
-    action: book,
-  };
-}
-
 // ---------- Sections ----------
 // Same two-column layout as the homepage's "About the school".
-function RankSection({ rank }) {
+// Rank progress section: belt track, stats, and the grading slicer. The top
+// section of the dashboard, compacted to fit a single screen.
+function RankSection({ rank, userName }) {
   return (
-    <section className="section" id="grading" aria-labelledby="rank-title">
+    <section className="section rank-section" id="grading" aria-labelledby="rank-title">
+      {/* Subtle motion background; a light scrim keeps the text readable. */}
+      <video
+        className="rank-bg"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        aria-hidden="true"
+        poster="/images/hero.jpg"
+      >
+        <source src="/media/signin/dojo-practice.mp4" type="video/mp4" />
+      </video>
+      <div className="rank-bg-scrim" aria-hidden="true" />
+
       <div className="container two-col">
         <ScrollReveal>
-          <p className="eyebrow">Rank progress</p>
+          <p className="eyebrow">Welcome back, {userName}</p>
           <h2 id="rank-title">
             {rank.next ? `Working towards ${rank.next}.` : `${rank.current}.`}
           </h2>
           <p className="lead">
             {rank.next
-              ? `You currently hold ${rank.current}. Keep training to meet the grading requirements.`
+              ? `You currently hold ${rank.current}. ${rank.eligible ? "You've met the requirements — you can apply to grade." : "Keep training to meet the grading requirements."}`
               : "You've reached the top of the ranks tracked here."}
           </p>
 
@@ -119,13 +107,30 @@ function RankSection({ rank }) {
         </ScrollReveal>
 
         <ScrollReveal delay={150} className="visual-reveal">
-          <div className="panel" aria-hidden="true">
-            <span className="panel-kanji">昇進</span>
-            <span className="panel-tag">{rank.next ? `Next · ${rank.next}` : "Highest rank"}</span>
-          </div>
+          <QuickActions />
         </ScrollReveal>
       </div>
     </section>
+  );
+}
+
+// Two large, clearly tappable action buttons -- Apply for Grading and Payments.
+// Each is an icon + title + helper line + arrow, so it reads as a button at a
+// glance (easy to tap, including for children). Replaces the old pie slicer.
+function QuickActions() {
+  return (
+    <div className="dash-actions">
+      <Link to="/grading" className="dash-action dash-action-grade">
+        <span className="dash-action-icon" aria-hidden="true">昇</span>
+        <span className="dash-action-title">Grading</span>
+        <span className="dash-action-arrow" aria-hidden="true">→</span>
+      </Link>
+      <Link to="/payments" className="dash-action dash-action-pay">
+        <span className="dash-action-icon" aria-hidden="true">払</span>
+        <span className="dash-action-title">Payments</span>
+        <span className="dash-action-arrow" aria-hidden="true">→</span>
+      </Link>
+    </div>
   );
 }
 
@@ -246,65 +251,43 @@ function RecommendedSection({ recommended }) {
   );
 }
 
-// Notices about bookings, payments, cancelled or moved lessons and 1-on-1s
-// (FSDP-47, 53, 54, 56). The same notices are also sent by email.
-const NOTICE_KANJI = {
-  booking_confirmed: "予",
-  payment_received: "払",
-  lesson_cancelled: "休",
-  lesson_moved: "移",
-  private_lesson: "個",
-};
+// Notice types that are disruptions worth flagging as "alerts" (a cancelled or
+// moved lesson), as opposed to routine updates (confirmations, payments, 1-on-1s).
+const ALERT_TYPES = new Set(["lesson_cancelled", "lesson_moved"]);
 
-function fmtWhen(isoLocal) {
-  const [date, time] = isoLocal.split("T");
-  return `${fmtShortDate(date)}, ${fmtTime(time)}`;
-}
-
-const NOTICES_SHOWN = 5;
-
-function NoticesSection({ notices, unread, onReadAll }) {
-  const [showAll, setShowAll] = useState(false);
-  if (notices.length === 0) return null;
-  const shown = showAll ? notices : notices.slice(0, NOTICES_SHOWN);
+// A slim bar under the navigation (dashboard only) pointing students at their
+// inbox for recent updates (item 7). Shows separate indicators for unread
+// alerts and unread routine updates. Replaces the old inline notices list,
+// which now lives on the Inbox page. Only shows while there are unread
+// updates: opening the inbox marks them read, so the bar goes away.
+function UpdatesRow({ notices, unread }) {
+  if (unread === 0) return null;
+  const alertUnread = notices.filter((n) => !n.read && ALERT_TYPES.has(n.type)).length;
+  const otherUnread = Math.max(0, unread - alertUnread);
   return (
-    <section className="section" aria-labelledby="notice-title">
-      <div className="container">
-        <ScrollReveal className="dash-head">
-          <div>
-            <p className="eyebrow">Updates</p>
-            <h2 id="notice-title">
-              {unread > 0 ? `${plural(unread, "new update")}` : "Recent updates"}
-            </h2>
-          </div>
-          {unread > 0 && (
-            <button type="button" className="btn btn-outline btn-small" onClick={onReadAll}>Mark all as read</button>
-          )}
-        </ScrollReveal>
-        <ScrollReveal delay={120}>
-          <ul className="dash-notices">
-            {shown.map((n) => (
-              <li key={n.id} className={`dash-notice dash-notice-${n.type}${n.read ? "" : " is-unread"}`}>
-                <span className="dash-notice-kanji" aria-hidden="true">{NOTICE_KANJI[n.type] || "知"}</span>
-                <div>
-                  <p className="dash-notice-title">
-                    {!n.read && <span className="dash-sr">New: </span>}
-                    {n.title}
-                  </p>
-                  {n.body && <p className="dash-notice-body">{n.body}</p>}
-                  <p className="dash-notice-when">{fmtWhen(n.createdAt)}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-          {notices.length > NOTICES_SHOWN && (
-            <button type="button" className="btn btn-outline btn-small dash-notices-more" onClick={() => setShowAll(!showAll)}>
-              {showAll ? "Show fewer" : `Show all ${notices.length}`}
-            </button>
-          )}
-        </ScrollReveal>
+    <div className="dash-updates">
+      <div className="container dash-updates-inner">
+        <p className="dash-updates-text">
+          <span className="dash-updates-dot is-on" aria-hidden="true" />
+          <strong>{plural(unread, "new update")}</strong> since you last checked.
+        </p>
+        {(alertUnread > 0 || otherUnread > 0) && (
+          <span className="dash-updates-flags">
+            {alertUnread > 0 && (
+              <span className="dash-flag is-alert">
+                <span className="dash-flag-dot" aria-hidden="true" />{plural(alertUnread, "alert")}
+              </span>
+            )}
+            {otherUnread > 0 && (
+              <span className="dash-flag is-info">
+                <span className="dash-flag-dot" aria-hidden="true" />{plural(otherUnread, "update")}
+              </span>
+            )}
+          </span>
+        )}
+        <Link to="/inbox" className="btn btn-small dash-updates-btn">Open inbox</Link>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -353,8 +336,6 @@ function PaymentsSection({ payments }) {
 // ---------- Page ----------
 export default function StudentDashboard() {
   const { user } = useAuth();
-  const heroRef = useRef(null);
-  useHeroScrollFade(heroRef);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [cancelNote, setCancelNote] = useState("");
@@ -368,12 +349,6 @@ export default function StudentDashboard() {
   useEffect(() => {
     load();
   }, []);
-
-  function readAll() {
-    markNoticesRead()
-      .then(() => setNotices((n) => ({ unread: 0, notices: n.notices.map((x) => ({ ...x, read: true })) })))
-      .catch(() => {});
-  }
 
   // After a cancel, say what happened and reload so "Next class" and the
   // credit count show the new state.
@@ -389,28 +364,19 @@ export default function StudentDashboard() {
   }
 
   const ready = data && data.profileReady;
-  let body = "Loading your progress...";
-  let action = <Link to="/lessons" className="btn btn-primary">Book a Class</Link>;
-  if (error) body = "We couldn't load your dashboard just now.";
-  else if (data && !data.profileReady) body = "Your student profile isn't set up yet.";
-  else if (ready) ({ body, action } = heroCopy(data.rank, data.grading));
 
   return (
     <>
-      {/* HERO: same as the homepage, including the fade on scroll */}
-      <section className="hero" ref={heroRef}>
-        <div className="container hero-content hero-scroll-content">
-          <p className="eyebrow">Welcome back, {user.fullName}</p>
-          <p className="hero-kanji" aria-hidden="true">稽古</p>
-          <h1>Your Path to the Next Rank</h1>
-          <span className="rule" aria-hidden="true"></span>
-          <p className="hero-text" aria-live="polite">{body}</p>
-          <div className="button-row center-row">
-            {action}
-            <Link to="/payments" className="btn btn-light">Payments</Link>
+      {/* Updates bar, just under the navigation (item 7) */}
+      {ready && <UpdatesRow notices={notices.notices} unread={notices.unread} />}
+
+      {!data && !error && (
+        <section className="section">
+          <div className="container narrow">
+            <p className="lead" aria-live="polite">Loading your progress…</p>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {error && (
         <section className="section">
@@ -432,8 +398,8 @@ export default function StudentDashboard() {
 
       {ready && (
         <>
-          <NoticesSection notices={notices.notices} unread={notices.unread} onReadAll={readAll} />
-          <RankSection rank={data.rank} />
+          {/* Rank progress -- moved up to lead the dashboard */}
+          <RankSection rank={data.rank} userName={user.fullName} />
           <GlanceSection
             nextClass={data.nextClass}
             attendance={data.attendance}

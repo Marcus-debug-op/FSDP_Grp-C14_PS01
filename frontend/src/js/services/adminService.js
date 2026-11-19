@@ -63,6 +63,7 @@ export const getCoverAvailability = (id) => request(`/cover-requests/${id}/avail
 export const offerCover = (id, instructorId) =>
   request(`/cover-requests/${id}/offer`, { method: "POST", body: { instructorId } }).then((d) => d.request);
 export const cancelCoverLesson = (id, reason) => request(`/cover-requests/${id}/cancel`, { method: "POST", body: { reason } });
+export const closeCoverRequest = (id) => request(`/cover-requests/${id}/close`, { method: "POST" }).then((d) => d.request);
 
 // New-member application review (admin-only API)
 export const listMembershipApplications = (status = "pending") => request("/applications", { query: { status } }).then((r) => r.applications);

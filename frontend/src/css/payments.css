@@ -1,0 +1,29 @@
+/* Payments and payment result pages. Built on index.css
+   (section, grid, card, notice, btn) and content.css (day-heading). */
+
+.pay-notice { margin: 1.5rem 0 0; }
+.pay-error { border-left-color: var(--accent); color: var(--accent-text); }
+.pay-loading { color: var(--muted); margin-top: 2rem; }
+
+/* ---------- Plans and credit packs ---------- */
+.pay-group { margin-top: 2.5rem; }
+.pay-card h3 { margin: 0 0 0.3rem; }
+.pay-price {
+  margin: 0 0 0.8rem;
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  line-height: 1.1;
+  color: var(--accent-text);
+}
+.pay-lines { list-style: none; width: 100%; margin: 0 0 1.4rem; padding: 0; }
+.pay-lines li { padding: 0.35rem 0; border-bottom: 1px solid var(--line); color: var(--muted); }
+.pay-policy { margin: 2rem 0 0; font-size: 0.95rem; color: var(--muted); }
+
+/* ---------- Payment result ---------- */
+.pay-actions { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 1.5rem; }
+
+.pay-page .btn:disabled { opacity: 0.6; cursor: wait; }
+.pay-page a:focus-visible, .pay-page button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}

@@ -379,6 +379,11 @@ export const offerCover = handle(async (req, res) => {
   res.json({ request: result.request });
 });
 
+export const closeCoverRequest = handle(async (req, res) => {
+  const request = await Cover.closeCoverRequest({ requestId: parseId(req.params.id, "Cover request"), user: req.user });
+  res.json({ request });
+});
+
 export const cancelCoverLesson = handle(async (req, res) => {
   const reason = text((req.body || {}).reason, "Reason", { max: 300 });
   const result = await Cover.cancelCoverLesson({

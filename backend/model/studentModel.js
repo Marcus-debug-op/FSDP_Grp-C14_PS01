@@ -70,7 +70,10 @@ export async function getNextBookedClass(studentId) {
 }
 
 // Sessions attended this month, plus the overall rate:
-// attended / booked lessons that have already happened.
+// booked lessons that were attended / booked lessons that have already ended.
+// Both counts use the same set of booked lessons, so the rate can't go over 100%.
+// Check-ins without a booking (walk-ins, roster adds) still count towards
+// this_month but are left out of the rate.
 // Lessons the dojo cancelled don't count against the student.
 export async function getAttendanceSummary(studentId) {
   const result = await pool.query(
@@ -79,12 +82,15 @@ export async function getAttendanceSummary(studentId) {
           JOIN class_sessions cs ON cs.id = a.session_id
          WHERE a.student_id = $1 AND a.status IN ('present', 'late')
            AND date_trunc('month', cs.session_date) = date_trunc('month', ${TODAY})) AS this_month,
-       (SELECT COUNT(*)::int FROM attendance a
-         WHERE a.student_id = $1 AND a.status IN ('present', 'late')) AS attended,
-       (SELECT COUNT(*)::int FROM bookings b
-          JOIN class_sessions cs ON cs.id = b.session_id
-         WHERE b.student_id = $1 AND b.status = 'booked' AND cs.status <> 'cancelled'
-           AND cs.session_date < ${TODAY}) AS past_booked`,
+       COUNT(*) FILTER (WHERE EXISTS (
+         SELECT 1 FROM attendance a
+          WHERE a.session_id = b.session_id AND a.student_id = b.student_id
+            AND a.status IN ('present', 'late')))::int AS attended,
+       COUNT(*)::int AS past_booked
+     FROM bookings b
+     JOIN class_sessions cs ON cs.id = b.session_id
+     WHERE b.student_id = $1 AND b.status = 'booked' AND cs.status <> 'cancelled'
+       AND ((cs.session_date + cs.end_time) AT TIME ZONE 'Asia/Singapore') < NOW()`,
     [studentId]
   );
   return result.rows[0];
