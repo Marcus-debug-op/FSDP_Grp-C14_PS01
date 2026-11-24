@@ -35,6 +35,16 @@ export async function getMe(token) {
   return data.user;
 }
 
+// FSDP-90 forgot password. Each returns { message } (check also returns { valid }).
+export const requestPasswordReset = (email) =>
+  request("/api/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+
+export const checkResetToken = (token) =>
+  request("/api/auth/reset-password/check", { method: "POST", body: JSON.stringify({ token }) });
+
+export const resetPassword = ({ token, password }) =>
+  request("/api/auth/reset-password", { method: "POST", body: JSON.stringify({ token, password }) });
+
 // Step 1 signup check: only returns { exists }, not private application details.
 export const checkSignupEmail = (email) =>
   request("/api/auth/check-email", { method: "POST", body: JSON.stringify({ email }) });

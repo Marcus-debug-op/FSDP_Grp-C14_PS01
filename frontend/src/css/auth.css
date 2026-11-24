@@ -15,6 +15,10 @@
 }
 .form-hint { font-size: 0.9rem; font-weight: 400; color: var(--muted); }
 .form-error { background: #fdecea; color: #7a1f14; border-left: 4px solid var(--accent); padding: 0.8rem 1rem; margin: 0; }
+/* Forgot password (FSDP-90) */
+.form-success { background: #edf5ee; color: #1f4d2b; border-left: 4px solid #2f7a45; padding: 0.8rem 1rem; margin: 0; }
+.auth-form-link { margin: -0.4rem 0 0; font-size: 0.95rem; }
+.auth-form a.btn { text-align: center; }
 .auth-form .btn:disabled { opacity: 0.6; cursor: wait; }
 .role-badge { display: inline-block; text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.8rem; color: var(--accent-text); border: 1px solid var(--accent); padding: 0.1rem 0.8rem; margin-bottom: 1rem; }
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
 // Sign-in form for all three roles (student, instructor, admin).
@@ -35,6 +36,8 @@ export default function SignInForm() {
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                autoComplete="current-password" required />
       </label>
+      {/* FSDP-90 */}
+      <p className="auth-form-link"><Link to="/forgot-password">Forgot password?</Link></p>
       <button type="submit" className="btn btn-primary" disabled={submitting}>
         {submitting ? "Signing in..." : "Sign In"}
       </button>

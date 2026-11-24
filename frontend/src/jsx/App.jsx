@@ -18,6 +18,8 @@ import NotFound from "./pages/NotFound.jsx";
 import CheckIn from "./pages/student/CheckIn.jsx";
 import CheckInQr from "./pages/instructor/CheckInQr.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Payments from "./pages/Payments.jsx";
 import PaymentSuccess from "./pages/PaymentSuccess.jsx";
@@ -74,6 +76,9 @@ export default function App() {
           {/* Sign In and Sign Up share one page with a toggle */}
           <Route path="/signin" element={<AuthPage />} />
           <Route path="/signup" element={<AuthPage />} />
+          {/* Forgot password: request a link, then choose a new password. FSDP-90 */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           {/* Only signed-in users can open the dashboard */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           {/* Student payments (Stripe Checkout, test mode) */}
