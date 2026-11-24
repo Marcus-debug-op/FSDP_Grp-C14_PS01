@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useMembershipAccess } from "../context/MembershipAccessContext.jsx";
 import { getDashboard, getNotices } from "../../js/services/studentService.js";
 import ScrollReveal from "../components/ScrollReveal.jsx";
 import CancelBooking from "../components/student/CancelBooking.jsx";
@@ -364,6 +365,11 @@ export default function StudentDashboard() {
   }
 
   const ready = data && data.profileReady;
+  // A sign-up that isn't finished yet (unpaid, or still being reviewed) gets a clear
+  // next step instead of the "ask the front desk to record your belt" message.
+  const { isActiveMember, application } = useMembershipAccess();
+  const pendingApplication = !isActiveMember && application && application.status !== "active_member"
+    ? application : null;
 
   return (
     <>
@@ -386,7 +392,25 @@ export default function StudentDashboard() {
         </section>
       )}
 
-      {data && !data.profileReady && (
+      {pendingApplication && (
+        <section className="section">
+          <div className="container narrow">
+            {pendingApplication.status === "pending_payment" ? (
+              <div className="notice notice-fit" role="status">
+                <p><strong>Finish your registration.</strong> Your account is saved, but the registration fee hasn't been paid yet.</p>
+                <p><Link to="/registration/checkout" className="btn btn-primary">Complete registration payment</Link></p>
+              </div>
+            ) : (
+              <div className="notice notice-fit" role="status">
+                <p><strong>Your membership application is in progress.</strong> You can book classes once it's approved.</p>
+                <p><Link to="/profile">Check your application status</Link></p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {data && !data.profileReady && !pendingApplication && (
         <section className="section">
           <div className="container narrow">
             <p className="notice notice-fit">

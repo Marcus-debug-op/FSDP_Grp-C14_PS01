@@ -20,7 +20,7 @@ const APPLICATION_STATES = {
   active_member: { label: "Active member", description: "Your membership is active.", tone: "active" },
 };
 
-function ApplicationStatusCard({ application, busy, error, onRefresh }) {
+function ApplicationStatusCard({ application, activeMembership, busy, error, onRefresh }) {
   const [reapplyNote,setReapplyNote]=useState('');
   const [reapplyBusy,setReapplyBusy]=useState(false);
   const [reapplyError,setReapplyError]=useState('');
@@ -48,10 +48,21 @@ function ApplicationStatusCard({ application, busy, error, onRefresh }) {
       </div>
       {error ? <p role="alert" className="stprofile-application-error">{error}</p>
       : busy && !application ? <p role="status">Checking your application…</p>
+      : !application && activeMembership ? <>
+        <span role="status" className="stprofile-application-badge active">Active member</span>
+        <p className="stprofile-application-description">Your membership is active.</p>
+        <dl className="stprofile-application-details">
+          <Field label="Membership plan" value={activeMembership.planName} />
+          <Field label="Membership ends" value={activeMembership.endDate} />
+        </dl>
+      </>
       : !application ? <p>No membership application found for this account.</p>
       : <>
         <span role="status" className={`stprofile-application-badge ${state.tone}`}>{state.label}</span>
         <p className="stprofile-application-description">{state.description}</p>
+        {application.status === "pending_payment" && (
+          <p><Link to="/registration/checkout" className="btn btn-primary">Complete registration payment</Link></p>
+        )}
         <dl className="stprofile-application-details">
           <Field label="Registration plan" value={application.planName} />
           <Field label="Preferred dojo" value={application.preferredCentre} />
@@ -110,6 +121,7 @@ export default function StudentProfile() {
   const [photoMessage, setPhotoMessage] = useState('');
   const [photoVersion, setPhotoVersion] = useState(0);
   const [application, setApplication] = useState(null);
+  const [activeMembership, setActiveMembership] = useState(null);
   const [applicationBusy, setApplicationBusy] = useState(true);
   const [applicationError, setApplicationError] = useState("");
   async function refreshApplicationStatus() {
@@ -118,6 +130,7 @@ export default function StudentProfile() {
     try {
       const data = await getApplicationStatus();
       setApplication(data.application ?? null);
+      setActiveMembership(data.activeMembership ?? null);
     } catch (err) {
       setApplicationError(err.message || "Could not load your application status.");
     } finally {
@@ -186,7 +199,7 @@ export default function StudentProfile() {
             <div className="stprofile-avatar" aria-label="Profile picture">{photoUrl ? <img src={photoUrl} alt="Your profile" /> : <span>{initial}</span>}</div>
             <div className="stprofile-identity-text"><h2>{profile.fullName}</h2><p>{profile.email}</p><span className="stprofile-tag">Student account</span></div>
           </section>
-          <ApplicationStatusCard application={application} busy={applicationBusy} error={applicationError} onRefresh={refreshApplicationStatus} />
+          <ApplicationStatusCard application={application} activeMembership={activeMembership} busy={applicationBusy} error={applicationError} onRefresh={refreshApplicationStatus} />
           {review?.photo_review_status === 'resubmission_requested' && <section className="stprofile-card" aria-label="Replace profile photo">
             <h2>Profile photo needs updating</h2>
             <p>Admin request: <strong>{review.photo_review_note}</strong></p>

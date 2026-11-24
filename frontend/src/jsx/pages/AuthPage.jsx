@@ -41,8 +41,9 @@ export default function AuthPage() {
           navigate("/dashboard", { replace: true });
           return;
         }
-        // Only an unpaid application from THIS logged-in student may resume registration checkout.
-        if (application.status === "pending_payment" && sessionStorage.getItem("pending_registration_plan_id")) {
+        // An unpaid application always resumes registration checkout, even after a crash,
+        // a closed tab or a different device (the status API is scoped to this student).
+        if (application.status === "pending_payment") {
           navigate("/registration/checkout", { replace: true });
           return;
         }
