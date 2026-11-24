@@ -8,30 +8,31 @@ const MembershipAccessContext = createContext(null);
 export function MembershipAccessProvider({ children }) {
   const { user, loading: authLoading } = useAuth();
   const isStudent = user?.role === "student";
-  const [check, setCheck] = useState({ userId: null, loading: true, application: null, error: null });
+  const [check, setCheck] = useState({ userId: null, loading: true, application: null, activeMembership: null, error: null });
 
   useEffect(() => {
     if (authLoading) return undefined;
     if (!isStudent) {
-      setCheck({ userId: null, loading: false, application: null, error: null });
+      setCheck({ userId: null, loading: false, application: null, activeMembership: null, error: null });
       return undefined;
     }
     let cancelled = false;
-    setCheck({ userId: user.id, loading: true, application: null, error: null });
+    setCheck({ userId: user.id, loading: true, application: null, activeMembership: null, error: null });
     getApplicationStatus()
       .then((data) => {
-        if (!cancelled) setCheck({ userId: user.id, loading: false, application: data.application ?? null, error: null });
+        if (!cancelled) setCheck({ userId: user.id, loading: false, application: data.application ?? null, activeMembership: data.activeMembership ?? null, error: null });
       })
       .catch((error) => {
-        if (!cancelled) setCheck({ userId: user.id, loading: false, application: null, error: error.message || "Could not verify membership" });
+        if (!cancelled) setCheck({ userId: user.id, loading: false, application: null, activeMembership: null, error: error.message || "Could not verify membership" });
       });
     return () => { cancelled = true; };
   }, [authLoading, isStudent, user?.id]);
 
   const loading = authLoading || (isStudent && (check.loading || check.userId !== user?.id));
-  const isActiveMember = isStudent && !loading && check.application?.status === "active_member";
+  // Any membership active today counts, even with no application (renewals, existing members).
+  const isActiveMember = isStudent && !loading && (Boolean(check.activeMembership) || check.application?.status === "active_member");
   return (
-    <MembershipAccessContext.Provider value={{ isActiveMember, loading, application: check.application, error: check.error }}>
+    <MembershipAccessContext.Provider value={{ isActiveMember, loading, application: check.application, activeMembership: check.activeMembership, error: check.error }}>
       {children}
     </MembershipAccessContext.Provider>
   );

@@ -37,3 +37,22 @@ export async function findStudentApplicationStatus(studentId) {
   );
   return result.rows[0] ?? null;
 }
+
+// The membership in force today, from ANY source (registration, renewal, or an
+// existing member added by an admin), so access never depends on the application.
+export async function findCurrentMembership(studentId) {
+  const result = await pool.query(
+    `SELECT m.id, mp.name AS plan_name,
+            to_char(m.start_date, 'YYYY-MM-DD') AS start_date,
+            to_char(m.end_date, 'YYYY-MM-DD') AS end_date
+     FROM memberships m
+     JOIN membership_plans mp ON mp.id = m.plan_id
+     WHERE m.student_id = $1 AND m.status = 'active'
+       AND m.start_date <= (NOW() AT TIME ZONE 'Asia/Singapore')::date
+       AND m.end_date >= (NOW() AT TIME ZONE 'Asia/Singapore')::date
+     ORDER BY m.end_date DESC, m.id DESC
+     LIMIT 1`,
+    [studentId]
+  );
+  return result.rows[0] ?? null;
+}

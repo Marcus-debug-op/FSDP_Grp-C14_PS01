@@ -1,4 +1,4 @@
-import { findStudentApplicationStatus } from '../model/studentApplicationStatusModel.js';
+import { findStudentApplicationStatus, findCurrentMembership } from '../model/studentApplicationStatusModel.js';
 
 function displayState(a) {
   if (a.membership_currently_active) return 'active_member';
@@ -14,12 +14,20 @@ function displayState(a) {
 // GET /api/student/application/status — always scoped to the JWT's student ID.
 export async function getApplicationStatus(req, res, next) {
   try {
-    const application = await findStudentApplicationStatus(req.user.id);
+    const [application, current] = await Promise.all([
+      findStudentApplicationStatus(req.user.id),
+      findCurrentMembership(req.user.id),
+    ]);
+    // Any membership active today counts (renewals and existing members included),
+    // not only the one created by the latest application.
+    const activeMembership = current
+      ? { planName: current.plan_name, startDate: current.start_date, endDate: current.end_date }
+      : null;
     res.set('Cache-Control', 'private, no-store');
-    if (!application) return res.json({ application: null });
-    res.json({ application: {
+    if (!application) return res.json({ application: null, activeMembership });
+    res.json({ activeMembership, application: {
       id: application.application_id,
-      status: displayState(application),
+      status: activeMembership ? 'active_member' : displayState(application),
       approvalStatus: application.approval_status,
       photoReviewStatus: application.photo_review_status,
       photoReviewNote: application.photo_review_status === 'resubmission_requested'
