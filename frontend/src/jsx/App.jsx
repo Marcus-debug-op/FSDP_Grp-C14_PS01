@@ -13,6 +13,7 @@ import Dojos from "./pages/Dojos.jsx";
 import JoinFees from "./pages/JoinFees.jsx";
 import ClassesGuide from "./pages/ClassesGuide.jsx";
 import Contact from "./pages/Contact.jsx";
+import Privacy from "./pages/Privacy.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import CheckIn from "./pages/student/CheckIn.jsx";
 import CheckInQr from "./pages/instructor/CheckInQr.jsx";
@@ -69,6 +70,7 @@ export default function App() {
           <Route path="/about" element={<About />} />
           <Route path="/join" element={<JoinFees />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<Privacy />} />
           {/* Sign In and Sign Up share one page with a toggle */}
           <Route path="/signin" element={<AuthPage />} />
           <Route path="/signup" element={<AuthPage />} />
