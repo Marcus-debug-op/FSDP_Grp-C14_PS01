@@ -25,7 +25,8 @@ async function request(path, { method = "GET", body } = {}) {
 }
 
 // Today's group classes and accepted private lessons: { classes, privateLessons }.
-export const getToday = () => request("/classes");
+// Pass a YYYY-MM-DD date for another day (for example tomorrow).
+export const getToday = (date) => request(date ? `/classes?date=${date}` : "/classes");
 export const getCalendar = (month) => request(`/calendar?month=${month}`);
 // status: "present" | "absent" | null (clears the mark)
 export const markPrivateLesson = (lessonId, status) =>

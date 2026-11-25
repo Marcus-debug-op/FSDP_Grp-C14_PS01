@@ -78,6 +78,73 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
   .offer-bell-button svg { width: 20px; height: 20px; }
 }
 
+/* ---------- Dashboard hero: "your day at a glance" ---------- */
+/* Same idea as the student hero: a faded dojo photo, the day on the left,
+   quick links on the right. */
+.ihero {
+  padding: 4.5rem 0 4rem; border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, rgba(250, 249, 247, 0.96) 0%, rgba(250, 249, 247, 0.9) 55%, rgba(250, 249, 247, 0.78) 100%),
+    url("/images/hero.jpg") center / cover no-repeat;
+}
+.ihero-inner { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 2.5rem 4rem; align-items: center; }
+.ihero-title { margin: 0.3rem 0 0.5rem; font-size: clamp(2rem, 4vw, 3rem); color: var(--text); }
+.ihero-lead { margin: 0; font-size: 1.1rem; color: var(--muted); }
+
+/* Today's classes as a track: done, next (pulsing), later, then tomorrow. */
+.today-track { position: relative; list-style: none; display: flex; justify-content: space-between; gap: 1rem; max-width: 36rem; margin: 2.2rem 0 0; padding: 0; }
+.today-track::before { content: ""; position: absolute; left: 8px; right: 8px; top: 9px; height: 2px; background: var(--line); }
+.today-stop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; min-width: 0; text-align: center; }
+.today-stop:first-child { align-items: flex-start; text-align: left; }
+.today-stop:last-child { align-items: flex-end; text-align: right; }
+.today-dot { width: 20px; height: 20px; display: grid; place-items: center; }
+.today-dot::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--line); }
+.today-stop.is-done .today-dot::before { background: var(--accent); border-color: var(--accent); }
+.today-stop.is-next .today-dot::before { width: 20px; height: 20px; background: var(--accent); border-color: var(--accent); animation: next-pulse 2.2s ease-out infinite; }
+.today-stop.is-tomorrow .today-dot::before { border-style: dashed; border-color: var(--muted); }
+.today-time { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text); white-space: nowrap; }
+.today-state { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.today-stop.is-next .today-time, .today-stop.is-next .today-state { color: var(--accent-text); }
+@keyframes next-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(168, 63, 49, 0.35); }
+  70% { box-shadow: 0 0 0 10px rgba(168, 63, 49, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(168, 63, 49, 0); }
+}
+
+.ihero-stats { list-style: none; display: flex; flex-wrap: wrap; gap: 1.2rem 2.6rem; margin: 2rem 0 0; padding: 1.2rem 0 0; border-top: 1px solid var(--line); }
+.ihero-stats strong { display: block; font-family: var(--font-heading); font-size: 2.2rem; font-weight: 400; line-height: 1.1; color: var(--accent-text); }
+.ihero-stats li > span { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+/* Quick-action cards, like the student's Grading / Payments cards. */
+.ihero-actions { display: flex; flex-direction: column; gap: 0.8rem; }
+.quick-card {
+  display: flex; align-items: center; gap: 1rem; padding: 1.05rem 1.2rem; border-radius: 14px;
+  background: #2b2421; color: #fff; text-decoration: none; transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.quick-card.is-primary { background: var(--accent); }
+.quick-card:hover, .quick-card:focus-visible { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(38, 35, 31, 0.22); color: #fff; }
+.quick-kanji { flex-shrink: 0; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: rgba(255, 255, 255, 0.14); font-family: var(--font-kanji); font-size: 1.35rem; }
+.quick-text { flex: 1; min-width: 0; font-weight: 700; }
+.quick-sub { display: block; margin-top: 0.15rem; font-size: 0.85rem; font-weight: 400; opacity: 0.82; }
+.quick-arrow { font-size: 1.2rem; transition: transform 200ms ease; }
+.quick-card:hover .quick-arrow { transform: translateX(4px); }
+
+/* Today's class cards lift a little on hover. */
+.instructor-class-card { transition: transform 200ms ease, box-shadow 200ms ease; }
+.instructor-class-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(38, 35, 31, 0.12); }
+
+@media (max-width: 900px) {
+  .ihero { padding: 3rem 0; }
+  .ihero-inner { grid-template-columns: 1fr; }
+  .ihero-stats { gap: 1rem 1.6rem; }
+  .ihero-stats li { flex: 1 1 40%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .today-stop.is-next .today-dot::before { animation: none; }
+  .quick-card, .quick-arrow, .instructor-class-card { transition: none; }
+  .quick-card:hover, .instructor-class-card:hover { transform: none; }
+}
+
 /* Large faint character behind a section. It is decoration only. */
 .instructor-kanji-section { position: relative; overflow: hidden; min-height: 34rem; }
 .instructor-kanji-section .container { position: relative; }
@@ -151,6 +218,62 @@ body:has(.instructor-portal) .navbar:not(.instructor-navbar) { display: none; }
 .moved-note { margin: 0.8rem 0 0; padding: 0.5rem 0.75rem; border-left: 3px solid var(--accent); background: var(--bad-soft); font-size: 0.9rem; color: var(--text); }
 .moved-note strong { color: var(--accent-text); }
 .roster-panel ~ .moved-note, .lead + .moved-note { max-width: 46rem; }
+
+/* ---------- Analytics page: stat cards and panels (FSDP-71) ---------- */
+.stat-cards { list-style: none; padding: 0; margin: 2rem 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; }
+.stat-card { display: flex; flex-direction: column; gap: 0.2rem; padding: 1rem 1.2rem; border: 1px solid var(--line); background: var(--bg); }
+.stat-card-label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.stat-card-value { font-family: var(--font-heading); font-size: 2.1rem; font-weight: 400; line-height: 1.15; color: var(--text); }
+.stat-card-sub { font-size: 0.9rem; color: var(--muted); }
+.stat-card-sub.is-warning { color: var(--accent-text); font-weight: 600; }
+
+.analytics-panel { margin-top: 1.2rem; padding: 1.3rem 1.4rem; border: 1px solid var(--line); background: var(--bg); min-width: 0; }
+.analytics-panel .trends-heading { margin-top: 0; font-size: 1.4rem; }
+.analytics-panel .trend-chart { border: 0; padding: 1rem 0 0; }
+.analytics-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; }
+.analytics-pair .analytics-panel { margin-top: 1.2rem; }
+.analytics-pair .check-on-row { grid-template-columns: minmax(0, 1fr) auto; padding: 0.9rem 1rem 0.9rem 1.4rem; font-size: 1rem; }
+.analytics-pair .check-on-last { grid-column: 1 / -1; text-align: left; }
+.analytics-link { display: inline-block; margin-top: 1rem; font-weight: 600; }
+
+/* Horizontal bars: label, bar, value. One colour: each chart shows one thing. */
+.hbar-list { list-style: none; padding: 0; margin: 1rem 0 0; }
+.hbar { position: relative; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) 3.2rem; align-items: center; gap: 0.8rem; padding: 0.45rem 0; outline-offset: 2px; }
+.hbar-label { font-size: 0.9rem; font-weight: 600; color: var(--text); min-width: 0; }
+.hbar-sub { display: block; font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+.hbar-track { height: 12px; background: var(--surface); }
+.hbar-track span { display: block; height: 100%; background: var(--accent); border-radius: 0 4px 4px 0; }
+.hbar-value { font-size: 0.9rem; font-weight: 700; text-align: right; color: var(--text); }
+.hbar:hover .hbar-track span, .hbar:focus-visible .hbar-track span { background: var(--accent-dark); }
+
+/* Busiest days: vertical bars, the busiest day darker. */
+.day-chart { list-style: none; padding: 1rem 0 0; margin: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.6rem; }
+.day-chart li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; min-width: 0; outline-offset: 2px; }
+.day-track { display: flex; align-items: flex-end; width: 100%; max-width: 3rem; height: 11rem; background: var(--surface); }
+.day-track span { display: block; width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; }
+.day-chart .is-busiest .day-track span, .day-chart li:hover .day-track span { background: var(--accent-dark); }
+.trend-week { position: relative; outline-offset: 2px; }
+.trend-week:hover .trend-bar, .trend-week:focus-visible .trend-bar { background: var(--accent-dark); }
+
+/* Hover / keyboard tooltip with the exact numbers. */
+[data-tip]:hover::after, [data-tip]:focus-visible::after {
+  content: attr(data-tip); position: absolute; z-index: 5; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+  width: max-content; max-width: 16rem; padding: 0.45rem 0.65rem; background: var(--text); color: #fff;
+  font-size: 0.8rem; font-weight: 400; line-height: 1.4; text-align: left; white-space: normal; pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .stat-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analytics-pair { grid-template-columns: 1fr; gap: 0; }
+}
+@media (max-width: 480px) {
+  .stat-card { padding: 0.8rem; }
+  .stat-card-value { font-size: 1.6rem; }
+  .day-chart { gap: 0.3rem; }
+  .day-track { height: 8rem; }
+  .hbar { grid-template-columns: minmax(0, 1fr) 2.8rem; }
+  .hbar-track { grid-column: 1 / -1; grid-row: 2; }
+}
 
 /* ---------- Students list (FSDP-72) ---------- */
 .student-list { margin-top: 0.8rem; }

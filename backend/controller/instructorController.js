@@ -188,9 +188,11 @@ function ratePercent(attended, expected) {
 // first, plus the students whose attendance has dropped.
 export async function getAttendanceTrends(req, res, next) {
   try {
-    const [weekRows, studentRows] = await Promise.all([
+    const [weekRows, studentRows, progressRows, extras] = await Promise.all([
       Instructor.listWeeklyAttendance(req.user.id),
       Instructor.listStudentAttendanceChange(req.user.id),
+      Instructor.listGradingProgress(req.user.id),
+      Instructor.getAnalyticsExtras(req.user.id),
     ]);
 
     const weeks = weekRows.map((row) => ({
@@ -222,12 +224,56 @@ export async function getAttendanceTrends(req, res, next) {
         lastAttended: row.last_attended,
       }));
 
+    // Your students' belts, lowest belt first; students with no belt recorded last.
+    const beltCounts = new Map();
+    for (const row of progressRows) {
+      const key = row.current_belt || "No belt recorded";
+      const entry = beltCounts.get(key) || { belt: key, rank: row.current_rank ?? Number.MAX_SAFE_INTEGER, students: 0 };
+      entry.students += 1;
+      beltCounts.set(key, entry);
+    }
+    const belts = [...beltCounts.values()].sort((a, b) => a.rank - b.rank).map(({ belt, students }) => ({ belt, students }));
+
+    const byClass = extras.byClass
+      .map((row) => ({
+        classId: row.id,
+        title: row.title,
+        centre: row.centre,
+        dayOfWeek: row.day_of_week, // 0 = Sunday
+        startTime: row.start_time,
+        expected: row.expected,
+        attended: row.attended,
+        rate: ratePercent(row.attended, row.expected),
+      }))
+      .sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1) || b.attended - a.attended);
+
+    const byWeekday = Array.from({ length: 7 }, (_, day) => ({
+      day, // 0 = Sunday
+      attended: extras.byWeekday.find((row) => row.day === day)?.attended ?? 0,
+    }));
+
     res.json({
       weeks,
       summary: {
         recentRate: ratePercent(recent.attended, recent.expected),
         previousRate: ratePercent(previous.attended, previous.expected),
       },
+      // Stat cards
+      stats: {
+        classesTaught: extras.taught.classes,
+        dojosTaught: extras.taught.dojos,
+        upcomingClasses: extras.upcoming.classes,
+        upcomingBooked: extras.upcoming.booked,
+        students: progressRows.length,
+        ready: progressRows.filter((row) => gradingProgress(row).status === "ready").length,
+        droppingOff: checkOn.length,
+        attended: extras.checkIns.attended,
+        byQr: extras.checkIns.by_qr,
+        qrRate: ratePercent(extras.checkIns.by_qr, extras.checkIns.attended),
+      },
+      byClass,
+      byWeekday,
+      belts,
       checkOn,
     });
   } catch (err) {
