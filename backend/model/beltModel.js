@@ -4,13 +4,14 @@
 //   belt_ranks(id, name, colour, rank_order, min_months_at_rank, min_classes_at_rank)
 //   grading_applications(student_id, grading_session_id, target_belt_id, status)
 //   grading_sessions(id, grading_date)
+//   belt_requirements(belt_rank_id, description)  -- FSDP-123 technique counts
 import pool from "../db.js";
 
 // "Today" in Singapore, not the database server's UTC (it would be a day behind between
 // midnight and 8am local). Dates go out as YYYY-MM-DD text so the browser can't shift them.
 const SGT_TODAY = "(NOW() AT TIME ZONE 'Asia/Singapore')::date";
 
-// FSDP-9: the student's current belt, from their profile.
+// the student's current belt, from their profile.
 // Returns undefined if the student has no profile row yet (e.g. a brand-new sign-up).
 export async function findCurrentBelt(userId) {
   const result = await pool.query(
@@ -67,4 +68,48 @@ export async function findBeltHistory(userId) {
     [userId]
   );
   return result.rows;
+}
+
+// every belt on the student's own ladder (adult or children's), lowest first,
+// with how many syllabus techniques each belt tests. Empty if the student has no profile.
+export async function findLadderBelts(userId) {
+  const result = await pool.query(
+    `SELECT r.id, r.name, r.colour, r.rank_order, r.ladder,
+            r.min_months_at_rank, r.min_classes_at_rank,
+            COUNT(req.id)::int AS technique_count
+     FROM student_profiles p
+     JOIN belt_ranks cur ON cur.id = p.current_belt_id
+     JOIN belt_ranks r   ON r.ladder = cur.ladder
+     LEFT JOIN belt_requirements req ON req.belt_rank_id = r.id
+     WHERE p.user_id = $1
+     GROUP BY r.id
+     ORDER BY r.rank_order`,
+    [userId]
+  );
+  return result.rows;
+}
+
+// classes attended in the last `days` days (Singapore time), for the training pace.
+// Same counting rules as gradingModel.findTrainingSinceBelt: present/late, not cancelled,
+// plus external classes and completed private lessons. Also returns today's SGT date.
+export async function countRecentClasses(userId, days) {
+  const result = await pool.query(
+    `WITH win AS (SELECT ${SGT_TODAY} - $2::int AS from_day, ${SGT_TODAY} AS to_day)
+     SELECT
+       ( (SELECT COUNT(*) FROM attendance a
+            JOIN class_sessions cs ON cs.id = a.session_id, win
+          WHERE a.student_id = $1 AND a.status IN ('present', 'late')
+            AND cs.status <> 'cancelled'
+            AND cs.session_date > win.from_day AND cs.session_date <= win.to_day)
+       + (SELECT COUNT(*) FROM external_attendance e, win
+          WHERE e.student_id = $1
+            AND e.attended_on > win.from_day AND e.attended_on <= win.to_day)
+       + (SELECT COUNT(*) FROM private_lessons pl, win
+          WHERE pl.student_id = $1 AND pl.status = 'completed'
+            AND pl.lesson_date > win.from_day AND pl.lesson_date <= win.to_day)
+       )::int AS recent_classes,
+       to_char(${SGT_TODAY}, 'YYYY-MM-DD') AS today`,
+    [userId, days]
+  );
+  return result.rows[0];
 }

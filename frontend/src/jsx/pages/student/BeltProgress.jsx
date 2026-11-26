@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ProgressLayout, { Swatch, Bar } from "../../components/student/ProgressLayout.jsx";
-import { getMyBelt, getMyHistory } from "../../../js/services/beltService.js";
+import BeltLadder from "../../components/student/BeltLadder.jsx";
+import { getMyBelt, getMyHistory, getMyLadder } from "../../../js/services/beltService.js";
 import { getEligibility } from "../../../js/services/gradingService.js";
 import { colourHex, formatDate, timeAtBelt } from "../../../js/utils/beltFormat.js";
 
@@ -9,6 +10,7 @@ export default function BeltProgress() {
   const [belt, setBelt] = useState(undefined);
   const [history, setHistory] = useState([]);
   const [grading, setGrading] = useState(null);
+  const [ladder, setLadder] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -19,10 +21,12 @@ export default function BeltProgress() {
       })
       .catch((err) => setError(err.message));
     getEligibility().then(setGrading).catch(() => setGrading(false));
+    // FSDP-123: loaded on its own so a ladder error never hides the belt or history.
+    getMyLadder().then(setLadder).catch(() => setLadder(null));
   }, []);
 
   return (
-    <ProgressLayout title="My Belt" subtitle="Your current rank and every belt you've earned.">
+    <ProgressLayout title="My Belt" subtitle="Your current rank, every belt you've earned and what's ahead.">
       {error ? (
         <p className="prog-alert" role="alert">{error}</p>
       ) : belt === undefined ? (
@@ -50,6 +54,8 @@ export default function BeltProgress() {
 
             <NextStep grading={grading} />
           </div>
+
+          <BeltLadder ladder={ladder} />
 
           <article className="prog-card">
             <div className="prog-card-head">
