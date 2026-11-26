@@ -166,6 +166,45 @@
 
 .belt-history li:not(.is-current) .belt-history-name { grid-column: 2 / 4; }
 
+/* Belt ladder. One rung per belt, joined by a rail through the swatches.
+   --dot-y is the swatch centre from the top of a rung, so the rail starts/ends on a dot. */
+.ladder { --dot-y: 1.4rem; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+
+.ladder-rung {
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.85rem;
+  padding: 0.7rem 0.75rem; border-radius: 10px;
+}
+
+.ladder-rung::before {
+  content: ""; position: absolute; left: calc(0.75rem + 0.425rem - 1px); top: 0; bottom: -0.15rem;
+  width: 2px; background: var(--prog-line);
+}
+
+.ladder-rung:first-child::before { top: var(--dot-y); }
+.ladder-rung:last-child::before { bottom: calc(100% - var(--dot-y)); }
+.ladder-rung.is-earned::before { background: var(--prog-accent); }
+/* The earned (accent) rail runs into the current belt's dot, then turns grey. */
+.ladder-rung.is-current::before { background: linear-gradient(var(--prog-accent) var(--dot-y), var(--prog-line) var(--dot-y)); }
+.ladder-rung.is-current:first-child::before { background: var(--prog-line); }
+
+.ladder-rung > .prog-swatch {
+  position: relative; z-index: 1; margin-top: calc(var(--dot-y) - 0.7rem - 0.425rem);
+  box-shadow: 0 0 0 3px var(--prog-card), inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.ladder-rung.is-current { background: var(--prog-accent-soft); }
+.ladder-rung.is-next { background: var(--prog-soft); }
+.ladder-rung.is-upcoming > .prog-swatch { opacity: 0.45; }
+
+.ladder-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.ladder-name { font-weight: 650; }
+.ladder-rung.is-earned .ladder-name { font-weight: 500; }
+.ladder-rung.is-upcoming .ladder-name { color: var(--prog-muted); }
+.ladder-meta { margin: 0.15rem 0 0; font-size: 0.85rem; color: var(--prog-muted); }
+.ladder-next { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.6rem; }
+.ladder-estimate { margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--prog-muted); }
+.ladder-estimate strong { color: var(--prog-text); font-weight: 650; }
+
 .prog-footnote { margin: 0; font-size: 0.85rem; color: var(--prog-muted); }
 
 .prog-footnote a { color: var(--prog-accent); font-weight: 600; }

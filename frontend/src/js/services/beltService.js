@@ -29,3 +29,7 @@ export const getMyBelt = () => request("/api/belts/me");
 // Returns { history }: an array of belts achieved, newest first.
 // Each item: { id, name, colour, rankOrder, achievedOn, fromGrading }.
 export const getMyHistory = () => request("/api/belts/me/history");
+
+// Returns { profileReady, ladder, belts, next }. Each belt has a state
+// (earned | current | next | upcoming); next is null at the top of the ladder.
+export const getMyLadder = () => request("/api/belts/me/ladder");
