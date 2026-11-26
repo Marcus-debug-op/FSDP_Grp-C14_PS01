@@ -205,6 +205,25 @@
 .ladder-estimate { margin: 0; font-size: 0.9rem; line-height: 1.5; color: var(--prog-muted); }
 .ladder-estimate strong { color: var(--prog-text); font-weight: 650; }
 
+/* "View more" toggle under the ladder. The default view stops one belt past the current
+   one, so the upcoming belts open from here. Deliberately chrome-less: a bare chevron
+   centred under the rungs, so it reads as the list continuing rather than a card action. */
+.ladder-more {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; margin: -0.1rem 0 -0.25rem; padding: 0.5rem 0;
+  border: 0; background: none; color: var(--prog-line); cursor: pointer;
+  transition: color 0.15s;
+}
+
+.ladder-more:hover { color: var(--prog-muted); }
+
+.ladder-more svg { flex: 0 0 auto; transition: transform 0.2s ease; }
+
+.ladder-more[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+/* No visible box to outline, so give the focus ring a shape of its own. */
+.prog .ladder-more:focus-visible { outline-offset: -2px; border-radius: 8px; }
+
 .prog-footnote { margin: 0; font-size: 0.85rem; color: var(--prog-muted); }
 
 .prog-footnote a { color: var(--prog-accent); font-weight: 600; }
@@ -227,5 +246,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .prog-bar span, .prog-btn, .prog-tab { transition: none; }
+  .prog-bar span, .prog-btn, .prog-tab, .ladder-more, .ladder-more svg { transition: none; }
 }
