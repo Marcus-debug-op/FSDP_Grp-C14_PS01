@@ -1,5 +1,6 @@
 // every belt on the student's ladder, with progress and an estimate for the next one.
 // View-only. Data comes from GET /api/belts/me/ladder (beltService.getMyLadder).
+import { useState } from "react";
 import { Swatch, Bar } from "./ProgressLayout.jsx";
 import { colourHex, formatDate } from "../../../js/utils/beltFormat.js";
 
@@ -23,8 +24,16 @@ function needs(belt) {
 }
 
 export default function BeltLadder({ ladder }) {
+  const [showAll, setShowAll] = useState(false);
+
   // The page already explains a missing profile, so there's nothing extra to show here.
   if (!ladder || !ladder.profileReady || ladder.belts.length === 0) return null;
+
+  // The default view stops one belt past where the student is now: everything earned, the
+  // current belt, and the next one they can grade for. Belts beyond that are "upcoming" and
+  // only clutter the view until they're close, so they sit behind the toggle below.
+  const upcoming = ladder.belts.filter((belt) => belt.state === "upcoming");
+  const shown = showAll ? ladder.belts : ladder.belts.filter((belt) => belt.state !== "upcoming");
 
   return (
     <article className="prog-card">
@@ -32,18 +41,45 @@ export default function BeltLadder({ ladder }) {
         <h2 className="prog-card-title">Belt ladder</h2>
         <span className="prog-count">{ladder.ladder === "children" ? "Children's" : "Adult"}</span>
       </div>
-      <p className="prog-muted">Every belt on your path, and what each one needs.</p>
+      <p className="prog-muted">
+        {upcoming.length > 0 && !showAll
+          ? "Your belts so far and the next one up. Open the rest to see the whole path."
+          : "Every belt on your path, and what each one needs."}
+      </p>
 
-      <ol className="ladder" aria-label="Belt ladder, first belt to last">
-        {ladder.belts.map((belt) => (
+      <ol className="ladder" id="belt-ladder-rungs" aria-label="Belt ladder, first belt to last">
+        {shown.map((belt) => (
           <Rung key={belt.id} belt={belt} next={belt.state === "next" ? ladder.next : null} />
         ))}
       </ol>
+
+      {upcoming.length > 0 && (
+        <button
+          type="button"
+          className="ladder-more"
+          aria-expanded={showAll}
+          aria-controls="belt-ladder-rungs"
+          aria-label={showAll ? "Show fewer belts" : `Show ${plural(upcoming.length, "more belt")}`}
+          onClick={() => setShowAll((open) => !open)}
+        >
+          <Chevron />
+        </button>
+      )}
 
       {!ladder.next && (
         <p className="prog-muted">You're at the top of your ladder. There's no higher belt to grade for yet.</p>
       )}
     </article>
+  );
+}
+
+// Points down when collapsed; CSS flips it when the rest of the ladder is open.
+// The toggle carries an aria-label, so the mark itself is decorative.
+function Chevron() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+      <path d="M4 7l5 5 5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
